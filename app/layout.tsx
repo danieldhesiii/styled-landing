@@ -4,23 +4,23 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 
 const DESCRIPTION =
-  "Styled is the planning & design workspace for wedding planners — design each wedding, build a costed supplier plan, run the timeline, guest list and seating, and share it all with your couples.";
+  "Upload your venue, choose your style, and see exactly how your wedding will look. Then shop every item and have it delivered straight to your door.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
   ),
-  title: "Styled — the wedding planning & design workspace",
+  title: "Styled — see your wedding before the day",
   description: DESCRIPTION,
   openGraph: {
-    title: "Styled — the wedding planning & design workspace",
+    title: "Styled — see your wedding before the day",
     description: DESCRIPTION,
     type: "website",
     images: [{ url: "/img/renders/garden_romance.jpg" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Styled — the wedding planning & design workspace",
+    title: "Styled — see your wedding before the day",
     description: DESCRIPTION,
   },
 };

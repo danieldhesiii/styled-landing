@@ -1,75 +1,84 @@
-import Image from "next/image";
 import Link from "next/link";
 
 /* ------------------------------------------------------------------ *
- * Styled — landing page (v2)
- * Product: AI wedding visualiser + marketplace
+ * Styled — landing page
+ * Product: wedding visualiser + marketplace
  * Audience: couples planning their wedding
- * Design tokens: ink/cream/sand/clay/sage/blush/gold (tailwind.config.ts)
  * ------------------------------------------------------------------ */
 
 const HOW_IT_WORKS = [
   {
     n: "01",
     title: "Upload your venue",
-    body: "Upload a photo of your venue — inside or out. Styled uses it as the canvas for your design.",
+    body: "Send us a photo of your venue, inside or out. That becomes the canvas for your entire design.",
   },
   {
     n: "02",
-    title: "Design with AI",
-    body: "Pick your flowers, furniture, linens and lighting. Our AI generates a photorealistic render of exactly how it will look on the day.",
+    title: "Design your day",
+    body: "Pick your florals, furniture, linens and lighting from our catalogue. We generate a detailed preview showing exactly how it will all look in your space.",
   },
   {
     n: "03",
-    title: "Shop & deliver",
-    body: "Every item in your render is shoppable. Add to cart, check out once, and it all gets delivered straight to your venue.",
+    title: "Shop and deliver",
+    body: "Every item in your preview is a real product from a real vendor. Add to your order, pay once, and we coordinate delivery straight to your venue.",
   },
 ];
 
 const FEATURES = [
   {
-    title: "AI visualisation",
-    body: "See a photorealistic render of your wedding before a single item is booked. Tweak colours, swap florals, change linens — in seconds.",
+    title: "See it before you commit",
+    body: "Get a detailed visual of your wedding before a single item is booked. Swap florals, change linens, try different lighting. You decide when it looks right.",
     accent: "bg-blush/30",
   },
   {
     title: "Shop the look",
-    body: "Every element in your render is linked to a real product. Add the exact items you fell in love with to your basket in one click.",
+    body: "Every element in your preview links to a real product. Add the exact pieces you chose to your basket in one click.",
     accent: "bg-sage/20",
   },
   {
-    title: "500+ curated vendors",
-    body: "A hand-picked network of UK florists, furniture hire, décor specialists and lighting designers — all vetted and ready to deliver.",
+    title: "Curated vendor network",
+    body: "A hand-picked selection of UK florists, furniture hire, décor specialists and lighting designers, all vetted and ready to deliver.",
     accent: "bg-sand",
   },
   {
-    title: "One checkout, door-to-door",
-    body: "Pay for everything in a single transaction. We coordinate with each vendor and arrange delivery straight to your venue on your timeline.",
+    title: "One order, door to door",
+    body: "Pay for everything in a single transaction. We coordinate with each vendor and arrange delivery to your venue on your timeline.",
     accent: "bg-blush/20",
   },
 ];
 
 const FAQS = [
   {
-    q: "How does the AI rendering work?",
-    a: "You upload a photo of your venue and select the items, styles and colours you're interested in. Our AI composites a photorealistic image showing exactly how those choices would look in your space — no guesswork, no mood boards.",
+    q: "How does the preview work?",
+    a: "You upload a photo of your venue and choose items from our catalogue. We composite a detailed image showing how those choices would look in your actual space. You can keep refining it until it feels right.",
   },
   {
-    q: "Can I use items not listed on Styled?",
-    a: "For now the render pulls from our vendor catalogue so every item is shoppable. We're working on a custom item upload feature so you can include things you've sourced elsewhere.",
+    q: "Do I have to buy everything through Styled?",
+    a: "No. You can use the preview tool to explore and then purchase only the items you want through us. We are working on a feature to include items you have sourced elsewhere.",
   },
   {
-    q: "What happens when I place an order?",
-    a: "Styled coordinates with each vendor in your order, confirms availability, and arranges delivery to your venue on the dates you specify. You deal with us — not five different suppliers.",
+    q: "What happens once I place an order?",
+    a: "Styled coordinates with each vendor in your order, confirms stock and availability, and arranges delivery to your venue on the dates you set. You deal with us, not five different suppliers.",
   },
   {
-    q: "Are you available across the UK?",
-    a: "We're launching in London, Essex and Hertfordshire first, with the rest of the UK following shortly after.",
+    q: "Where do you deliver?",
+    a: "We are currently delivering across London, Essex and Hertfordshire. The rest of the UK is coming shortly.",
   },
   {
-    q: "I'm a vendor — can I list my products?",
-    a: "Yes. Head to the vendor section below and apply to join the network. We review every application to maintain quality.",
+    q: "I am a wedding vendor. Can I list my products?",
+    a: "Yes. Scroll down to the vendor section and apply to join. We review every application to keep the quality consistent for couples.",
   },
+];
+
+const STYLES = ["Garden Romance", "Classic Elegance", "Modern Minimal", "Rustic Barn"];
+
+const PRODUCTS = [
+  { name: "Ivory Pillar Candles, set of 12", vendor: "The Wax Atelier", price: "£38", category: "Lighting" },
+  { name: "Garden Rose Centrepiece", vendor: "Bloom & Co.", price: "£85", category: "Florals" },
+  { name: "White Linen Tablecloth, 16ft", vendor: "Heirloom Linens", price: "£45", category: "Linens" },
+  { name: "Gold Taper Candleholder", vendor: "The Wax Atelier", price: "£12", category: "Lighting" },
+  { name: "Ghost Chair, per chair", vendor: "Luxe Chair Hire", price: "£8", category: "Furniture" },
+  { name: "Eucalyptus Table Runner", vendor: "Bloom & Co.", price: "£22", category: "Florals" },
 ];
 
 export default function Page() {
@@ -80,15 +89,15 @@ export default function Page() {
         <div className="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
           <div>
             <span className="inline-block rounded-full border border-clay/40 bg-blush/30 px-3 py-1 text-xs tracking-wide text-clay">
-              AI Wedding Design · UK Marketplace
+              Wedding visualiser and marketplace, UK
             </span>
             <h1 className="mt-5 font-serif text-5xl leading-[1.05] text-ink sm:text-6xl">
               See your wedding before the day. Then buy every piece of it.
             </h1>
             <p className="mt-5 max-w-xl text-lg text-ink/70">
-              Upload your venue, choose your style, and watch your wedding come to
-              life with AI. Everything you see is shoppable — delivered straight to
-              your door.
+              Upload a photo of your venue, choose your flowers, furniture and
+              lighting, and see exactly how it will look. Everything you pick is
+              shoppable and delivered straight to your door.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
@@ -112,23 +121,25 @@ export default function Page() {
       {/* ------------------------------------------------- Trust band */}
       <section className="rounded-2xl border border-sand bg-sand/40 px-6 py-5">
         <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3 text-sm text-ink/60">
-          <span>500+ curated vendor products</span>
+          <span>Curated vendor marketplace</span>
           <span className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" aria-hidden />
-          <span>London · Essex · Hertfordshire</span>
+          <span>London, Essex and Hertfordshire</span>
           <span className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" aria-hidden />
           <span>Delivered to your venue</span>
           <span className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" aria-hidden />
-          <span>One checkout, every item</span>
+          <span>One checkout for every item</span>
         </div>
       </section>
 
       {/* ------------------------------------------------- How it works */}
       <section id="how" className="py-20">
         <h2 className="font-serif text-4xl text-ink sm:text-5xl">
-          From empty venue to dream wedding.
+          From empty venue to your dream wedding.
         </h2>
-        <p className="mt-3 max-w-lg text-ink/60">Three steps is all it takes.</p>
-        <div className="mt-12 grid gap-6 sm:grid-cols-3">
+        <p className="mt-3 max-w-lg text-ink/60">
+          Upload, design and shop. It really is that simple.
+        </p>
+        <div className="mt-12 grid gap-10 sm:grid-cols-3">
           {HOW_IT_WORKS.map((s) => (
             <div key={s.n} className="flex flex-col gap-4">
               <span className="font-serif text-5xl text-clay/50">{s.n}</span>
@@ -139,15 +150,15 @@ export default function Page() {
         </div>
       </section>
 
-      {/* ------------------------------------------------- Visualiser demo */}
+      {/* ------------------------------------------------- Style demo */}
       <section className="rounded-3xl border border-sand bg-sand/30 px-6 py-14 sm:px-10">
         <div className="mb-8 text-center">
           <h2 className="font-serif text-4xl text-ink sm:text-5xl">
-            Design your day in real time.
+            Try every style before you commit.
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-ink/60">
-            Swap florals, change linens, try different lighting — the render updates
-            instantly so you can try before you buy.
+            Switch between looks instantly. Change one detail or the whole room.
+            You only order when it looks exactly right.
           </p>
         </div>
         <StyleDemoPreview />
@@ -156,10 +167,11 @@ export default function Page() {
       {/* ------------------------------------------------- Features */}
       <section id="features" className="py-20">
         <h2 className="font-serif text-4xl text-ink sm:text-5xl">
-          Everything in one place.
+          Design, shop, deliver.
         </h2>
         <p className="mt-3 max-w-lg text-ink/60">
-          Design, shop and deliver — without leaving Styled.
+          No spreadsheets, no chasing five different suppliers, no guessing how it
+          will look.
         </p>
         <div className="mt-10 grid gap-4 sm:grid-cols-2">
           {FEATURES.map((f) => (
@@ -174,7 +186,7 @@ export default function Page() {
         </div>
       </section>
 
-      {/* ------------------------------------------------- Marketplace preview */}
+      {/* ------------------------------------------------- Marketplace */}
       <section className="py-4">
         <div className="rounded-3xl border border-sand bg-cream px-6 py-12 sm:px-10">
           <div className="mb-8">
@@ -182,8 +194,8 @@ export default function Page() {
               Shop the look.
             </h2>
             <p className="mt-3 max-w-lg text-ink/60">
-              Every item in your render is a real product from a real vendor. Add
-              it to your order — we handle the rest.
+              Every item in your preview is a real product from a real vendor. Add
+              it to your order and we handle the rest.
             </p>
           </div>
           <MarketplacePreview />
@@ -196,9 +208,8 @@ export default function Page() {
           Are you a wedding vendor?
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-cream/60">
-          List your products on Styled and reach thousands of couples already
-          designing their weddings. We handle the transaction — you focus on
-          delivery.
+          List your products on Styled and reach couples who are already designing
+          their wedding. We handle the transaction. You focus on what you do best.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link
@@ -215,8 +226,8 @@ export default function Page() {
           </Link>
         </div>
         <div className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-3 text-sm text-cream/50">
-          <span>✓ Commission-based — no upfront fees</span>
-          <span>✓ We manage payments &amp; logistics</span>
+          <span>✓ Commission only, no upfront fees</span>
+          <span>✓ We manage payments and logistics</span>
           <span>✓ Direct access to engaged couples</span>
         </div>
       </section>
@@ -224,7 +235,7 @@ export default function Page() {
       {/* ------------------------------------------------- FAQ */}
       <section id="faq" className="py-20">
         <h2 className="font-serif text-4xl text-ink sm:text-5xl">
-          Questions &amp; answers.
+          Good to know.
         </h2>
         <div className="mt-10 divide-y divide-sand">
           {FAQS.map((f) => (
@@ -245,38 +256,41 @@ export default function Page() {
       </section>
 
       {/* ------------------------------------------------- Final CTA */}
-      <section id="cta" className="mb-4 rounded-3xl border border-clay/30 bg-blush/20 px-6 py-14 text-center sm:px-10">
+      <section
+        id="cta"
+        className="mb-4 rounded-3xl border border-clay/30 bg-blush/20 px-6 py-14 text-center sm:px-10"
+      >
         <h2 className="mx-auto max-w-2xl font-serif text-4xl text-ink sm:text-5xl">
-          Your wedding, exactly as you imagined it.
+          Your wedding, exactly how you pictured it.
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-ink/70">
-          Create an account, upload your venue and start designing. Everything
-          you see can be delivered to your door.
+          Create a free account, upload your venue photo and start putting your
+          look together. When you are ready, order everything in one go.
         </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
+        <div className="mx-auto mt-8 flex max-w-md flex-col gap-3 sm:flex-row">
+          <input
+            type="email"
+            placeholder="Your email address"
+            className="flex-1 rounded-full border border-sand bg-white px-5 py-3 text-sm text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-clay/40"
+          />
           <Link
             href="/#cta"
-            className="rounded-full bg-ink px-7 py-3 text-cream hover:bg-ink/90"
+            className="rounded-full bg-ink px-6 py-3 text-center text-cream hover:bg-ink/90"
           >
-            Get started — it&apos;s free
-          </Link>
-          <Link
-            href="/#how"
-            className="rounded-full border border-ink/20 px-7 py-3 text-ink hover:border-ink/40"
-          >
-            See how it works
+            Get started free
           </Link>
         </div>
+        <p className="mt-4 text-xs text-ink/40">
+          No credit card needed. Cancel any time.
+        </p>
       </section>
     </>
   );
 }
 
 /* ================================================================== *
- * Preview components — illustrative only, no live data.
+ * Preview components — illustrative, no live data.
  * ================================================================== */
-
-const STYLES = ["Garden Romance", "Classic Elegance", "Modern Minimal", "Rustic Barn"];
 
 function VisualizerPreview() {
   return (
@@ -290,29 +304,27 @@ function VisualizerPreview() {
       </div>
 
       <div className="grid grid-cols-2 gap-2 p-3">
-        {/* Venue upload */}
+        {/* Venue */}
         <div className="relative overflow-hidden rounded-xl border border-sand">
           <div className="absolute left-2 top-2 z-10 rounded-full bg-ink/60 px-2 py-0.5 text-[10px] text-cream">
             Your venue
           </div>
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/img/venues/manor_orangery.png"
-            alt="Venue upload"
-            width={280}
-            height={180}
+            alt="Venue photo"
             className="h-36 w-full object-cover"
           />
         </div>
-        {/* AI render */}
+        {/* Styled result */}
         <div className="relative overflow-hidden rounded-xl border border-clay/30">
           <div className="absolute left-2 top-2 z-10 rounded-full bg-clay/80 px-2 py-0.5 text-[10px] text-cream">
-            AI render
+            Your look
           </div>
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/img/renders/garden_romance.jpg"
-            alt="AI styled render"
-            width={280}
-            height={180}
+            alt="Styled preview"
             className="h-36 w-full object-cover"
           />
         </div>
@@ -351,11 +363,10 @@ function StyleDemoPreview() {
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {renders.map((r, i) => (
         <div key={r.label} className="group relative overflow-hidden rounded-2xl">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={r.src}
             alt={r.label}
-            width={300}
-            height={200}
             className="h-40 w-full object-cover transition-transform duration-500 group-hover:scale-105 sm:h-52"
           />
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/60 to-transparent p-3">
@@ -372,31 +383,20 @@ function StyleDemoPreview() {
   );
 }
 
-const PRODUCTS = [
-  { name: "Ivory Pillar Candles (set of 12)", vendor: "The Wax Atelier", price: "£38", category: "Lighting" },
-  { name: "Garden Rose Centrepiece", vendor: "Bloom & Co.", price: "£85", category: "Florals" },
-  { name: "White Linen Tablecloth (16ft)", vendor: "Heirloom Linens", price: "£45", category: "Linens" },
-  { name: "Gold Taper Candleholder", vendor: "The Wax Atelier", price: "£12", category: "Lighting" },
-  { name: "Ghost Chair (per chair)", vendor: "Luxe Chair Hire", price: "£8", category: "Furniture" },
-  { name: "Eucalyptus Table Runner", vendor: "Bloom & Co.", price: "£22", category: "Florals" },
-];
-
 function MarketplacePreview() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {PRODUCTS.map((p) => (
         <div
           key={p.name}
-          className="flex flex-col gap-2 rounded-2xl border border-sand bg-cream p-4"
+          className="flex flex-col gap-3 rounded-2xl border border-sand bg-cream p-5"
         >
-          {/* product image placeholder */}
-          <div className="h-24 w-full rounded-xl bg-sand/60" />
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-medium text-ink">{p.name}</p>
+              <p className="font-medium text-ink">{p.name}</p>
               <p className="mt-0.5 text-xs text-ink/40">{p.vendor}</p>
             </div>
-            <span className="shrink-0 font-serif text-base text-clay">{p.price}</span>
+            <span className="shrink-0 font-serif text-lg text-clay">{p.price}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="rounded-full border border-sand px-2 py-0.5 text-xs text-ink/50">
@@ -404,7 +404,7 @@ function MarketplacePreview() {
             </span>
             <button
               type="button"
-              className="rounded-full bg-ink px-3 py-1 text-xs text-cream hover:bg-ink/90"
+              className="rounded-full bg-ink px-3 py-1.5 text-xs text-cream hover:bg-ink/90"
             >
               Add to order
             </button>

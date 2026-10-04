@@ -9,7 +9,7 @@ export default function SiteFooter() {
             Styled<span className="text-clay">.</span>
           </Link>
           <p className="mt-2 text-sm text-ink/50">
-            Design your wedding with AI. Shop every piece, delivered to your venue.
+            See your wedding before the day. Shop every piece, delivered to your venue.
           </p>
         </div>
 
