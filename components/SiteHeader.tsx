@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 
 const NAV_LINKS = [
-  { href: "/#features", label: "Features" },
   { href: "/#how", label: "How it works" },
+  { href: "/#features", label: "Features" },
   { href: "/#faq", label: "FAQ" },
 ];
 
@@ -26,6 +26,9 @@ export default function SiteHeader() {
               {l.label}
             </a>
           ))}
+          <a href="/#cta" className="text-ink/70 hover:text-ink">
+            For vendors
+          </a>
           <a
             href="/#cta"
             className="rounded-full bg-ink px-4 py-2 text-cream hover:bg-ink/90"
@@ -70,6 +73,13 @@ export default function SiteHeader() {
                 {l.label}
               </a>
             ))}
+            <a
+              href="/#cta"
+              onClick={() => setOpen(false)}
+              className="rounded-xl px-3 py-3 text-ink/80 hover:bg-sand/60 hover:text-ink"
+            >
+              For vendors
+            </a>
             <a
               href="/#cta"
               onClick={() => setOpen(false)}

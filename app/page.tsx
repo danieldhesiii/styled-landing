@@ -1,279 +1,244 @@
+import Image from "next/image";
 import Link from "next/link";
 
 /* ------------------------------------------------------------------ *
- * Styled — public marketing landing page.
- *
- * Design language is carried over from the planner app:
- *   fonts  → serif "Cormorant Garamond", sans "Inter"  (tailwind.config.ts)
- *   colour → ink/cream/sand/clay/sage/blush/gold        (tailwind.config.ts)
- *   shapes → rounded-full buttons, rounded-2xl/3xl cards, border-sand
- * Every feature described below is actually present in the workspace.
- * All CTAs point at /login, which handles both sign-in and account creation.
+ * Styled — landing page (v2)
+ * Product: AI wedding visualiser + marketplace
+ * Audience: couples planning their wedding
+ * Design tokens: ink/cream/sand/clay/sage/blush/gold (tailwind.config.ts)
  * ------------------------------------------------------------------ */
 
-const FEATURES = [
+const HOW_IT_WORKS = [
   {
-    icon: "🎨",
-    title: "Design & AI renders",
-    body: "Style each wedding, generate a photoreal render of the look, then turn it into a costed, supplier-ready plan.",
+    n: "01",
+    title: "Upload your venue",
+    body: "Upload a photo of your venue — inside or out. Styled uses it as the canvas for your design.",
   },
   {
-    icon: "💷",
-    title: "Budget by supplier",
-    body: "Every item priced and grouped by supplier, with deposits and what's left against the couple's budget.",
+    n: "02",
+    title: "Design with AI",
+    body: "Pick your flowers, furniture, linens and lighting. Our AI generates a photorealistic render of exactly how it will look on the day.",
   },
   {
-    icon: "🗓️",
-    title: "Timeline & checklist",
-    body: "A wedding-year checklist generated from the date, grouped into stages so nothing slips through.",
-  },
-  {
-    icon: "👥",
-    title: "Guest list",
-    body: "Households, RSVPs, dietary needs and plus-ones — import an existing list from a CSV in seconds.",
-  },
-  {
-    icon: "🪑",
-    title: "Interactive seating",
-    body: "Lay out the room to scale, choose table shapes, drag them where you want, and seat guests by name.",
-  },
-  {
-    icon: "💌",
-    title: "Couple collaboration",
-    body: "Share a private link so couples can add a vision board, leave feedback and approve the look — no account needed.",
+    n: "03",
+    title: "Shop & deliver",
+    body: "Every item in your render is shoppable. Add to cart, check out once, and it all gets delivered straight to your venue.",
   },
 ];
 
-const STEPS = [
+const FEATURES = [
   {
-    n: "1",
-    title: "Create a wedding",
-    body: "Add a client with their date, venue, guest count and budget — or import your existing clients from a CSV.",
+    title: "AI visualisation",
+    body: "See a photorealistic render of your wedding before a single item is booked. Tweak colours, swap florals, change linens — in seconds.",
+    accent: "bg-blush/30",
   },
   {
-    n: "2",
-    title: "Design & plan",
-    body: "Style the day, build the costed plan, and work through the timeline, guest list and seating in one place.",
+    title: "Shop the look",
+    body: "Every element in your render is linked to a real product. Add the exact items you fell in love with to your basket in one click.",
+    accent: "bg-sage/20",
   },
   {
-    n: "3",
-    title: "Share with the couple",
-    body: "Send a private link so they can add their vision and approve the look. They never need to create an account.",
+    title: "500+ curated vendors",
+    body: "A hand-picked network of UK florists, furniture hire, décor specialists and lighting designers — all vetted and ready to deliver.",
+    accent: "bg-sand",
+  },
+  {
+    title: "One checkout, door-to-door",
+    body: "Pay for everything in a single transaction. We coordinate with each vendor and arrange delivery straight to your venue on your timeline.",
+    accent: "bg-blush/20",
   },
 ];
 
 const FAQS = [
   {
-    q: "What is Styled?",
-    a: "A workspace for wedding planners to design, cost and organise each wedding in one place — design and renders, budget, timeline, guest list and seating.",
+    q: "How does the AI rendering work?",
+    a: "You upload a photo of your venue and select the items, styles and colours you're interested in. Our AI composites a photorealistic image showing exactly how those choices would look in your space — no guesswork, no mood boards.",
   },
   {
-    q: "Who is it for?",
-    a: "Wedding planners and stylists managing one or more weddings who want design and planning together, rather than spread across separate tools.",
+    q: "Can I use items not listed on Styled?",
+    a: "For now the render pulls from our vendor catalogue so every item is shoppable. We're working on a custom item upload feature so you can include things you've sourced elsewhere.",
   },
   {
-    q: "Do couples need an account?",
-    a: "No. You share a private link and they can add a vision board, leave comments and approve the look without signing up.",
+    q: "What happens when I place an order?",
+    a: "Styled coordinates with each vendor in your order, confirms availability, and arranges delivery to your venue on the dates you specify. You deal with us — not five different suppliers.",
   },
   {
-    q: "Can I bring my existing clients and guest lists?",
-    a: "Yes. You can import guest lists from a CSV exported from your current tool, so you don't have to retype them.",
+    q: "Are you available across the UK?",
+    a: "We're launching in London, Essex and Hertfordshire first, with the rest of the UK following shortly after.",
   },
   {
-    q: "Is it ready to use?",
-    a: "It's an early release. Create an account to open the workspace and start building a wedding.",
+    q: "I'm a vendor — can I list my products?",
+    a: "Yes. Head to the vendor section below and apply to join the network. We review every application to maintain quality.",
   },
 ];
 
-export default function LandingPage() {
+export default function Page() {
   return (
     <>
-      {/* ---------------------------------------------------------- Hero */}
-      <section className="grid items-center gap-10 py-14 md:grid-cols-2 md:py-20">
-        <div>
-          <span className="inline-block rounded-full border border-sand bg-sand/50 px-3 py-1 text-xs uppercase tracking-wide text-ink/60">
-            For wedding planners
-          </span>
-          <h1 className="mt-5 font-serif text-5xl leading-[1.05] text-ink sm:text-6xl">
-            Every wedding, beautifully organised — in one place.
-          </h1>
-          <p className="mt-5 max-w-xl text-lg text-ink/70">
-            Styled is the planning &amp; design workspace for wedding planners.
-            Design the day with AI renders, build a costed supplier plan, run the
-            timeline, guest list and seating — and share it all with your couples.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link
-              href="/#cta"
-              className="rounded-full bg-ink px-6 py-3 text-cream hover:bg-ink/90"
-            >
-              Get started
-            </Link>
-            <a
-              href="#how"
-              className="rounded-full border border-ink/20 px-6 py-3 text-ink hover:border-ink/40"
-            >
-              See how it works
-            </a>
-          </div>
-          <p className="mt-5 text-sm text-ink/50">
-            Design, budget, timeline, guests and seating — together for every client.
-          </p>
-        </div>
-
-        <HeroPreview />
-      </section>
-
-      {/* -------------------------------------------------- Value prop */}
-      <section className="rounded-3xl border border-sand bg-white/50 px-6 py-12 sm:px-10">
-        <div className="mx-auto max-w-3xl text-center">
-          <h2 className="font-serif text-3xl text-ink sm:text-4xl">
-            Stop juggling ten tools for one wedding.
-          </h2>
-          <p className="mt-4 text-ink/70">
-            Mood boards in one app, budgets in a spreadsheet, seating in another,
-            and endless email threads with the couple. Styled brings design and
-            planning into a single workspace per wedding — and lets couples
-            collaborate without the back-and-forth.
-          </p>
-        </div>
-        <div className="mx-auto mt-10 grid max-w-4xl gap-4 sm:grid-cols-3">
-          {[
-            ["One workspace per client", "Everything for a wedding lives in one place."],
-            ["Design that becomes a plan", "A render turns into a costed supplier list."],
-            ["Couples collaborate by link", "No accounts, no chasing email threads."],
-          ].map(([t, d]) => (
-            <div
-              key={t}
-              className="rounded-2xl border border-sand bg-cream px-5 py-5 text-center"
-            >
-              <p className="font-serif text-xl text-ink">{t}</p>
-              <p className="mt-1 text-sm text-ink/60">{d}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ---------------------------------------------------- Features */}
-      <section id="features" className="py-16">
-        <div className="max-w-2xl">
-          <h2 className="font-serif text-3xl text-ink sm:text-4xl">
-            Everything a wedding needs, in one workspace
-          </h2>
-          <p className="mt-3 text-ink/70">
-            Each capability below is part of the planner workspace today.
-          </p>
-        </div>
-        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f) => (
-            <div
-              key={f.title}
-              className="rounded-2xl border border-sand bg-white/60 p-6 transition hover:border-clay/40 hover:shadow-sm"
-            >
-              <div
-                aria-hidden="true"
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-sand text-xl"
+      {/* ------------------------------------------------- Hero */}
+      <section className="pb-16 pt-20 sm:pt-28">
+        <div className="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
+          <div>
+            <span className="inline-block rounded-full border border-clay/40 bg-blush/30 px-3 py-1 text-xs tracking-wide text-clay">
+              AI Wedding Design · UK Marketplace
+            </span>
+            <h1 className="mt-5 font-serif text-5xl leading-[1.05] text-ink sm:text-6xl">
+              See your wedding before the day. Then buy every piece of it.
+            </h1>
+            <p className="mt-5 max-w-xl text-lg text-ink/70">
+              Upload your venue, choose your style, and watch your wedding come to
+              life with AI. Everything you see is shoppable — delivered straight to
+              your door.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Link
+                href="/#cta"
+                className="rounded-full bg-ink px-6 py-3 text-cream hover:bg-ink/90"
               >
-                {f.icon}
-              </div>
-              <h3 className="mt-4 font-serif text-2xl text-ink">{f.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink/65">{f.body}</p>
+                Get started
+              </Link>
+              <a
+                href="/#how"
+                className="rounded-full border border-ink/20 px-6 py-3 text-ink hover:border-ink/40"
+              >
+                See how it works
+              </a>
             </div>
-          ))}
+          </div>
+          <VisualizerPreview />
         </div>
       </section>
 
-      {/* --------------------------------------------- Product preview */}
-      <section className="rounded-3xl border border-sand bg-sand/30 px-6 py-14 sm:px-10">
-        <div className="max-w-2xl">
-          <h2 className="font-serif text-3xl text-ink sm:text-4xl">
-            A closer look at the workspace
-          </h2>
-          <p className="mt-3 text-ink/70">
-            Representative previews of the planner — illustrative, not live controls.
-          </p>
-        </div>
-        <div className="mt-10 grid gap-6 lg:grid-cols-2">
-          <SeatingPreview />
-          <div className="grid gap-6">
-            <BudgetPreview />
-            <TimelinePreview />
-          </div>
+      {/* ------------------------------------------------- Trust band */}
+      <section className="rounded-2xl border border-sand bg-sand/40 px-6 py-5">
+        <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3 text-sm text-ink/60">
+          <span>500+ curated vendor products</span>
+          <span className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" aria-hidden />
+          <span>London · Essex · Hertfordshire</span>
+          <span className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" aria-hidden />
+          <span>Delivered to your venue</span>
+          <span className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" aria-hidden />
+          <span>One checkout, every item</span>
         </div>
       </section>
 
       {/* ------------------------------------------------- How it works */}
-      <section id="how" className="py-16">
-        <div className="max-w-2xl">
-          <h2 className="font-serif text-3xl text-ink sm:text-4xl">How it works</h2>
-          <p className="mt-3 text-ink/70">Three steps, from a new client to a shared plan.</p>
-        </div>
-        <ol className="mt-10 grid gap-6 md:grid-cols-3">
-          {STEPS.map((s) => (
-            <li key={s.n} className="rounded-2xl border border-sand bg-white/60 p-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ink font-serif text-lg text-cream">
-                {s.n}
-              </div>
-              <h3 className="mt-4 font-serif text-2xl text-ink">{s.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink/65">{s.body}</p>
-            </li>
+      <section id="how" className="py-20">
+        <h2 className="font-serif text-4xl text-ink sm:text-5xl">
+          From empty venue to dream wedding.
+        </h2>
+        <p className="mt-3 max-w-lg text-ink/60">Three steps is all it takes.</p>
+        <div className="mt-12 grid gap-6 sm:grid-cols-3">
+          {HOW_IT_WORKS.map((s) => (
+            <div key={s.n} className="flex flex-col gap-4">
+              <span className="font-serif text-5xl text-clay/50">{s.n}</span>
+              <h3 className="font-serif text-2xl text-ink">{s.title}</h3>
+              <p className="text-ink/60">{s.body}</p>
+            </div>
           ))}
-        </ol>
+        </div>
       </section>
 
-      {/* ------------------------------------------------- Reassurance */}
-      <section className="rounded-3xl bg-ink px-6 py-12 text-cream sm:px-10">
-        <div className="grid items-center gap-8 md:grid-cols-[1.3fr_1fr]">
-          <div>
-            <h2 className="font-serif text-3xl sm:text-4xl">
-              Built for how planners actually work
+      {/* ------------------------------------------------- Visualiser demo */}
+      <section className="rounded-3xl border border-sand bg-sand/30 px-6 py-14 sm:px-10">
+        <div className="mb-8 text-center">
+          <h2 className="font-serif text-4xl text-ink sm:text-5xl">
+            Design your day in real time.
+          </h2>
+          <p className="mx-auto mt-3 max-w-lg text-ink/60">
+            Swap florals, change linens, try different lighting — the render updates
+            instantly so you can try before you buy.
+          </p>
+        </div>
+        <StyleDemoPreview />
+      </section>
+
+      {/* ------------------------------------------------- Features */}
+      <section id="features" className="py-20">
+        <h2 className="font-serif text-4xl text-ink sm:text-5xl">
+          Everything in one place.
+        </h2>
+        <p className="mt-3 max-w-lg text-ink/60">
+          Design, shop and deliver — without leaving Styled.
+        </p>
+        <div className="mt-10 grid gap-4 sm:grid-cols-2">
+          {FEATURES.map((f) => (
+            <div
+              key={f.title}
+              className={`${f.accent} rounded-2xl border border-sand/60 px-7 py-8`}
+            >
+              <h3 className="font-serif text-2xl text-ink">{f.title}</h3>
+              <p className="mt-2 text-ink/60">{f.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ------------------------------------------------- Marketplace preview */}
+      <section className="py-4">
+        <div className="rounded-3xl border border-sand bg-cream px-6 py-12 sm:px-10">
+          <div className="mb-8">
+            <h2 className="font-serif text-4xl text-ink sm:text-5xl">
+              Shop the look.
             </h2>
-            <p className="mt-3 max-w-xl text-cream/70">
-              Keep every wedding's design and details together, bring your
-              existing lists with you, and let couples weigh in without extra
-              tools or accounts.
+            <p className="mt-3 max-w-lg text-ink/60">
+              Every item in your render is a real product from a real vendor. Add
+              it to your order — we handle the rest.
             </p>
           </div>
-          <ul className="grid gap-3 text-sm">
-            {[
-              "One place for each wedding",
-              "Import clients & guest lists from CSV",
-              "Couples collaborate by private link",
-            ].map((t) => (
-              <li
-                key={t}
-                className="flex items-center gap-3 rounded-full border border-cream/15 bg-cream/5 px-4 py-3"
-              >
-                <span aria-hidden="true" className="text-sage">
-                  ✓
-                </span>
-                {t}
-              </li>
-            ))}
-          </ul>
+          <MarketplacePreview />
         </div>
       </section>
 
-      {/* --------------------------------------------------------- FAQ */}
-      <section id="faq" className="py-16">
-        <div className="max-w-2xl">
-          <h2 className="font-serif text-3xl text-ink sm:text-4xl">
-            Frequently asked questions
-          </h2>
+      {/* ------------------------------------------------- Vendor band */}
+      <section className="my-6 rounded-3xl border border-clay/30 bg-ink px-8 py-14 text-center">
+        <h2 className="font-serif text-4xl text-cream sm:text-5xl">
+          Are you a wedding vendor?
+        </h2>
+        <p className="mx-auto mt-4 max-w-xl text-cream/60">
+          List your products on Styled and reach thousands of couples already
+          designing their weddings. We handle the transaction — you focus on
+          delivery.
+        </p>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <Link
+            href="/#cta"
+            className="rounded-full bg-cream px-7 py-3 text-ink hover:bg-cream/90"
+          >
+            Join as a vendor
+          </Link>
+          <Link
+            href="/#faq"
+            className="rounded-full border border-cream/30 px-7 py-3 text-cream hover:border-cream/60"
+          >
+            Learn more
+          </Link>
         </div>
-        <div className="mt-8 max-w-3xl divide-y divide-sand rounded-2xl border border-sand bg-white/60">
+        <div className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-3 text-sm text-cream/50">
+          <span>✓ Commission-based — no upfront fees</span>
+          <span>✓ We manage payments &amp; logistics</span>
+          <span>✓ Direct access to engaged couples</span>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------- FAQ */}
+      <section id="faq" className="py-20">
+        <h2 className="font-serif text-4xl text-ink sm:text-5xl">
+          Questions &amp; answers.
+        </h2>
+        <div className="mt-10 divide-y divide-sand">
           {FAQS.map((f) => (
-            <details key={f.q} className="group px-6 py-5">
-              <summary className="flex cursor-pointer list-none items-center justify-between font-serif text-xl text-ink marker:content-none">
+            <details key={f.q} className="group py-5">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-serif text-xl text-ink">
                 {f.q}
                 <span
-                  aria-hidden="true"
-                  className="ml-4 text-ink/40 transition group-open:rotate-45"
+                  className="shrink-0 text-clay transition-transform group-open:rotate-45"
+                  aria-hidden
                 >
                   +
                 </span>
               </summary>
-              <p className="mt-3 text-sm leading-relaxed text-ink/70">{f.a}</p>
+              <p className="mt-3 max-w-2xl text-ink/60">{f.a}</p>
             </details>
           ))}
         </div>
@@ -282,24 +247,24 @@ export default function LandingPage() {
       {/* ------------------------------------------------- Final CTA */}
       <section id="cta" className="mb-4 rounded-3xl border border-clay/30 bg-blush/20 px-6 py-14 text-center sm:px-10">
         <h2 className="mx-auto max-w-2xl font-serif text-4xl text-ink sm:text-5xl">
-          Bring your next wedding together.
+          Your wedding, exactly as you imagined it.
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-ink/70">
-          Create an account and open the workspace — design, cost and organise the
-          whole day in one place.
+          Create an account, upload your venue and start designing. Everything
+          you see can be delivered to your door.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link
             href="/#cta"
             className="rounded-full bg-ink px-7 py-3 text-cream hover:bg-ink/90"
           >
-            Get started
+            Get started — it&apos;s free
           </Link>
           <Link
-            href="/#cta"
+            href="/#how"
             className="rounded-full border border-ink/20 px-7 py-3 text-ink hover:border-ink/40"
           >
-            Log in
+            See how it works
           </Link>
         </div>
       </section>
@@ -308,216 +273,144 @@ export default function LandingPage() {
 }
 
 /* ================================================================== *
- * Static, illustrative preview components (no live data / no PII).
+ * Preview components — illustrative only, no live data.
  * ================================================================== */
 
-function HeroPreview() {
+const STYLES = ["Garden Romance", "Classic Elegance", "Modern Minimal", "Rustic Barn"];
+
+function VisualizerPreview() {
   return (
-    <div className="relative">
-      <div className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
-        {/* faux window chrome */}
-        <div className="flex items-center gap-1.5 border-b border-sand bg-cream px-4 py-3">
-          <span className="h-2.5 w-2.5 rounded-full bg-blush" aria-hidden="true" />
-          <span className="h-2.5 w-2.5 rounded-full bg-sand" aria-hidden="true" />
-          <span className="h-2.5 w-2.5 rounded-full bg-sage/60" aria-hidden="true" />
-          <span className="ml-3 text-xs text-ink/40">Styled · Garden romance</span>
-        </div>
-        <img
-          src="/img/renders/garden_romance.jpg"
-          alt="A styled wedding reception render: a garden marquee set for dinner in a soft, romantic palette."
-          className="aspect-[4/3] w-full object-cover"
-        />
-        {/* a small costed-plan strip, mirroring the budget panel */}
-        <div className="space-y-2 border-t border-sand bg-white px-4 py-4 text-sm">
-          {[
-            ["Marquee & draping", "£3,200"],
-            ["Tables & linen", "£840"],
-            ["Florals & centrepieces", "£1,150"],
-          ].map(([item, price]) => (
-            <div key={item} className="flex items-center justify-between">
-              <span className="text-ink/70">{item}</span>
-              <span className="font-medium text-ink">{price}</span>
-            </div>
-          ))}
-          <div className="flex items-center justify-between border-t border-sand pt-2 text-ink">
-            <span className="font-medium">Estimated total</span>
-            <span className="font-serif text-lg">£5,190</span>
+    <div className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
+      {/* faux browser chrome */}
+      <div className="flex items-center gap-1.5 border-b border-sand bg-cream px-4 py-3">
+        <span className="h-2.5 w-2.5 rounded-full bg-blush" aria-hidden />
+        <span className="h-2.5 w-2.5 rounded-full bg-sand" aria-hidden />
+        <span className="h-2.5 w-2.5 rounded-full bg-sage/60" aria-hidden />
+        <span className="mx-auto font-sans text-xs text-ink/30">styled.co/design</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 p-3">
+        {/* Venue upload */}
+        <div className="relative overflow-hidden rounded-xl border border-sand">
+          <div className="absolute left-2 top-2 z-10 rounded-full bg-ink/60 px-2 py-0.5 text-[10px] text-cream">
+            Your venue
           </div>
+          <Image
+            src="/img/venues/manor_orangery.png"
+            alt="Venue upload"
+            width={280}
+            height={180}
+            className="h-36 w-full object-cover"
+          />
         </div>
-      </div>
-
-      {/* floating badge */}
-      <div className="absolute -bottom-4 -left-3 hidden rounded-2xl border border-sand bg-cream px-4 py-2 text-xs text-ink/70 shadow-sm sm:block">
-        Design → costed plan
-      </div>
-    </div>
-  );
-}
-
-function PreviewFrame({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="overflow-hidden rounded-2xl border border-sand bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-sand bg-cream px-4 py-2.5">
-        <span className="text-xs font-medium uppercase tracking-wide text-ink/50">
-          {label}
-        </span>
-        <span className="text-[10px] text-ink/30">Preview</span>
-      </div>
-      <div className="p-4">{children}</div>
-    </div>
-  );
-}
-
-function SeatingPreview() {
-  // A faithful, static echo of the interactive seating plan: a scaled room with
-  // round and long tables and seats around them.
-  return (
-    <PreviewFrame label="Seating">
-      <svg
-        viewBox="0 0 400 300"
-        className="h-full w-full rounded-xl bg-cream"
-        role="img"
-        aria-label="A scaled room layout with three dining tables and seats arranged around them."
-      >
-        {/* room outline */}
-        <rect
-          x="12"
-          y="12"
-          width="376"
-          height="276"
-          rx="8"
-          fill="#faf6f0"
-          stroke="#efe7db"
-          strokeWidth="2"
-        />
-        {/* door mark */}
-        <rect x="180" y="284" width="40" height="6" rx="3" fill="#b98a6a" />
-
-        {/* round table (top-left) */}
-        <g>
-          <circle cx="120" cy="100" r="34" fill="#fff" stroke="#8a9a82" strokeWidth="2" />
-          {seatRing(120, 100, 50, 8).map(([cx, cy], i) => (
-            <circle key={i} cx={cx} cy={cy} r="7" fill="#d9b7ad" />
-          ))}
-          <text x="120" y="104" textAnchor="middle" className="fill-ink" fontSize="12">
-            T1
-          </text>
-        </g>
-
-        {/* round table (right) */}
-        <g>
-          <circle cx="290" cy="120" r="34" fill="#fff" stroke="#8a9a82" strokeWidth="2" />
-          {seatRing(290, 120, 50, 8).map(([cx, cy], i) => (
-            <circle key={i} cx={cx} cy={cy} r="7" fill="#d9b7ad" />
-          ))}
-          <text x="290" y="124" textAnchor="middle" className="fill-ink" fontSize="12">
-            T2
-          </text>
-        </g>
-
-        {/* long table (bottom) */}
-        <g>
-          <rect x="110" y="210" width="180" height="40" rx="6" fill="#fff" stroke="#8a9a82" strokeWidth="2" />
-          {[130, 170, 210, 250, 270].map((x) => (
-            <circle key={`t-${x}`} cx={x} cy="198" r="7" fill="#d9b7ad" />
-          ))}
-          {[130, 170, 210, 250, 270].map((x) => (
-            <circle key={`b-${x}`} cx={x} cy="262" r="7" fill="#d9b7ad" />
-          ))}
-          <text x="200" y="234" textAnchor="middle" className="fill-ink" fontSize="12">
-            Head table
-          </text>
-        </g>
-      </svg>
-      <p className="mt-3 text-xs text-ink/50">
-        Scaled room · round &amp; long tables · seats you assign by name.
-      </p>
-    </PreviewFrame>
-  );
-}
-
-function BudgetPreview() {
-  const spent = 74;
-  return (
-    <PreviewFrame label="Budget">
-      <div className="space-y-2.5 text-sm">
-        {[
-          ["Venue & marquee", "£4,040", "#8a9a82"],
-          ["Florals", "£1,150", "#d9b7ad"],
-          ["Catering", "£6,300", "#b98a6a"],
-          ["Styling & décor", "£980", "#a67c52"],
-        ].map(([item, price, dot]) => (
-          <div key={item} className="flex items-center justify-between">
-            <span className="flex items-center gap-2 text-ink/70">
-              <span
-                className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: dot }}
-                aria-hidden="true"
-              />
-              {item}
-            </span>
-            <span className="font-medium text-ink">{price}</span>
+        {/* AI render */}
+        <div className="relative overflow-hidden rounded-xl border border-clay/30">
+          <div className="absolute left-2 top-2 z-10 rounded-full bg-clay/80 px-2 py-0.5 text-[10px] text-cream">
+            AI render
           </div>
-        ))}
-      </div>
-      <div className="mt-4">
-        <div className="flex items-center justify-between text-xs text-ink/50">
-          <span>Budget used</span>
-          <span>£12,470 of £17,000</span>
-        </div>
-        <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-sand">
-          <div className="h-full rounded-full bg-clay" style={{ width: `${spent}%` }} />
+          <Image
+            src="/img/renders/garden_romance.jpg"
+            alt="AI styled render"
+            width={280}
+            height={180}
+            className="h-36 w-full object-cover"
+          />
         </div>
       </div>
-    </PreviewFrame>
-  );
-}
 
-function TimelinePreview() {
-  const items: [string, boolean][] = [
-    ["Confirm venue & date", true],
-    ["Book photographer", true],
-    ["Send save-the-dates", false],
-    ["Finalise menu tasting", false],
-  ];
-  return (
-    <PreviewFrame label="Timeline">
-      <ul className="space-y-2.5 text-sm">
-        {items.map(([task, done]) => (
-          <li key={task} className="flex items-center gap-3">
+      {/* Style picker */}
+      <div className="border-t border-sand px-3 pb-3 pt-2">
+        <p className="mb-2 text-[11px] text-ink/40">Style</p>
+        <div className="flex flex-wrap gap-1.5">
+          {STYLES.map((s, i) => (
             <span
-              aria-hidden="true"
-              className={`flex h-5 w-5 items-center justify-center rounded-full border text-[11px] ${
-                done
-                  ? "border-sage bg-sage/20 text-sage"
-                  : "border-sand text-transparent"
+              key={s}
+              className={`rounded-full border px-3 py-1 text-xs ${
+                i === 0
+                  ? "border-clay bg-clay text-cream"
+                  : "border-sand text-ink/60"
               }`}
             >
-              ✓
+              {s}
             </span>
-            <span className={done ? "text-ink/45 line-through" : "text-ink/75"}>
-              {task}
-            </span>
-          </li>
-        ))}
-      </ul>
-      <p className="mt-3 text-xs text-ink/50">
-        A checklist generated from the wedding date.
-      </p>
-    </PreviewFrame>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
-/* Evenly space `count` seats on a circle of radius `r` around (cx, cy). */
-function seatRing(cx: number, cy: number, r: number, count: number): [number, number][] {
-  return Array.from({ length: count }, (_, i) => {
-    const a = (i / count) * Math.PI * 2 - Math.PI / 2;
-    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
-  });
+function StyleDemoPreview() {
+  const renders = [
+    { src: "/img/renders/garden_romance.jpg", label: "Garden Romance" },
+    { src: "/img/renders/classic_elegance.jpg", label: "Classic Elegance" },
+    { src: "/img/renders/modern_minimal.jpg", label: "Modern Minimal" },
+    { src: "/img/renders/rustic_barn.jpg", label: "Rustic Barn" },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {renders.map((r, i) => (
+        <div key={r.label} className="group relative overflow-hidden rounded-2xl">
+          <Image
+            src={r.src}
+            alt={r.label}
+            width={300}
+            height={200}
+            className="h-40 w-full object-cover transition-transform duration-500 group-hover:scale-105 sm:h-52"
+          />
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/60 to-transparent p-3">
+            <p className="font-serif text-sm text-cream">{r.label}</p>
+          </div>
+          {i === 0 && (
+            <div className="absolute right-2 top-2 rounded-full bg-clay px-2 py-0.5 text-[10px] text-cream">
+              Selected
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const PRODUCTS = [
+  { name: "Ivory Pillar Candles (set of 12)", vendor: "The Wax Atelier", price: "£38", category: "Lighting" },
+  { name: "Garden Rose Centrepiece", vendor: "Bloom & Co.", price: "£85", category: "Florals" },
+  { name: "White Linen Tablecloth (16ft)", vendor: "Heirloom Linens", price: "£45", category: "Linens" },
+  { name: "Gold Taper Candleholder", vendor: "The Wax Atelier", price: "£12", category: "Lighting" },
+  { name: "Ghost Chair (per chair)", vendor: "Luxe Chair Hire", price: "£8", category: "Furniture" },
+  { name: "Eucalyptus Table Runner", vendor: "Bloom & Co.", price: "£22", category: "Florals" },
+];
+
+function MarketplacePreview() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {PRODUCTS.map((p) => (
+        <div
+          key={p.name}
+          className="flex flex-col gap-2 rounded-2xl border border-sand bg-cream p-4"
+        >
+          {/* product image placeholder */}
+          <div className="h-24 w-full rounded-xl bg-sand/60" />
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-sm font-medium text-ink">{p.name}</p>
+              <p className="mt-0.5 text-xs text-ink/40">{p.vendor}</p>
+            </div>
+            <span className="shrink-0 font-serif text-base text-clay">{p.price}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="rounded-full border border-sand px-2 py-0.5 text-xs text-ink/50">
+              {p.category}
+            </span>
+            <button
+              type="button"
+              className="rounded-full bg-ink px-3 py-1 text-xs text-cream hover:bg-ink/90"
+            >
+              Add to order
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
