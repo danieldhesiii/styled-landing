@@ -1,4 +1,5 @@
 import Link from "next/link";
+import VisualizerPreview from "@/components/VisualizerPreview";
 
 /* ------------------------------------------------------------------ *
  * Styled — landing page
@@ -70,8 +71,6 @@ const FAQS = [
   },
 ];
 
-const STYLES = ["Garden Romance", "Classic Elegance", "Modern Minimal", "Rustic Barn"];
-
 const PRODUCTS = [
   { name: "Ivory Pillar Candles, set of 12", vendor: "The Wax Atelier", price: "£38", category: "Lighting" },
   { name: "Garden Rose Centrepiece", vendor: "Bloom & Co.", price: "£85", category: "Florals" },
@@ -85,30 +84,27 @@ export default function Page() {
   return (
     <>
       {/* ------------------------------------------------- Hero */}
-      <section className="pb-16 pt-20 sm:pt-28">
-        <div className="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
+      <section className="pb-12 pt-14 sm:pb-16 sm:pt-24">
+        <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-16">
           <div>
-            <span className="inline-block rounded-full border border-clay/40 bg-blush/30 px-3 py-1 text-xs tracking-wide text-clay">
-              Wedding visualiser and marketplace, UK
-            </span>
-            <h1 className="mt-5 font-serif text-5xl leading-[1.05] text-ink sm:text-6xl">
+            <h1 className="font-serif text-4xl leading-[1.05] text-ink sm:text-5xl lg:text-6xl">
               See your wedding before the day. Then buy every piece of it.
             </h1>
-            <p className="mt-5 max-w-xl text-lg text-ink/70">
+            <p className="mt-4 max-w-xl text-base text-ink/70 sm:mt-5 sm:text-lg">
               Upload a photo of your venue, choose your flowers, furniture and
               lighting, and see exactly how it will look. Everything you pick is
               shoppable and delivered straight to your door.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="mt-6 flex flex-wrap items-center gap-3 sm:mt-8">
               <Link
                 href="/#cta"
-                className="rounded-full bg-ink px-6 py-3 text-cream hover:bg-ink/90"
+                className="rounded-full bg-ink px-6 py-3 text-sm text-cream hover:bg-ink/90 sm:text-base"
               >
                 Get started
               </Link>
               <a
                 href="/#how"
-                className="rounded-full border border-ink/20 px-6 py-3 text-ink hover:border-ink/40"
+                className="rounded-full border border-ink/20 px-6 py-3 text-sm text-ink hover:border-ink/40 sm:text-base"
               >
                 See how it works
               </a>
@@ -291,66 +287,6 @@ export default function Page() {
 /* ================================================================== *
  * Preview components — illustrative, no live data.
  * ================================================================== */
-
-function VisualizerPreview() {
-  return (
-    <div className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
-      {/* faux browser chrome */}
-      <div className="flex items-center gap-1.5 border-b border-sand bg-cream px-4 py-3">
-        <span className="h-2.5 w-2.5 rounded-full bg-blush" aria-hidden />
-        <span className="h-2.5 w-2.5 rounded-full bg-sand" aria-hidden />
-        <span className="h-2.5 w-2.5 rounded-full bg-sage/60" aria-hidden />
-        <span className="mx-auto font-sans text-xs text-ink/30">styled.co/design</span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 p-3">
-        {/* Venue */}
-        <div className="relative overflow-hidden rounded-xl border border-sand">
-          <div className="absolute left-2 top-2 z-10 rounded-full bg-ink/60 px-2 py-0.5 text-[10px] text-cream">
-            Your venue
-          </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/img/venues/manor_orangery.png"
-            alt="Venue photo"
-            className="h-36 w-full object-cover"
-          />
-        </div>
-        {/* Styled result */}
-        <div className="relative overflow-hidden rounded-xl border border-clay/30">
-          <div className="absolute left-2 top-2 z-10 rounded-full bg-clay/80 px-2 py-0.5 text-[10px] text-cream">
-            Your look
-          </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/img/renders/garden_romance.jpg"
-            alt="Styled preview"
-            className="h-36 w-full object-cover"
-          />
-        </div>
-      </div>
-
-      {/* Style picker */}
-      <div className="border-t border-sand px-3 pb-3 pt-2">
-        <p className="mb-2 text-[11px] text-ink/40">Style</p>
-        <div className="flex flex-wrap gap-1.5">
-          {STYLES.map((s, i) => (
-            <span
-              key={s}
-              className={`rounded-full border px-3 py-1 text-xs ${
-                i === 0
-                  ? "border-clay bg-clay text-cream"
-                  : "border-sand text-ink/60"
-              }`}
-            >
-              {s}
-            </span>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function StyleDemoPreview() {
   const renders = [

@@ -20,6 +20,12 @@ const config: Config = {
         serif: ['"Cormorant Garamond"', "Georgia", "serif"],
         sans: ['"Inter"', "system-ui", "sans-serif"],
       },
+      keyframes: {
+        fadeIn: { from: { opacity: "0" }, to: { opacity: "1" } },
+      },
+      animation: {
+        "fade-in": "fadeIn 0.25s ease-in-out",
+      },
     },
   },
   plugins: [],
