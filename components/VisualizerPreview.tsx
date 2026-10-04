@@ -25,7 +25,7 @@ export default function VisualizerPreview() {
           <img
             src="/img/venues/manor_orangery.png"
             alt="Venue photo"
-            className="h-44 w-full object-cover sm:h-52 lg:h-56"
+            className="h-44 w-full object-cover sm:h-56 lg:h-64"
           />
         </div>
 
