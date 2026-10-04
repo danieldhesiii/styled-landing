@@ -6,7 +6,7 @@ const STYLES = [
   { label: "Garden Romance", src: "/img/renders/garden_romance.jpg" },
   { label: "Classic Elegance", src: "/img/renders/classic_elegance.jpg" },
   { label: "Modern Minimal", src: "/img/renders/modern_minimal.jpg" },
-  { label: "Rustic Barn", src: "/img/renders/rustic_barn.jpg" },
+  { label: "Wildflower", src: "/img/renders/rustic_barn.jpg" },
 ];
 
 export default function VisualizerPreview() {

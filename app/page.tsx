@@ -293,7 +293,7 @@ function StyleDemoPreview() {
     { src: "/img/renders/garden_romance.jpg", label: "Garden Romance" },
     { src: "/img/renders/classic_elegance.jpg", label: "Classic Elegance" },
     { src: "/img/renders/modern_minimal.jpg", label: "Modern Minimal" },
-    { src: "/img/renders/rustic_barn.jpg", label: "Rustic Barn" },
+    { src: "/img/renders/rustic_barn.jpg", label: "Wildflower" },
   ];
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
