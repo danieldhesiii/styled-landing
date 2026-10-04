@@ -84,7 +84,7 @@ export default function Page() {
   return (
     <>
       {/* ------------------------------------------------- Hero */}
-      <section className="pb-12 pt-14 sm:pb-16 sm:pt-24">
+      <section className="pb-8 pt-10 sm:pb-12 sm:pt-16">
         <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-16">
           <div>
             <h1 className="font-serif text-4xl leading-[1.05] text-ink sm:text-5xl lg:text-6xl">
