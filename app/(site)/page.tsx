@@ -68,12 +68,9 @@ const FAQS = [
 ];
 
 const PRODUCTS = [
-  { name: "Ivory Pillar Candles, set of 12", vendor: "The Wax Atelier", price: "£38", category: "Lighting" },
-  { name: "Garden Rose Centrepiece", vendor: "Bloom & Co.", price: "£85", category: "Florals" },
-  { name: "White Linen Tablecloth, 16ft", vendor: "Heirloom Linens", price: "£45", category: "Linens" },
-  { name: "Gold Taper Candleholder", vendor: "The Wax Atelier", price: "£12", category: "Lighting" },
-  { name: "Ghost Chair, per chair", vendor: "Luxe Chair Hire", price: "£8", category: "Furniture" },
-  { name: "Eucalyptus Table Runner", vendor: "Bloom & Co.", price: "£22", category: "Florals" },
+  { name: "Flowers that set the mood", category: "Florals", image: "/img/shop/shop_florals.webp", alt: "Blush and ivory rose centrepiece with eucalyptus on a wedding reception table", detail: "Start with a centrepiece, then coordinate flowers across your reception." },
+  { name: "Every place, beautifully set", category: "Table settings", image: "/img/shop/shop_tableware.webp", alt: "Ivory plate, blush linen napkin, gold cutlery and glassware arranged for a wedding reception", detail: "Bring linens, napkins and tableware together in one cohesive look." },
+  { name: "The finishing touch", category: "Furniture", image: "/img/shop/shop_chairs.webp", alt: "Gold wedding reception chairs with ivory cushions beside a dressed dining table", detail: "Choose chairs and furniture that complement your venue and flowers." },
 ];
 
 export default function Page() {
@@ -186,8 +183,8 @@ export default function Page() {
               Shop the look.
             </h2>
             <p className="mt-3 max-w-lg text-ink/60">
-              Every item in your preview is a real product from a real vendor. Add
-              it to your order and we handle the rest.
+              Find the pieces that bring your vision together. Explore flowers,
+              table settings and furniture, then build your selection in the design studio.
             </p>
           </div>
           <MarketplacePreview />
@@ -286,42 +283,30 @@ function StyleDemoPreview() {
 
 function MarketplacePreview() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {PRODUCTS.map((p) => (
-        <div
-          key={p.name}
-          className="flex flex-col rounded-2xl border border-sand bg-white shadow-sm overflow-hidden"
-        >
-          {/* Placeholder image */}
-          <div className="relative aspect-[4/3] bg-sand/40 flex items-center justify-center">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true" className="text-sand">
-              <rect x="2" y="6" width="28" height="20" rx="3" stroke="currentColor" strokeWidth="1.5" />
-              <circle cx="11" cy="14" r="3" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M2 22l7-5 5 4 5-6 11 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className="absolute top-3 left-3 rounded-full border border-sand/80 bg-cream/90 px-2.5 py-0.5 text-[10px] text-ink/50 backdrop-blur-sm">
-              {p.category}
-            </span>
-          </div>
-
-          {/* Details */}
-          <div className="flex flex-1 flex-col gap-3 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-medium text-sm text-ink leading-snug">{p.name}</p>
-                <p className="mt-0.5 text-xs text-ink/40">{p.vendor}</p>
-              </div>
-              <span className="shrink-0 font-serif text-lg text-clay">{p.price}</span>
+    <div>
+      <p className="mb-4 text-xs font-medium tracking-wide text-clay">One coordinated look: Garden Romance</p>
+      <div className="grid gap-5 md:grid-cols-3">
+        {PRODUCTS.map((p) => (
+          <article key={p.name} className="overflow-hidden rounded-2xl border border-sand bg-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={p.image} alt={p.alt} width={1536} height={1024} loading="lazy" className="aspect-[4/3] w-full object-cover" />
+            <div className="p-5">
+              <p className="text-xs font-medium text-clay">{p.category}</p>
+              <h3 className="mt-2 font-serif text-2xl text-ink">{p.name}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-ink/70">{p.detail}</p>
             </div>
-            <button
-              type="button"
-              className="mt-auto w-full rounded-full border border-ink/10 bg-ink px-3 py-2 text-xs text-cream hover:bg-ink/90 transition-colors"
-            >
-              Add to order
-            </button>
-          </div>
-        </div>
-      ))}
+          </article>
+        ))}
+      </div>
+      <div className="mt-6 flex flex-col gap-4 border-t border-sand pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <p className="max-w-lg text-sm leading-relaxed text-ink/60">
+          Explore a category, choose your pieces and adjust quantities for your guest count.
+          These images show styling inspiration, rather than confirmed supplier stock.
+        </p>
+        <Link href="/design" className="shrink-0 self-start rounded-full bg-ink px-6 py-3 text-sm text-cream transition-colors hover:bg-ink/90">
+          Explore the design studio
+        </Link>
+      </div>
     </div>
   );
 }
