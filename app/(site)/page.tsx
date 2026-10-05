@@ -147,8 +147,8 @@ export default function Page() {
             Try every style before you commit.
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-ink/60">
-            Switch between looks instantly. Change one detail or the whole room.
-            You only order when it looks exactly right.
+            One barn, three wedding reception styles. Explore how flowers,
+            table settings and lighting can transform the same space.
           </p>
         </div>
         <StyleDemoPreview />
@@ -256,30 +256,29 @@ export default function Page() {
 
 function StyleDemoPreview() {
   const renders = [
-    { src: "/img/renders/garden_romance.jpg", label: "Garden Romance" },
-    { src: "/img/renders/classic_elegance.jpg", label: "Classic Elegance" },
-    { src: "/img/renders/modern_minimal.jpg", label: "Modern Minimal" },
-    { src: "/img/renders/rustic_barn.jpg", label: "Wildflower" },
+    { src: "/img/venues/oak_barn.png", label: "Original venue", detail: "The barn before styling" },
+    { src: "/img/renders/barn_garden_romance.webp", label: "Garden Romance", detail: "Blush roses and gold details" },
+    { src: "/img/renders/barn_classic_elegance.webp", label: "Classic Elegance", detail: "Ivory florals and candlelight" },
+    { src: "/img/renders/barn_wildflower.webp", label: "Wildflower", detail: "Meadow flowers and natural wood" },
   ];
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {renders.map((r, i) => (
-        <div key={r.label} className="group relative overflow-hidden rounded-2xl">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {renders.map((r) => (
+        <figure key={r.label} className="overflow-hidden rounded-2xl border border-sand bg-white">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={r.src}
-            alt={r.label}
-            className="h-40 w-full object-cover transition-transform duration-500 group-hover:scale-105 sm:h-52"
+            alt={r.label === "Original venue" ? "Empty oak barn with timber beams, white walls and a wooden floor" : `Oak barn wedding reception in ${r.label} style, with guest dining tables and a raised sweetheart table at the back`}
+            width={1536}
+            height={1024}
+            loading="lazy"
+            className="aspect-[3/2] w-full object-contain"
           />
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/60 to-transparent p-3">
-            <p className="font-serif text-sm text-cream">{r.label}</p>
-          </div>
-          {i === 0 && (
-            <div className="absolute right-2 top-2 rounded-full bg-clay px-2 py-0.5 text-[10px] text-cream">
-              Selected
-            </div>
-          )}
-        </div>
+          <figcaption className="px-4 py-4">
+            <p className="font-serif text-xl text-ink">{r.label}</p>
+            <p className="mt-1 text-xs leading-relaxed text-ink/60">{r.detail}</p>
+          </figcaption>
+        </figure>
       ))}
     </div>
   );
