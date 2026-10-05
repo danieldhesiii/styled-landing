@@ -10,6 +10,7 @@ import RenderStage, { type RenderRef } from "@/components/design/RenderStage";
 import ProductBrowser from "@/components/design/ProductBrowser";
 import BasketPanel from "@/components/design/BasketPanel";
 import CheckoutStep from "@/components/design/CheckoutStep";
+import { useShopAvailability } from "@/components/availability/useAvailability";
 
 type Step = "brief" | "studio" | "checkout";
 
@@ -40,6 +41,9 @@ export default function DesignPage() {
     setVersions((vs) => (vs.some((v) => v.id === render.id) ? vs : [...vs, render]));
     setRenderId(render.id);
   }
+
+  // What each supplier has free on the couple's wedding date (empty until they set one).
+  const shopAvailability = useShopAvailability(brief.weddingDate, brief.guestCount);
 
   const venue = getVenue(brief.venueId);
   const style = getStyle(brief.styleId);
@@ -156,6 +160,9 @@ export default function DesignPage() {
                     <ProductBrowser
                       styleId={brief.styleId}
                       basket={basket}
+                      weddingDate={brief.weddingDate}
+                      availability={shopAvailability}
+                      onWeddingDate={(d) => patchBrief({ weddingDate: d })}
                       onAdd={addItem}
                       onRemove={removeItem}
                     />
@@ -170,6 +177,7 @@ export default function DesignPage() {
                     basket={basket}
                     guestCount={brief.guestCount}
                     budget={brief.budget}
+                    weddingDate={brief.weddingDate}
                     onQty={setQty}
                     onRemove={removeItem}
                     onCheckout={() => setStep("checkout")}
@@ -184,7 +192,12 @@ export default function DesignPage() {
           <CheckoutStep
             basket={basket}
             weddingDate={brief.weddingDate}
+            onWeddingDate={(d) => patchBrief({ weddingDate: d })}
+            styleId={brief.styleId}
+            guestCount={brief.guestCount}
+            venueLabel={venue.name}
             onBack={() => setStep("studio")}
+            onOrdered={() => setBasket([])}
           />
         )}
       </main>

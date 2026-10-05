@@ -2,13 +2,16 @@
 
 import { useMemo } from "react";
 import type { BasketLine } from "@/lib/types";
-import { getItem } from "@/lib/catalogue";
 import { buildQuote, formatGBP, DEPOSIT_RATE } from "@/lib/quote";
+import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
+import { useBasketAvailability } from "@/components/availability/useAvailability";
+import { availabilityLabel } from "@/lib/availability";
 
 interface Props {
   basket: BasketLine[];
   guestCount: number;
   budget: number | null;
+  weddingDate: string;
   onQty: (itemId: string, quantity: number) => void;
   onRemove: (itemId: string) => void;
   onCheckout: () => void;
@@ -18,11 +21,16 @@ export default function BasketPanel({
   basket,
   guestCount,
   budget,
+  weddingDate,
   onQty,
   onRemove,
   onCheckout,
 }: Props) {
-  const quote = useMemo(() => buildQuote(basket), [basket]);
+  const { getItem } = useCatalogue();
+  // Instant preview while editing; checkout asks the server for the exact quote.
+  const quote = useMemo(() => buildQuote(basket, getItem), [basket, getItem]);
+  // Does everything in the basket fit on the wedding date, at these quantities?
+  const availability = useBasketAvailability(weddingDate, basket);
   const tables = Math.max(1, Math.ceil(guestCount / 10));
   const overBudget = budget != null && quote.subtotal > budget;
 
@@ -78,10 +86,8 @@ export default function BasketPanel({
                 </div>
                 <div className="mt-2 space-y-2">
                   {group.lines.map((line) => (
-                    <div
-                      key={line.item.id}
-                      className="flex items-center gap-2 rounded-xl border border-sand bg-cream/50 px-3 py-2"
-                    >
+                    <div key={line.item.id}>
+                    <div className="flex items-center gap-2 rounded-xl border border-sand bg-cream/50 px-3 py-2">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-medium text-ink">{line.item.name}</p>
                         <p className="text-[11px] text-ink/40">
@@ -120,6 +126,20 @@ export default function BasketPanel({
                       >
                         ×
                       </button>
+                    </div>
+                    {(() => {
+                      const a = availability.lines[line.item.id];
+                      if (!a || a.status === "available" || a.status === "made_to_order") return null;
+                      const { label } = availabilityLabel(a);
+                      return (
+                        <p
+                          className={`-mt-1 pl-3 text-[11px] ${a.status === "unavailable" ? "text-red-700" : "text-clay"}`}
+                        >
+                          {label}
+                          {a.status === "unavailable" ? ". Lower the quantity, remove it, or change your date." : ""}
+                        </p>
+                      );
+                    })()}
                     </div>
                   ))}
                 </div>

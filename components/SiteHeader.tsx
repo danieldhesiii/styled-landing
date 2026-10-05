@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { href: "/#how", label: "How it works" },
   { href: "/#features", label: "Features" },
   { href: "/#faq", label: "FAQ" },
+  { href: "/order", label: "Track order" },
 ];
 
 export default function SiteHeader() {

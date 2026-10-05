@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { requireUser } from "@/lib/server/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/server/env";
-import { getItem } from "@/lib/catalogue";
+import { loadItemsById } from "@/lib/server/catalogue";
 import { STYLES, getStyle } from "@/lib/styles";
 import {
   buildRefinePrompt,
@@ -85,11 +85,9 @@ export async function POST(req: Request) {
   const parentRenderId = typeof body.parentRenderId === "string" ? body.parentRenderId : null;
   if (parentRenderId && !UUID.test(parentRenderId)) return fail(400, "Invalid render id.");
 
-  // Catalogue items are looked up by id; unknown ids are ignored.
   const itemIds = Array.isArray(body.itemIds)
     ? body.itemIds.filter((x): x is string => typeof x === "string").slice(0, MAX_ITEMS)
     : [];
-  const items = itemIds.map(getItem).filter((i): i is NonNullable<typeof i> => !!i);
 
   // No image key configured: keep the studio usable with the illustrative render.
   if (!env.openaiApiKeyIfSet) {
@@ -101,6 +99,16 @@ export async function POST(req: Request) {
       message:
         "Render engine not connected yet. Showing an illustrative look for now — your brief has been captured.",
     });
+  }
+
+  // Catalogue items come from the database by id; unknown or withdrawn ids are ignored.
+  let items;
+  try {
+    const found = await loadItemsById(itemIds);
+    items = itemIds.map((id) => found.get(id)).filter((i): i is NonNullable<typeof i> => !!i);
+  } catch (err) {
+    console.error("[generate] couldn't load catalogue items:", err);
+    return fail(500, "Couldn't start your render.");
   }
 
   const admin = createAdminClient();

@@ -2,18 +2,32 @@
 
 import { useState } from "react";
 import type { BasketLine, Category, CatalogueItem } from "@/lib/types";
-import { CATEGORY_META, itemsForCategory, categoryMeta } from "@/lib/catalogue";
+import { CATEGORY_META, categoryMeta } from "@/lib/categories";
+import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 import { formatGBP } from "@/lib/quote";
-import StockBadge from "./StockBadge";
+import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
+import type { ShopAvailability } from "@/components/availability/useAvailability";
 
 interface Props {
   styleId: string;
   basket: BasketLine[];
+  weddingDate: string;
+  availability: ShopAvailability;
+  onWeddingDate: (date: string) => void;
   onAdd: (item: CatalogueItem) => void;
   onRemove: (itemId: string) => void;
 }
 
-export default function ProductBrowser({ styleId, basket, onAdd, onRemove }: Props) {
+export default function ProductBrowser({
+  styleId,
+  basket,
+  weddingDate,
+  availability,
+  onWeddingDate,
+  onAdd,
+  onRemove,
+}: Props) {
+  const { itemsForCategory } = useCatalogue();
   const [category, setCategory] = useState<Category>("backdrops");
   const [matchOnly, setMatchOnly] = useState(true);
 
@@ -61,6 +75,29 @@ export default function ProductBrowser({ styleId, basket, onAdd, onRemove }: Pro
         </div>
       </div>
 
+      {/* Availability depends on the wedding date, so ask for it right here. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-sand px-4 py-3 text-xs">
+        <label htmlFor="shop-wedding-date" className="font-medium text-ink">
+          Wedding date
+        </label>
+        <input
+          id="shop-wedding-date"
+          type="date"
+          value={weddingDate}
+          min={new Date().toISOString().slice(0, 10)}
+          onChange={(e) => onWeddingDate(e.target.value)}
+          className="rounded-lg border border-sand bg-white px-2.5 py-1.5 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-clay/30"
+        />
+        <span className={availability.error ? "text-red-700" : "text-ink/45"}>
+          {availability.error
+            ? availability.error
+            : availability.loading
+              ? "Checking what's free…"
+              : availability.items
+                ? "Showing what's free on your date."
+                : "Add your date to see what each supplier has free."}
+        </span>
+      </div>
       <p className="px-4 pt-3 text-xs text-ink/40">{categoryMeta(category).blurb}</p>
 
       {/* Product grid */}
@@ -88,7 +125,10 @@ export default function ProductBrowser({ styleId, basket, onAdd, onRemove }: Pro
                     <span className="text-4xl opacity-70">{item.icon}</span>
                   )}
                   <div className="absolute left-2 top-2">
-                    <StockBadge status={item.stock} />
+                    <AvailabilityBadge
+                      availability={availability.items?.[item.id]}
+                      madeToOrder={item.stock === "made_to_order"}
+                    />
                   </div>
                 </div>
 

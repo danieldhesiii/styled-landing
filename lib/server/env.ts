@@ -66,6 +66,13 @@ export const env = {
   get maxReferencePhotos() {
     return Number(process.env.MAX_REFERENCE_PHOTOS) || 4;
   },
+  // Orders: each one makes work for a stylist, so they're capped like renders.
+  get maxOrdersPerDay() {
+    return Number(process.env.MAX_ORDERS_PER_DAY) || 5;
+  },
+  get maxOrdersPerIpPerDay() {
+    return Number(process.env.MAX_ORDERS_PER_IP_PER_DAY) || 20;
+  },
   // Optional: what one render costs you, recorded on each render row. Left unset
   // by default because it depends on your model, quality and negotiated pricing.
   get renderCostPence() {

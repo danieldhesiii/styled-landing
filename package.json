@@ -2,12 +2,17 @@
   "name": "shoppable-wedding-visualiser",
   "version": "0.1.0",
   "private": true,
-  "description": "POC — turns an AI render of a couple's wedding into a priced, bookable order from real local suppliers.",
+  "description": "POC \u2014 turns an AI render of a couple's wedding into a priced, bookable order from real local suppliers.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed:catalogue": "node scripts/seed-catalogue.mjs",
+    "staff:add": "node scripts/add-staff.mjs add",
+    "staff:remove": "node scripts/add-staff.mjs remove",
+    "demo:orders": "node scripts/demo-orders.mjs add",
+    "demo:orders:remove": "node scripts/demo-orders.mjs remove"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

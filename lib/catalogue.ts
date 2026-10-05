@@ -1,10 +1,19 @@
-import type { CatalogueItem, Category, CategoryMeta } from "./types";
+import type { CatalogueItem } from "./types";
 
+// SEED DATA ONLY. The live catalogue is in the database (tables `suppliers` and
+// `products`) and is what the studio, quotes and orders use. Changing prices or
+// products here does nothing to the running app until you re-seed:
+//
+//   npm run seed:catalogue
+//
+// Re-seeding overwrites database rows that share an id with an item below, so
+// once suppliers manage their own products, treat the database as the source of
+// truth and stop re-seeding. Items are listed in the order shown in the shop.
+//
 // Seed catalogue for the first region (Essex / Herts / London fringe). Décor,
 // furniture, lighting, florals, signage and bars carry real AI-generated photos
 // in /public/img/items. The newer categories (attire, stationery, cake & favours)
-// ship with icon + swatch fallback cards until supplier photos are added — they
-// are still fully priced and bookable.
+// ship with icon + swatch fallback cards until supplier photos are added.
 const IMG = "/img/items";
 
 export const CATALOGUE: CatalogueItem[] = [
@@ -689,29 +698,3 @@ export const CATALOGUE: CatalogueItem[] = [
     stock: "in_stock",
   },
 ];
-
-export const CATEGORY_META: CategoryMeta[] = [
-  { category: "backdrops", label: "Backdrops & arches", blurb: "The focal point you'll say 'I do' in front of.", icon: "⛩️" },
-  { category: "florals", label: "Florals", blurb: "Bouquets, ceremony arrangements and table flowers.", icon: "💐" },
-  { category: "centrepieces", label: "Centrepieces", blurb: "What sits on each guest table.", icon: "🕯️" },
-  { category: "furniture", label: "Furniture", blurb: "Chairs and tables, delivered and set up.", icon: "🪑" },
-  { category: "linen_tableware", label: "Linen & tableware", blurb: "Linen, napkins, glassware and place settings.", icon: "🍽️" },
-  { category: "lighting", label: "Lighting", blurb: "Transforms the room once the sun goes down.", icon: "💡" },
-  { category: "signage", label: "Signage", blurb: "Welcome signs and personal touches.", icon: "🪞" },
-  { category: "bar", label: "Bar & drinks", blurb: "A statement bar for drinks and cocktails.", icon: "🍸" },
-  { category: "attire", label: "Attire", blurb: "Gowns, suits and dresses for the whole party.", icon: "👰" },
-  { category: "stationery", label: "Stationery", blurb: "Invitations, place cards and table plans.", icon: "✉️" },
-  { category: "cake_favours", label: "Cake & favours", blurb: "The centrepiece cake and gifts for your guests.", icon: "🎂" },
-];
-
-export function categoryMeta(category: Category): CategoryMeta {
-  return CATEGORY_META.find((c) => c.category === category)!;
-}
-
-export function itemsForCategory(category: Category): CatalogueItem[] {
-  return CATALOGUE.filter((i) => i.category === category);
-}
-
-export function getItem(id: string): CatalogueItem | undefined {
-  return CATALOGUE.find((i) => i.id === id);
-}

@@ -23,11 +23,14 @@ export default function SiteFooter() {
           <div className="flex flex-col gap-2">
             <span className="text-xs uppercase tracking-wide text-ink/40">Get started</span>
             <a href="/design" className="text-ink/70 hover:text-ink">Design your wedding</a>
+            <a href="/order" className="text-ink/70 hover:text-ink">Track your order</a>
           </div>
         </nav>
       </div>
       <div className="border-t border-sand py-6 text-center text-xs text-ink/40">
         Styled · London · Essex · Hertfordshire · Renders are illustrative.
+        <span className="mx-2 text-ink/20" aria-hidden>·</span>
+        <a href="/admin/login" className="hover:text-ink">Staff login</a>
       </div>
     </footer>
   );
