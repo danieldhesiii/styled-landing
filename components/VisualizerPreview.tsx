@@ -14,7 +14,6 @@ export default function VisualizerPreview() {
 
   return (
     <div className="rounded-2xl border border-sand bg-white shadow-lg sm:rounded-3xl">
-      {/* Side-by-side images */}
       <div className="grid grid-cols-2 gap-2 p-3 sm:gap-3 sm:p-4">
         {/* Venue */}
         <div className="relative overflow-hidden rounded-xl border border-sand">
@@ -25,7 +24,7 @@ export default function VisualizerPreview() {
           <img
             src="/img/venues/manor_orangery.png"
             alt="Venue photo"
-            className="h-44 w-full object-cover sm:h-56 lg:h-64"
+            className="aspect-[4/3] w-full object-cover"
           />
         </div>
 
@@ -39,12 +38,12 @@ export default function VisualizerPreview() {
             key={active}
             src={STYLES[active].src}
             alt={STYLES[active].label}
-            className="h-44 w-full animate-fade-in object-cover sm:h-52 lg:h-56"
+            className="aspect-[4/3] w-full animate-fade-in object-cover"
           />
         </div>
       </div>
 
-      {/* Style picker — wraps so all chips always visible */}
+      {/* Style picker — pinned to bottom */}
       <div className="border-t border-sand px-3 pb-4 pt-3 sm:px-4">
         <p className="mb-2 text-xs text-ink/40">Style</p>
         <div className="flex flex-wrap gap-2">

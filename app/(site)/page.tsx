@@ -27,24 +27,24 @@ const HOW_IT_WORKS = [
 
 const FEATURES = [
   {
+    n: "I",
     title: "See it before you commit",
     body: "Get a detailed visual of your wedding before a single item is booked. Swap florals, change linens, try different lighting. You decide when it looks right.",
-    accent: "bg-blush/30",
   },
   {
+    n: "II",
     title: "Shop the look",
     body: "Every element in your preview links to a real product. Add the exact pieces you chose to your basket in one click.",
-    accent: "bg-sage/20",
   },
   {
+    n: "III",
     title: "Curated vendor network",
     body: "A hand-picked selection of UK florists, furniture hire, décor specialists and lighting designers, all vetted and ready to deliver.",
-    accent: "bg-sand",
   },
   {
+    n: "IV",
     title: "One order, door to door",
     body: "Pay for everything in a single transaction. We coordinate with each vendor and arrange delivery to your venue on your timeline.",
-    accent: "bg-blush/20",
   },
 ];
 
@@ -64,10 +64,6 @@ const FAQS = [
   {
     q: "Where do you deliver?",
     a: "We are currently delivering across London, Essex and Hertfordshire. The rest of the UK is coming shortly.",
-  },
-  {
-    q: "I am a wedding vendor. Can I list my products?",
-    a: "Yes. Scroll down to the vendor section and apply to join. We review every application to keep the quality consistent for couples.",
   },
 ];
 
@@ -97,7 +93,7 @@ export default function Page() {
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3 sm:mt-8">
               <Link
-                href="/#cta"
+                href="/design"
                 className="rounded-full bg-ink px-6 py-3 text-sm text-cream hover:bg-ink/90 sm:text-base"
               >
                 Get started
@@ -117,8 +113,6 @@ export default function Page() {
       {/* ------------------------------------------------- Trust band */}
       <section className="rounded-2xl border border-sand bg-sand/40 px-6 py-5">
         <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3 text-sm text-ink/60">
-          <span>Curated vendor marketplace</span>
-          <span className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" aria-hidden />
           <span>London, Essex and Hertfordshire</span>
           <span className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" aria-hidden />
           <span>Delivered to your venue</span>
@@ -173,10 +167,12 @@ export default function Page() {
           {FEATURES.map((f) => (
             <div
               key={f.title}
-              className={`${f.accent} rounded-2xl border border-sand/60 px-7 py-8`}
+              className="rounded-2xl border border-sand bg-white px-7 py-8 shadow-sm"
             >
-              <h3 className="font-serif text-2xl text-ink">{f.title}</h3>
-              <p className="mt-2 text-ink/60">{f.body}</p>
+              <span className="font-serif text-xs tracking-[0.2em] text-clay/70 uppercase">{f.n}</span>
+              <h3 className="mt-3 font-serif text-2xl text-ink">{f.title}</h3>
+              <div className="mt-2 h-px w-8 bg-clay/40" />
+              <p className="mt-3 text-ink/60">{f.body}</p>
             </div>
           ))}
         </div>
@@ -195,36 +191,6 @@ export default function Page() {
             </p>
           </div>
           <MarketplacePreview />
-        </div>
-      </section>
-
-      {/* ------------------------------------------------- Vendor band */}
-      <section className="my-6 rounded-3xl border border-clay/30 bg-ink px-8 py-14 text-center">
-        <h2 className="font-serif text-4xl text-cream sm:text-5xl">
-          Are you a wedding vendor?
-        </h2>
-        <p className="mx-auto mt-4 max-w-xl text-cream/60">
-          List your products on Styled and reach couples who are already designing
-          their wedding. We handle the transaction. You focus on what you do best.
-        </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link
-            href="/#cta"
-            className="rounded-full bg-cream px-7 py-3 text-ink hover:bg-cream/90"
-          >
-            Join as a vendor
-          </Link>
-          <Link
-            href="/#faq"
-            className="rounded-full border border-cream/30 px-7 py-3 text-cream hover:border-cream/60"
-          >
-            Learn more
-          </Link>
-        </div>
-        <div className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-3 text-sm text-cream/50">
-          <span>✓ Commission only, no upfront fees</span>
-          <span>✓ We manage payments and logistics</span>
-          <span>✓ Direct access to engaged couples</span>
         </div>
       </section>
 
@@ -270,7 +236,7 @@ export default function Page() {
             className="flex-1 rounded-full border border-sand bg-white px-5 py-3 text-sm text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-clay/40"
           />
           <Link
-            href="/#cta"
+            href="/design"
             className="rounded-full bg-ink px-6 py-3 text-center text-cream hover:bg-ink/90"
           >
             Get started free
@@ -321,26 +287,36 @@ function StyleDemoPreview() {
 
 function MarketplacePreview() {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {PRODUCTS.map((p) => (
         <div
           key={p.name}
-          className="flex flex-col gap-3 rounded-2xl border border-sand bg-cream p-5"
+          className="flex flex-col rounded-2xl border border-sand bg-white shadow-sm overflow-hidden"
         >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="font-medium text-ink">{p.name}</p>
-              <p className="mt-0.5 text-xs text-ink/40">{p.vendor}</p>
-            </div>
-            <span className="shrink-0 font-serif text-lg text-clay">{p.price}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="rounded-full border border-sand px-2 py-0.5 text-xs text-ink/50">
+          {/* Placeholder image */}
+          <div className="relative aspect-[4/3] bg-sand/40 flex items-center justify-center">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true" className="text-sand">
+              <rect x="2" y="6" width="28" height="20" rx="3" stroke="currentColor" strokeWidth="1.5" />
+              <circle cx="11" cy="14" r="3" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M2 22l7-5 5 4 5-6 11 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="absolute top-3 left-3 rounded-full border border-sand/80 bg-cream/90 px-2.5 py-0.5 text-[10px] text-ink/50 backdrop-blur-sm">
               {p.category}
             </span>
+          </div>
+
+          {/* Details */}
+          <div className="flex flex-1 flex-col gap-3 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-medium text-sm text-ink leading-snug">{p.name}</p>
+                <p className="mt-0.5 text-xs text-ink/40">{p.vendor}</p>
+              </div>
+              <span className="shrink-0 font-serif text-lg text-clay">{p.price}</span>
+            </div>
             <button
               type="button"
-              className="rounded-full bg-ink px-3 py-1.5 text-xs text-cream hover:bg-ink/90"
+              className="mt-auto w-full rounded-full border border-ink/10 bg-ink px-3 py-2 text-xs text-cream hover:bg-ink/90 transition-colors"
             >
               Add to order
             </button>

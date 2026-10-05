@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import SiteHeader from "@/components/SiteHeader";
-import SiteFooter from "@/components/SiteFooter";
 
 const DESCRIPTION =
   "Upload your venue, choose your style, and see exactly how your wedding will look. Then shop every item and have it delivered straight to your door.";
@@ -44,11 +42,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-sans antialiased">
-        <SiteHeader />
-        <main className="mx-auto max-w-6xl px-5">{children}</main>
-        <SiteFooter />
-      </body>
+      <body className="font-sans antialiased">{children}</body>
     </html>
   );
 }

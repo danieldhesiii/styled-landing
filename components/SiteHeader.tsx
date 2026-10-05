@@ -26,11 +26,8 @@ export default function SiteHeader() {
               {l.label}
             </a>
           ))}
-          <a href="/#cta" className="text-ink/70 hover:text-ink">
-            For vendors
-          </a>
           <a
-            href="/#cta"
+            href="/design"
             className="rounded-full bg-ink px-4 py-2 text-cream hover:bg-ink/90"
           >
             Get started
@@ -74,14 +71,7 @@ export default function SiteHeader() {
               </a>
             ))}
             <a
-              href="/#cta"
-              onClick={() => setOpen(false)}
-              className="rounded-xl px-3 py-3 text-ink/80 hover:bg-sand/60 hover:text-ink"
-            >
-              For vendors
-            </a>
-            <a
-              href="/#cta"
+              href="/design"
               onClick={() => setOpen(false)}
               className="mt-1 rounded-full bg-ink px-4 py-3 text-center text-cream hover:bg-ink/90"
             >

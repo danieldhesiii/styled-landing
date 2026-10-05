@@ -22,8 +22,7 @@ export default function SiteFooter() {
           </div>
           <div className="flex flex-col gap-2">
             <span className="text-xs uppercase tracking-wide text-ink/40">Get started</span>
-            <a href="/#cta" className="text-ink/70 hover:text-ink">Design your wedding</a>
-            <a href="/#cta" className="text-ink/70 hover:text-ink">Join as a vendor</a>
+            <a href="/design" className="text-ink/70 hover:text-ink">Design your wedding</a>
           </div>
         </nav>
       </div>
