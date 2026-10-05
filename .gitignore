@@ -6,3 +6,7 @@ out/
 *.tsbuildinfo
 .DS_Store
 .vercel
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/

@@ -3,10 +3,17 @@
 import { useRef, useState } from "react";
 import type { SampleVenue, StylePreset } from "@/lib/types";
 import { STYLES } from "@/lib/styles";
+import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
 
 interface ChatMessage {
   role: "user" | "assistant";
   text: string;
+}
+
+// A finished render: its server id (needed to refine it) and a signed image URL.
+export interface RenderRef {
+  id: string;
+  url: string;
 }
 
 interface Props {
@@ -14,6 +21,12 @@ interface Props {
   uploadedImages: string[];
   style: StylePreset;
   renderUrl: string | null;
+  renderId: string | null; // the render currently shown; the next message refines it
+  versions: RenderRef[]; // every render made for this look, oldest first
+  itemIds: string[]; // catalogue items in the basket, so the render includes them
+  guestCount: number;
+  // Show/keep a render (also used to pick an earlier version). null = start over.
+  onRender: (render: RenderRef | null) => void;
   onStyle: (id: string) => void;
   onAddAngle: (dataUrl: string) => void;
 }
@@ -25,6 +38,11 @@ export default function RenderStage({
   uploadedImages,
   style,
   renderUrl,
+  renderId,
+  versions,
+  itemIds,
+  guestCount,
+  onRender,
   onStyle,
   onAddAngle,
 }: Props) {
@@ -38,9 +56,17 @@ export default function RenderStage({
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  // Which uploaded photo the couple wants styled; the others are reference angles.
+  const [primaryPhoto, setPrimaryPhoto] = useState(0);
+  const primary = Math.min(primaryPhoto, Math.max(0, uploadedImages.length - 1));
+  // Lets a finished render check it still matches what's on screen.
+  const live = useRef({ styleId: style.id, venueId: venue.id });
+  live.current = { styleId: style.id, venueId: venue.id };
 
-  // The base image for the preview: the latest uploaded angle, else the venue photo.
-  const baseImage = uploadedImages[0] ?? venue.image ?? null;
+  // The base image for the preview: the chosen uploaded angle, else the venue photo.
+  const baseImage = uploadedImages[primary] ?? venue.image ?? null;
   const previewImage = renderUrl ?? style.render ?? baseImage;
 
   async function send() {
@@ -49,6 +75,8 @@ export default function RenderStage({
     setMessages((m) => [...m, { role: "user", text }]);
     setDraft("");
     setSending(true);
+    const sentFor = { styleId: style.id, venueId: venue.id };
+    const refining = renderId !== null;
 
     try {
       const res = await fetch("/api/generate", {
@@ -59,35 +87,83 @@ export default function RenderStage({
           styleId: style.id,
           venueId: venue.id,
           images: uploadedImages,
+          itemIds,
+          guestCount,
+          primaryIndex: primary,
+          parentRenderId: renderId ?? undefined,
         }),
       });
       const data = await res.json();
+
+      let reply: string;
+      if (res.status === 202 && data?.renderId) {
+        // Rendering takes a while: the server replies at once and we poll for the result.
+        const done = await waitForRender(data.renderId);
+        if (live.current.styleId !== sentFor.styleId || live.current.venueId !== sentFor.venueId) {
+          reply = "Your venue or style changed while that was rendering, so I've set it aside.";
+        } else {
+          onRender({ id: data.renderId, url: done.imageUrl });
+          reply = refining
+            ? "Done. Keep tweaking, or tap an earlier version to go back."
+            : `Here's your room in ${style.name}. Tell me what to change and I'll restyle it.`;
+        }
+      } else {
+        // Placeholder mode (no render engine configured) or an error from the server.
+        reply =
+          data?.message ??
+          data?.error ??
+          "Got it — I've noted that for your render. The generation engine will bring this to life shortly.";
+      }
+      setMessages((m) => [...m, { role: "assistant", text: reply }]);
+    } catch (err) {
       setMessages((m) => [
         ...m,
         {
           role: "assistant",
-          text:
-            data?.message ??
-            "Got it — I've noted that for your render. The generation engine will bring this to life shortly.",
+          text: err instanceof Error ? err.message : "I've captured that for your brief.",
         },
-      ]);
-    } catch {
-      setMessages((m) => [
-        ...m,
-        { role: "assistant", text: "I've captured that for your brief." },
       ]);
     } finally {
       setSending(false);
     }
   }
 
-  function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
+  // Poll until the render finishes. Throws an Error with a message fit to show.
+  async function waitForRender(id: string): Promise<{ imageUrl: string }> {
+    const deadline = Date.now() + 7 * 60 * 1000;
+    let networkFailures = 0;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 2000));
+      let data;
+      try {
+        data = await (await fetch(`/api/renders/${id}`)).json();
+        networkFailures = 0;
+      } catch {
+        if (++networkFailures >= 4) throw new Error("I lost my connection. Please try again.");
+        continue;
+      }
+      if (data?.status === "succeeded" && data.imageUrl) return { imageUrl: data.imageUrl };
+      if (data?.status === "failed" || data?.ok === false) {
+        throw new Error(data.error ?? "Something went wrong creating your render. Please try again.");
+      }
+    }
+    throw new Error("This is taking longer than expected. Please try again.");
+  }
+
+  async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => onAddAngle(reader.result as string);
-    reader.readAsDataURL(file);
     e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const photo = await uploadVenuePhoto(file, { append: true });
+      onAddAngle(photo.url);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
@@ -113,7 +189,9 @@ export default function RenderStage({
           3D look-around
           <span className="rounded-full bg-clay/15 px-1.5 py-0.5 text-[9px] text-clay">Soon</span>
         </button>
-        <span className="ml-auto pr-1 text-[11px] text-ink/35">Illustrative · AI render</span>
+        <span className="ml-auto pr-1 text-[11px] text-ink/35">
+          {renderUrl ? "AI render of your room" : "Illustrative · AI render"}
+        </span>
       </div>
 
       <div className="grid lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
@@ -129,10 +207,13 @@ export default function RenderStage({
                   alt={`${venue.name} styled as ${style.name}`}
                   className="h-full max-h-[460px] w-full animate-fade-in object-cover"
                 />
-                <div
-                  className="pointer-events-none absolute inset-0"
-                  style={{ backgroundColor: style.wash }}
-                />
+                {/* The wash tints the illustrative images; a real render needs none. */}
+                {!renderUrl && (
+                  <div
+                    className="pointer-events-none absolute inset-0"
+                    style={{ backgroundColor: style.wash }}
+                  />
+                )}
                 <div className="absolute left-3 top-3 rounded-full bg-ink/60 px-3 py-1 text-[11px] text-cream">
                   {venue.name} · {style.name}
                 </div>
@@ -188,7 +269,7 @@ export default function RenderStage({
             ))}
             {sending && (
               <div className="max-w-[85%] rounded-2xl bg-sand/60 px-3 py-2 text-sm text-ink/50">
-                Thinking…
+                Styling your room… this can take up to a minute.
               </div>
             )}
           </div>
@@ -205,7 +286,7 @@ export default function RenderStage({
                   }
                 }}
                 rows={2}
-                placeholder="Describe your day…"
+                placeholder={renderId ? "Tell me what to change…" : "Describe your day…"}
                 className="flex-1 resize-none rounded-xl border border-sand bg-cream/50 px-3 py-2 text-sm text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-clay/30"
               />
               <button
@@ -241,13 +322,55 @@ export default function RenderStage({
           ))}
         </div>
 
+        {renderId && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-xs text-ink/40">Versions</span>
+            {versions.map((v, i) => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => onRender(v)}
+                title={`Version ${i + 1}`}
+                aria-pressed={v.id === renderId}
+                disabled={sending}
+                className={`h-11 w-11 overflow-hidden rounded-lg border-2 transition-colors disabled:opacity-50 ${
+                  v.id === renderId ? "border-clay" : "border-sand hover:border-clay/50"
+                }`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={v.url} alt={`Version ${i + 1}`} className="h-full w-full object-cover" />
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => onRender(null)}
+              disabled={sending}
+              className="ml-1 text-[11px] text-ink/45 underline-offset-2 hover:text-clay hover:underline disabled:opacity-50"
+              title="Discard these renders and style your venue photo again"
+            >
+              Start over
+            </button>
+          </div>
+        )}
+
         <div className="mt-3 flex items-center gap-2">
           <span className="mr-1 text-xs text-ink/40">Venue photos</span>
           {uploadedImages.map((src, i) => (
-            <div key={i} className="h-11 w-11 overflow-hidden rounded-lg border border-sand">
+            <button
+              key={i}
+              type="button"
+              onClick={() => setPrimaryPhoto(i)}
+              aria-pressed={i === primary}
+              title={i === primary ? "The view we style" : "Style this view instead"}
+              className={`h-11 w-11 overflow-hidden rounded-lg border-2 transition-colors ${
+                uploadedImages.length > 1 && i === primary
+                  ? "border-clay"
+                  : "border-sand hover:border-clay/50"
+              }`}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={src} alt={`Angle ${i + 1}`} className="h-full w-full object-cover" />
-            </div>
+            </button>
           ))}
           <button
             type="button"
@@ -264,8 +387,15 @@ export default function RenderStage({
             onChange={handleFiles}
             className="hidden"
           />
-          <span className="text-[11px] text-ink/35">
-            Add several angles — we'll merge them into one view
+          <span className={`text-[11px] ${uploadError ? "text-clay" : "text-ink/35"}`}>
+            {uploading
+              ? "Uploading…"
+              : uploadError ??
+                (uploadedImages.length > 1
+                  ? renderId
+                    ? "Start over to style a different view"
+                    : "Tap a photo to choose the view we style; the others help us understand the room"
+                  : "Add more angles of the room to help us understand it")}
           </span>
         </div>
       </div>

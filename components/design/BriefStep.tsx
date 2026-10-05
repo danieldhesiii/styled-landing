@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
 import { SAMPLE_VENUES, STYLES } from "@/lib/styles";
 import { formatGBP } from "@/lib/quote";
 
@@ -21,13 +22,23 @@ interface Props {
 
 export default function BriefStep({ brief, onChange, onStart }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => onChange({ uploadedImages: [reader.result as string] });
-    reader.readAsDataURL(file);
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const photo = await uploadVenuePhoto(file);
+      onChange({ uploadedImages: [photo.url] });
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
@@ -93,6 +104,8 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
           </button>
           <input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
         </div>
+        {uploading && <p className="mt-3 text-xs text-ink/50">Uploading your photo…</p>}
+        {uploadError && <p className="mt-3 text-xs text-clay">{uploadError}</p>}
       </section>
 
       {/* Style */}

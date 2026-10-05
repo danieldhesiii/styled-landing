@@ -6,7 +6,7 @@ import type { BasketLine, CatalogueItem } from "@/lib/types";
 import { getStyle, getVenue } from "@/lib/styles";
 import { suggestedQty } from "@/lib/quote";
 import BriefStep, { type Brief } from "@/components/design/BriefStep";
-import RenderStage from "@/components/design/RenderStage";
+import RenderStage, { type RenderRef } from "@/components/design/RenderStage";
 import ProductBrowser from "@/components/design/ProductBrowser";
 import BasketPanel from "@/components/design/BasketPanel";
 import CheckoutStep from "@/components/design/CheckoutStep";
@@ -25,11 +25,32 @@ export default function DesignPage() {
     budget: 6000,
   });
   const [basket, setBasket] = useState<BasketLine[]>([]);
+  // Renders made for the current look (oldest first) and which one is showing.
+  // The showing render is what the next chat message refines.
+  const [versions, setVersions] = useState<RenderRef[]>([]);
+  const [renderId, setRenderId] = useState<string | null>(null);
+  const currentRender = versions.find((v) => v.id === renderId) ?? null;
+
+  function showRender(render: RenderRef | null) {
+    if (!render) {
+      setVersions([]);
+      setRenderId(null);
+      return;
+    }
+    setVersions((vs) => (vs.some((v) => v.id === render.id) ? vs : [...vs, render]));
+    setRenderId(render.id);
+  }
 
   const venue = getVenue(brief.venueId);
   const style = getStyle(brief.styleId);
 
-  const patchBrief = (patch: Partial<Brief>) => setBrief((b) => ({ ...b, ...patch }));
+  const patchBrief = (patch: Partial<Brief>) => {
+    // A render is only valid for the venue, photos and style it was made from.
+    if (patch.venueId !== undefined || patch.styleId !== undefined || patch.uploadedImages !== undefined) {
+      showRender(null);
+    }
+    setBrief((b) => ({ ...b, ...patch }));
+  };
 
   function addItem(item: CatalogueItem) {
     setBasket((b) => {
@@ -117,10 +138,16 @@ export default function DesignPage() {
                     venue={headerVenue}
                     uploadedImages={brief.uploadedImages}
                     style={style}
-                    renderUrl={null}
+                    renderUrl={currentRender?.url ?? null}
+                    renderId={renderId}
+                    versions={versions}
+                    itemIds={basket.map((l) => l.itemId)}
+                    guestCount={brief.guestCount}
+                    onRender={showRender}
                     onStyle={(id) => patchBrief({ styleId: id })}
-                    onAddAngle={(dataUrl) =>
-                      patchBrief({ uploadedImages: [...brief.uploadedImages, dataUrl] })
+                    // An extra angle is only a reference, so it keeps existing renders.
+                    onAddAngle={(url) =>
+                      setBrief((b) => ({ ...b, uploadedImages: [...b.uploadedImages, url] }))
                     }
                   />
                 )}
