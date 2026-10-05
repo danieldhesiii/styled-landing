@@ -268,7 +268,7 @@ function StyleDemoPreview() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={r.src}
-            alt={r.label === "Original venue" ? "Empty oak barn with timber beams, white walls and a wooden floor" : `Oak barn wedding reception in ${r.label} style, with guest dining tables and a raised sweetheart table at the back`}
+            alt={r.label === "Original venue" ? "Empty oak barn with timber beams, white walls and a wooden floor" : `Oak barn wedding reception in ${r.label} style, with guest dining tables and a raised wedding-party top table at the back`}
             width={1536}
             height={1024}
             loading="lazy"
