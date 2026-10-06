@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { SampleVenue, StylePreset } from "@/lib/types";
-import { STYLES } from "@/lib/styles";
+import { STYLES, SAMPLE_VENUES } from "@/lib/styles";
 import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
 
 interface ChatMessage {
@@ -10,7 +10,6 @@ interface ChatMessage {
   text: string;
 }
 
-// A finished render: its server id (needed to refine it) and a signed image URL.
 export interface RenderRef {
   id: string;
   url: string;
@@ -21,17 +20,15 @@ interface Props {
   uploadedImages: string[];
   style: StylePreset;
   renderUrl: string | null;
-  renderId: string | null; // the render currently shown; the next message refines it
-  versions: RenderRef[]; // every render made for this look, oldest first
-  itemIds: string[]; // catalogue items in the basket, so the render includes them
+  renderId: string | null;
+  versions: RenderRef[];
+  itemIds: string[];
   guestCount: number;
-  // Show/keep a render (also used to pick an earlier version). null = start over.
   onRender: (render: RenderRef | null) => void;
   onStyle: (id: string) => void;
-  onAddAngle: (dataUrl: string) => void;
+  onVenue: (venueId: string) => void;
+  onAddAngle: (url: string) => void;
 }
-
-type View = "render" | "tour";
 
 export default function RenderStage({
   venue,
@@ -44,30 +41,31 @@ export default function RenderStage({
   guestCount,
   onRender,
   onStyle,
+  onVenue,
   onAddAngle,
 }: Props) {
-  const [view, setView] = useState<View>("render");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      text: "Tell me what you're picturing — a stage along the back wall, round tables down the middle, a flower arch at the entrance. I'll style the room around it.",
+      text: "Describe how you'd like the room laid out — a stage along the back wall, round tables, a flower arch at the entrance. I'll generate a styled version around your brief.",
     },
   ]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  // Which uploaded photo the couple wants styled; the others are reference angles.
   const [primaryPhoto, setPrimaryPhoto] = useState(0);
+  const [showFullChat, setShowFullChat] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const primary = Math.min(primaryPhoto, Math.max(0, uploadedImages.length - 1));
-  // Lets a finished render check it still matches what's on screen.
   const live = useRef({ styleId: style.id, venueId: venue.id });
   live.current = { styleId: style.id, venueId: venue.id };
 
-  // The base image for the preview: the chosen uploaded angle, else the venue photo.
   const baseImage = uploadedImages[primary] ?? venue.image ?? null;
-  const previewImage = renderUrl ?? style.render ?? baseImage;
+  const previewImage = renderUrl ?? (renderUrl === null && renderId === null ? style.render ?? baseImage : baseImage);
+  const lastAssistantMsg = [...messages].reverse().find((m) => m.role === "assistant");
+  const hasUserMessages = messages.some((m) => m.role === "user");
 
   async function send() {
     const text = draft.trim();
@@ -75,6 +73,7 @@ export default function RenderStage({
     setMessages((m) => [...m, { role: "user", text }]);
     setDraft("");
     setSending(true);
+    setShowFullChat(true);
     const sentFor = { styleId: style.id, venueId: venue.id };
     const refining = renderId !== null;
 
@@ -97,22 +96,20 @@ export default function RenderStage({
 
       let reply: string;
       if (res.status === 202 && data?.renderId) {
-        // Rendering takes a while: the server replies at once and we poll for the result.
         const done = await waitForRender(data.renderId);
         if (live.current.styleId !== sentFor.styleId || live.current.venueId !== sentFor.venueId) {
           reply = "Your venue or style changed while that was rendering, so I've set it aside.";
         } else {
           onRender({ id: data.renderId, url: done.imageUrl });
           reply = refining
-            ? "Done. Keep tweaking, or tap an earlier version to go back."
+            ? "Done — keep tweaking, or tap an earlier version to go back."
             : `Here's your room in ${style.name}. Tell me what to change and I'll restyle it.`;
         }
       } else {
-        // Placeholder mode (no render engine configured) or an error from the server.
         reply =
           data?.message ??
           data?.error ??
-          "Got it — I've noted that for your render. The generation engine will bring this to life shortly.";
+          "Got it — the generation engine will bring this to life shortly.";
       }
       setMessages((m) => [...m, { role: "assistant", text: reply }]);
     } catch (err) {
@@ -128,7 +125,6 @@ export default function RenderStage({
     }
   }
 
-  // Poll until the render finishes. Throws an Error with a message fit to show.
   async function waitForRender(id: string): Promise<{ imageUrl: string }> {
     const deadline = Date.now() + 7 * 60 * 1000;
     let networkFailures = 0;
@@ -139,12 +135,12 @@ export default function RenderStage({
         data = await (await fetch(`/api/renders/${id}`)).json();
         networkFailures = 0;
       } catch {
-        if (++networkFailures >= 4) throw new Error("I lost my connection. Please try again.");
+        if (++networkFailures >= 4) throw new Error("Lost connection. Please try again.");
         continue;
       }
       if (data?.status === "succeeded" && data.imageUrl) return { imageUrl: data.imageUrl };
       if (data?.status === "failed" || data?.ok === false) {
-        throw new Error(data.error ?? "Something went wrong creating your render. Please try again.");
+        throw new Error(data.error ?? "Something went wrong. Please try again.");
       }
     }
     throw new Error("This is taking longer than expected. Please try again.");
@@ -168,100 +164,196 @@ export default function RenderStage({
 
   return (
     <div className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
-      {/* View tabs */}
-      <div className="flex items-center gap-1 border-b border-sand px-3 py-2">
-        <button
-          type="button"
-          onClick={() => setView("render")}
-          className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-            view === "render" ? "bg-ink text-cream" : "text-ink/60 hover:text-ink"
-          }`}
-        >
-          Styled render
-        </button>
-        <button
-          type="button"
-          onClick={() => setView("tour")}
-          className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-            view === "tour" ? "bg-ink text-cream" : "text-ink/60 hover:text-ink"
-          }`}
-        >
-          3D look-around
-          <span className="rounded-full bg-clay/15 px-1.5 py-0.5 text-[9px] text-clay">Soon</span>
-        </button>
-        <span className="ml-auto pr-1 text-[11px] text-ink/35">
-          {renderUrl ? "AI render of your room" : "Illustrative · AI render"}
-        </span>
+
+      {/* ── MAIN IMAGE ─────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden bg-sand/40">
+        {previewImage ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              key={previewImage}
+              src={previewImage}
+              alt={`${venue.name} in ${style.name}`}
+              className="aspect-video w-full animate-fade-in object-cover"
+            />
+
+            {/* Top-left: venue + style label */}
+            <div className="absolute left-3 top-3 rounded-full bg-ink/55 px-3 py-1 text-[11px] text-cream backdrop-blur-sm">
+              {venue.name} · {style.name}
+            </div>
+
+            {/* Top-right: render version picker */}
+            {versions.length > 1 && (
+              <div className="absolute right-3 top-3 flex items-center gap-1.5">
+                {versions.map((v, i) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => onRender(v)}
+                    aria-pressed={v.id === renderId}
+                    title={`Version ${i + 1}`}
+                    className={`h-9 w-9 overflow-hidden rounded-lg border-2 transition-colors ${
+                      v.id === renderId ? "border-clay" : "border-white/50 hover:border-white"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={v.url} alt="" className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Gradient scrim + style chips at bottom */}
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/65 to-transparent px-4 pb-3 pt-10">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="mr-0.5 text-[11px] text-white/50">Style</span>
+                {STYLES.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => onStyle(s.id)}
+                    className={`rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${
+                      s.id === style.id
+                        ? "border-white bg-white/20 text-white backdrop-blur-sm"
+                        : "border-white/30 text-white/70 hover:border-white/60 hover:text-white"
+                    }`}
+                  >
+                    {s.name}
+                  </button>
+                ))}
+                {renderUrl && (
+                  <button
+                    type="button"
+                    onClick={() => onRender(null)}
+                    className="ml-auto text-[11px] text-white/50 hover:text-white/80 underline-offset-2 hover:underline"
+                  >
+                    Start over
+                  </button>
+                )}
+              </div>
+            </div>
+          </>
+        ) : (
+          /* No image yet — upload prompt */
+          <div className="aspect-video flex flex-col items-center justify-center gap-3 p-8">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-dashed border-clay/40">
+              <svg className="h-7 w-7 text-clay/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3 20.25h18M16.5 3.75a.75.75 0 1 1 0 1.5.75.75 0 0 1 0-1.5Z" />
+              </svg>
+            </div>
+            <p className="font-serif text-xl text-ink">Upload your venue</p>
+            <p className="max-w-xs text-center text-sm text-ink/50">
+              Add a photo of your room and we'll generate a styled version around your brief.
+            </p>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="rounded-full bg-clay px-6 py-2 text-sm text-cream hover:bg-clay/90 transition-colors"
+            >
+              Choose photo
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="grid lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        {/* Preview */}
-        <div className="relative min-h-[300px] bg-sand/30">
-          {view === "render" ? (
-            previewImage ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  key={previewImage}
-                  src={previewImage}
-                  alt={`${venue.name} styled as ${style.name}`}
-                  className="h-full max-h-[460px] w-full animate-fade-in object-cover"
-                />
-                {/* The wash tints the illustrative images; a real render needs none. */}
-                {!renderUrl && (
-                  <div
-                    className="pointer-events-none absolute inset-0"
-                    style={{ backgroundColor: style.wash }}
-                  />
-                )}
-                <div className="absolute left-3 top-3 rounded-full bg-ink/60 px-3 py-1 text-[11px] text-cream">
-                  {venue.name} · {style.name}
-                </div>
-              </>
-            ) : (
-              <div className="flex h-full items-center justify-center text-ink/40">
-                No preview yet
-              </div>
-            )
-          ) : (
-            // 3D look-around placeholder
-            <div className="flex h-full min-h-[300px] flex-col items-center justify-center gap-3 p-6 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full border border-dashed border-clay/40 text-2xl">
-                🧭
-              </div>
-              <p className="font-serif text-xl text-ink">Walk around your venue</p>
-              <p className="max-w-xs text-sm text-ink/50">
-                {venue.tour
-                  ? "This venue has a 3D tour. Soon you'll step inside and look around the room with your chosen styling in place."
-                  : "Upload a set of photos around the room and we'll stitch them into a 3D look-around you can explore."}
-              </p>
-              <span className="rounded-full bg-clay/10 px-3 py-1 text-xs text-clay">
-                Preview coming soon
-              </span>
-            </div>
-          )}
-        </div>
+      {/* ── VENUE / ROOM PICKER ROW ─────────────────────────────────── */}
+      <div className="border-t border-sand px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="mr-0.5 text-xs text-ink/40">Room</span>
 
-        {/* AI stylist chat */}
-        <div className="flex max-h-[460px] flex-col border-t border-sand lg:border-l lg:border-t-0">
-          <div className="flex items-center gap-2 border-b border-sand px-4 py-2.5">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-clay/15 text-xs">
-              ✦
-            </span>
-            <p className="text-sm font-medium text-ink">AI stylist</p>
-            <span className="ml-auto rounded-full bg-clay/15 px-2 py-0.5 text-[10px] text-clay">
+          {/* Sample venue thumbnails — hidden once the couple uploads their own */}
+          {uploadedImages.length === 0 &&
+            SAMPLE_VENUES.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => onVenue(v.id)}
+                aria-pressed={v.id === venue.id}
+                title={v.name}
+                className={`h-11 w-11 overflow-hidden rounded-lg border-2 transition-colors ${
+                  v.id === venue.id ? "border-clay" : "border-sand hover:border-clay/50"
+                }`}
+              >
+                {v.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={v.image} alt={v.name} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="h-full w-full" style={{ background: v.gradient }} />
+                )}
+              </button>
+            ))}
+
+          {/* Uploaded angle thumbnails */}
+          {uploadedImages.map((src, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setPrimaryPhoto(i)}
+              aria-pressed={i === primary}
+              title={i === primary ? "Current view" : "Style this angle instead"}
+              className={`h-11 w-11 overflow-hidden rounded-lg border-2 transition-colors ${
+                i === primary ? "border-clay" : "border-sand hover:border-clay/50"
+              }`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt={`Angle ${i + 1}`} className="h-full w-full object-cover" />
+            </button>
+          ))}
+
+          {/* Upload button */}
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            title="Upload your venue photo"
+            className="flex h-11 w-11 flex-col items-center justify-center rounded-lg border border-dashed border-sand text-ink/40 hover:border-clay hover:text-clay transition-colors"
+          >
+            <span className="text-lg leading-none">+</span>
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" onChange={handleFiles} className="hidden" />
+
+          <span className={`ml-1 text-[11px] ${uploadError ? "text-clay" : "text-ink/35"}`}>
+            {uploading
+              ? "Uploading…"
+              : uploadError ??
+                (uploadedImages.length > 0
+                  ? "Add more angles to help us understand the room"
+                  : "Upload your own venue photo or pick a sample")}
+          </span>
+        </div>
+      </div>
+
+      {/* ── AI STYLIST CHAT ─────────────────────────────────────────── */}
+      <div className="border-t border-sand">
+        {/* Header */}
+        <div className="flex items-center gap-2 px-4 py-3">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-clay/15 text-xs">
+            ✦
+          </span>
+          <p className="text-sm font-medium text-ink">AI stylist</p>
+          <span className="ml-auto flex items-center gap-2">
+            {hasUserMessages && (
+              <button
+                type="button"
+                onClick={() => setShowFullChat((s) => !s)}
+                className="text-[11px] text-ink/40 hover:text-ink transition-colors"
+              >
+                {showFullChat ? "Hide chat" : "Show chat"}
+              </button>
+            )}
+            <span className="rounded-full bg-clay/15 px-2 py-0.5 text-[10px] text-clay">
               Preview
             </span>
-          </div>
+          </span>
+        </div>
 
-          <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+        {/* Message history (collapsible) */}
+        {showFullChat && (
+          <div className="max-h-48 space-y-2 overflow-y-auto border-t border-sand px-4 py-3">
             {messages.map((m, i) => (
               <div
                 key={i}
                 className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
-                  m.role === "user"
-                    ? "ml-auto bg-ink text-cream"
-                    : "bg-sand/60 text-ink"
+                  m.role === "user" ? "ml-auto bg-ink text-cream" : "bg-sand/60 text-ink"
                 }`}
               >
                 {m.text}
@@ -269,134 +361,44 @@ export default function RenderStage({
             ))}
             {sending && (
               <div className="max-w-[85%] rounded-2xl bg-sand/60 px-3 py-2 text-sm text-ink/50">
-                Styling your room… this can take up to a minute.
+                Styling your room…
               </div>
             )}
           </div>
+        )}
 
-          <div className="border-t border-sand p-3">
-            <div className="flex items-end gap-2">
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    send();
-                  }
-                }}
-                rows={2}
-                placeholder={renderId ? "Tell me what to change…" : "Describe your day…"}
-                className="flex-1 resize-none rounded-xl border border-sand bg-cream/50 px-3 py-2 text-sm text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-clay/30"
-              />
-              <button
-                type="button"
-                onClick={send}
-                disabled={!draft.trim() || sending}
-                className="rounded-full bg-ink px-4 py-2 text-xs text-cream hover:bg-ink/90 disabled:bg-ink/30"
-              >
-                Send
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Style + venue angles footer */}
-      <div className="border-t border-sand px-4 py-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="mr-1 text-xs text-ink/40">Style</span>
-          {STYLES.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => onStyle(s.id)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                s.id === style.id
-                  ? "border-clay bg-clay text-cream"
-                  : "border-sand text-ink/60 hover:border-clay/50 hover:text-ink"
-              }`}
-            >
-              {s.name}
-            </button>
-          ))}
-        </div>
-
-        {renderId && (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-xs text-ink/40">Versions</span>
-            {versions.map((v, i) => (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => onRender(v)}
-                title={`Version ${i + 1}`}
-                aria-pressed={v.id === renderId}
-                disabled={sending}
-                className={`h-11 w-11 overflow-hidden rounded-lg border-2 transition-colors disabled:opacity-50 ${
-                  v.id === renderId ? "border-clay" : "border-sand hover:border-clay/50"
-                }`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={v.url} alt={`Version ${i + 1}`} className="h-full w-full object-cover" />
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => onRender(null)}
-              disabled={sending}
-              className="ml-1 text-[11px] text-ink/45 underline-offset-2 hover:text-clay hover:underline disabled:opacity-50"
-              title="Discard these renders and style your venue photo again"
-            >
-              Start over
-            </button>
+        {/* Last assistant message shown as a prompt when chat is collapsed */}
+        {!showFullChat && lastAssistantMsg && (
+          <div className="border-t border-sand px-4 py-2">
+            <p className="text-sm text-ink/55">{lastAssistantMsg.text}</p>
           </div>
         )}
 
-        <div className="mt-3 flex items-center gap-2">
-          <span className="mr-1 text-xs text-ink/40">Venue photos</span>
-          {uploadedImages.map((src, i) => (
+        {/* Input */}
+        <div className="border-t border-sand px-4 py-3">
+          <div className="flex items-end gap-2">
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+              rows={2}
+              placeholder={renderId ? "Tell me what to change…" : "Describe your room layout and what you're picturing…"}
+              className="flex-1 resize-none rounded-xl border border-sand bg-cream/50 px-3 py-2 text-sm text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-clay/30"
+            />
             <button
-              key={i}
               type="button"
-              onClick={() => setPrimaryPhoto(i)}
-              aria-pressed={i === primary}
-              title={i === primary ? "The view we style" : "Style this view instead"}
-              className={`h-11 w-11 overflow-hidden rounded-lg border-2 transition-colors ${
-                uploadedImages.length > 1 && i === primary
-                  ? "border-clay"
-                  : "border-sand hover:border-clay/50"
-              }`}
+              onClick={send}
+              disabled={!draft.trim() || sending}
+              className="rounded-full bg-ink px-4 py-2.5 text-xs font-medium text-cream hover:bg-ink/90 disabled:bg-ink/30 transition-colors"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt={`Angle ${i + 1}`} className="h-full w-full object-cover" />
+              {sending ? "…" : "Generate"}
             </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="flex h-11 w-11 items-center justify-center rounded-lg border border-dashed border-sand text-ink/40 hover:border-clay hover:text-clay"
-            title="Add another angle of your venue"
-          >
-            +
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFiles}
-            className="hidden"
-          />
-          <span className={`text-[11px] ${uploadError ? "text-clay" : "text-ink/35"}`}>
-            {uploading
-              ? "Uploading…"
-              : uploadError ??
-                (uploadedImages.length > 1
-                  ? renderId
-                    ? "Start over to style a different view"
-                    : "Tap a photo to choose the view we style; the others help us understand the room"
-                  : "Add more angles of the room to help us understand it")}
-          </span>
+          </div>
         </div>
       </div>
     </div>

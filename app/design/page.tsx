@@ -17,7 +17,6 @@ type Step = "studio" | "checkout";
 
 export default function DesignPage() {
   const [step, setStep] = useState<Step>("studio");
-  const [studioTab, setStudioTab] = useState<"visualise" | "shop">("visualise");
   const [showHowTo, setShowHowTo] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -193,77 +192,41 @@ export default function DesignPage() {
               </div>
             )}
 
-            {/* Studio tab switcher */}
-            <div className="mb-5 flex items-center gap-1 border-b border-sand pb-4">
-              <button
-                type="button"
-                onClick={() => setStudioTab("visualise")}
-                className={`rounded-full px-5 py-2 text-sm font-medium transition-colors ${
-                  studioTab === "visualise"
-                    ? "bg-ink text-cream"
-                    : "text-ink/50 hover:text-ink"
-                }`}
-              >
-                Visualise
-              </button>
-              <button
-                type="button"
-                onClick={() => setStudioTab("shop")}
-                className={`flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors ${
-                  studioTab === "shop"
-                    ? "bg-ink text-cream"
-                    : "text-ink/50 hover:text-ink"
-                }`}
-              >
-                Shop the look
-                {basket.length > 0 && (
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-clay text-[10px] text-cream">
-                    {basket.length}
-                  </span>
-                )}
-              </button>
-              <span className="ml-auto text-xs text-ink/35">
-                {studioTab === "visualise"
-                  ? "Generate and style your venue"
-                  : "Browse and add items to your quote"}
-              </span>
-            </div>
-
             <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
-              <div className="min-w-0">
-                {studioTab === "visualise" && (
-                  <RenderStage
-                    venue={headerVenue}
-                    uploadedImages={brief.uploadedImages}
-                    style={style}
-                    renderUrl={currentRender?.url ?? null}
-                    renderId={renderId}
-                    versions={versions}
-                    itemIds={basket.map((l) => l.itemId)}
-                    guestCount={brief.guestCount}
-                    onRender={showRender}
-                    onStyle={(id) => patchBrief({ styleId: id })}
-                    onAddAngle={(url) =>
-                      setBrief((b) => ({ ...b, uploadedImages: [...b.uploadedImages, url] }))
-                    }
+              {/* Left column — scrollable: render → products */}
+              <div className="min-w-0 space-y-5">
+                <RenderStage
+                  venue={headerVenue}
+                  uploadedImages={brief.uploadedImages}
+                  style={style}
+                  renderUrl={currentRender?.url ?? null}
+                  renderId={renderId}
+                  versions={versions}
+                  itemIds={basket.map((l) => l.itemId)}
+                  guestCount={brief.guestCount}
+                  onRender={showRender}
+                  onStyle={(id) => patchBrief({ styleId: id })}
+                  onVenue={(id) => patchBrief({ venueId: id })}
+                  onAddAngle={(url) =>
+                    setBrief((b) => ({ ...b, uploadedImages: [...b.uploadedImages, url] }))
+                  }
+                />
+
+                {/* Products — always visible below the render */}
+                <div className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
+                  <ProductBrowser
+                    styleId={brief.styleId}
+                    basket={basket}
+                    weddingDate={brief.weddingDate}
+                    availability={shopAvailability}
+                    onWeddingDate={(d) => patchBrief({ weddingDate: d })}
+                    onAdd={addItem}
+                    onRemove={removeItem}
                   />
-                )}
-                {studioTab === "shop" && (
-                  <div className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
-                    <ProductBrowser
-                      styleId={brief.styleId}
-                      basket={basket}
-                      weddingDate={brief.weddingDate}
-                      availability={shopAvailability}
-                      onWeddingDate={(d) => patchBrief({ weddingDate: d })}
-                      onAdd={addItem}
-                      onRemove={removeItem}
-                    />
-                  </div>
-                )}
+                </div>
               </div>
 
-              {/* Sticky basket — visible on both tabs */}
+              {/* Right column — sticky basket */}
               <div className="lg:sticky lg:top-20">
                 <div className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm lg:h-[calc(100vh-6rem)]">
                   <BasketPanel
