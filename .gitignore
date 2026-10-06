@@ -10,3 +10,6 @@ out/
 # Supabase CLI local state
 supabase/.temp/
 supabase/.branches/
+
+# temp env files
+.env*.tmp
