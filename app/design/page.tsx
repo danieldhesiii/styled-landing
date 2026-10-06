@@ -34,6 +34,7 @@ export default function DesignPage() {
   const [versions, setVersions] = useState<RenderRef[]>([]);
   const [renderId, setRenderId] = useState<string | null>(null);
   const [focusedItemId, setFocusedItemId] = useState<string | undefined>(undefined);
+  const [restored, setRestored] = useState(false);
   const productBrowserRef = useRef<HTMLDivElement>(null);
   const currentRender = versions.find((v) => v.id === renderId) ?? null;
 
@@ -41,30 +42,54 @@ export default function DesignPage() {
     if (!render) {
       setVersions([]);
       setRenderId(null);
-      localStorage.removeItem("styled:renderId");
       return;
     }
     setVersions((vs) => (vs.some((v) => v.id === render.id) ? vs : [...vs, render]));
     setRenderId(render.id);
-    localStorage.setItem("styled:renderId", render.id);
   }
 
-  // Restore last render on mount — re-fetch a fresh signed URL by render id.
+  // Restore the whole design on mount (brief, basket, render) so nothing is lost
+  // when the couple navigates away and comes back. The render's signed URL is
+  // re-fetched fresh by id, since signed URLs expire.
   useEffect(() => {
-    const saved = localStorage.getItem("styled:renderId");
-    if (!saved) return;
-    fetch(`/api/renders/${saved}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.status === "succeeded" && data.imageUrl) {
-          setVersions([{ id: saved, url: data.imageUrl }]);
-          setRenderId(saved);
-        } else {
-          localStorage.removeItem("styled:renderId");
+    try {
+      const raw = localStorage.getItem("styled:design");
+      if (raw) {
+        const saved = JSON.parse(raw) as {
+          brief?: Partial<Brief>;
+          basket?: BasketLine[];
+          renderId?: string | null;
+        };
+        if (saved.brief) setBrief((b) => ({ ...b, ...saved.brief }));
+        if (Array.isArray(saved.basket)) setBasket(saved.basket);
+        if (saved.renderId) {
+          fetch(`/api/renders/${saved.renderId}`)
+            .then((r) => r.json())
+            .then((data) => {
+              if (data.status === "succeeded" && data.imageUrl && saved.renderId) {
+                setVersions([{ id: saved.renderId, url: data.imageUrl }]);
+                setRenderId(saved.renderId);
+              }
+            })
+            .catch(() => {});
         }
-      })
-      .catch(() => localStorage.removeItem("styled:renderId"));
+      }
+    } catch {
+      // Corrupt saved state — start fresh.
+    }
+    setRestored(true);
   }, []);
+
+  // Persist the design whenever it changes (once the initial restore has run,
+  // so we never overwrite saved state with defaults).
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      localStorage.setItem("styled:design", JSON.stringify({ brief, basket, renderId }));
+    } catch {
+      // Storage full or unavailable — non-fatal.
+    }
+  }, [brief, basket, renderId, restored]);
 
   // Availability per supplier for the couple's wedding date.
   const shopAvailability = useShopAvailability(brief.weddingDate, brief.guestCount);

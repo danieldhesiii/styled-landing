@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Category, SampleVenue, StylePreset } from "@/lib/types";
-import { STYLES } from "@/lib/styles";
+import { STYLES, getStyle } from "@/lib/styles";
 import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
 import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 
@@ -26,6 +26,19 @@ interface Props {
   onAddAngle: (url: string) => void;
   onShopItem: (itemId: string) => void;
 }
+
+// A short description of the look each preset produces. These mirror the style
+// direction sent to the image model, so the couple knows what they'll get.
+const STYLE_BLURBS: Record<string, string> = {
+  garden_romance:
+    "Lush blush & white garden roses, trailing greenery, gold chiavari chairs and warm fairy lights.",
+  classic_elegance:
+    "Tall gold candelabra, crisp white floor-length linen and crystal glassware — a refined black-tie look.",
+  modern_minimal:
+    "Long tables, a neutral white & greige palette, low architectural greenery and clean sculptural stems.",
+  rustic_barn:
+    "Loose meadow wildflowers, timber trestle tables, crossback chairs and festoon lights overhead.",
+};
 
 // Approximate positions (% of image width/height) per category.
 const HOTSPOT_POSITIONS: Partial<Record<Category, { x: number; y: number }>> = {
@@ -63,6 +76,9 @@ export default function RenderStage({
   const [primaryPhoto, setPrimaryPhoto] = useState(0);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [showOriginal, setShowOriginal] = useState(false);
+  // The style selected in the panel for the NEXT generation. Kept separate from
+  // the committed style so browsing presets doesn't wipe the current render.
+  const [draftStyleId, setDraftStyleId] = useState(style.id);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const primary = Math.min(primaryPhoto, Math.max(0, uploadedImages.length - 1));
@@ -71,6 +87,12 @@ export default function RenderStage({
 
   const uploadedPreview = uploadedImages[primary] ?? null;
   const previewImage = renderUrl ?? uploadedPreview;
+
+  // Keep the draft style in sync with the committed style (e.g. after a render
+  // commits, or state is restored).
+  useEffect(() => {
+    setDraftStyleId(style.id);
+  }, [style.id]);
 
   // Expand the panel when a photo is uploaded (but no render yet).
   useEffect(() => {
@@ -106,10 +128,13 @@ export default function RenderStage({
     return result;
   })();
 
-  async function generate() {
+  async function generate(useStyleId: string) {
     if (sending) return;
+    // Commit the chosen style (this clears the old render, which is correct —
+    // a render only represents the style it was made from).
+    onStyle(useStyleId);
     setSending(true);
-    const sentFor = { styleId: style.id, venueId: venue.id };
+    const sentFor = { styleId: useStyleId, venueId: venue.id };
 
     try {
       const res = await fetch("/api/generate", {
@@ -117,7 +142,7 @@ export default function RenderStage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: description.trim(),
-          styleId: style.id,
+          styleId: useStyleId,
           venueId: venue.id,
           images: uploadedImages,
           itemIds,
@@ -129,7 +154,7 @@ export default function RenderStage({
 
       if (res.status === 202 && data?.renderId) {
         const done = await waitForRender(data.renderId);
-        if (live.current.styleId !== sentFor.styleId || live.current.venueId !== sentFor.venueId) {
+        if (live.current.venueId !== sentFor.venueId) {
           setShowGenPanel(true);
         } else {
           onRender({ id: data.renderId, url: done.imageUrl });
@@ -372,18 +397,37 @@ export default function RenderStage({
             )}
           </div>
 
-          {/* Style chips */}
+          {/* Style preview cards — thumbnail + what the look produces */}
           <div className="mb-4">
             <p className="mb-2 text-xs text-ink/50">Choose a style</p>
-            <div className="flex flex-wrap gap-2">
-              {STYLES.map((s) => (
-                <button key={s.id} type="button" onClick={() => onStyle(s.id)}
-                  className={`rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${s.id === style.id ? "border-clay bg-clay text-cream" : "border-sand text-ink/60 hover:border-clay/50 hover:text-ink"}`}>
-                  {s.name}
-                </button>
-              ))}
+            <div className="grid grid-cols-2 gap-2.5">
+              {STYLES.map((s) => {
+                const selected = s.id === draftStyleId;
+                return (
+                  <button key={s.id} type="button" onClick={() => setDraftStyleId(s.id)}
+                    aria-pressed={selected}
+                    className={`group overflow-hidden rounded-xl border text-left transition-colors ${selected ? "border-clay ring-2 ring-clay/30" : "border-sand hover:border-clay/50"}`}>
+                    <div className="relative aspect-[4/3] bg-sand/40">
+                      {s.render && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={s.render} alt={s.name} className="h-full w-full object-cover" />
+                      )}
+                      {selected && (
+                        <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-clay text-[11px] text-cream shadow">
+                          ✓
+                        </span>
+                      )}
+                    </div>
+                    <div className="px-2.5 py-2">
+                      <p className={`text-xs font-medium ${selected ? "text-ink" : "text-ink/70"}`}>{s.name}</p>
+                      <p className="mt-0.5 text-[11px] leading-snug text-ink/45">
+                        {STYLE_BLURBS[s.id] ?? s.tagline}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-            <p className="mt-1.5 text-[11px] text-ink/35">{style.tagline}</p>
           </div>
 
           {/* Description */}
@@ -401,10 +445,10 @@ export default function RenderStage({
             </p>
           </div>
 
-          <button type="button" onClick={() => { if (renderUrl) onRender(null); generate(); }}
+          <button type="button" onClick={() => generate(draftStyleId)}
             disabled={sending}
             className="w-full rounded-full bg-ink py-3 text-sm font-medium text-cream hover:bg-ink/90 disabled:bg-ink/30 transition-colors">
-            {sending ? "Generating…" : "Generate →"}
+            {sending ? "Generating…" : renderUrl ? `Generate ${getStyle(draftStyleId).name} →` : "Generate →"}
           </button>
         </div>
       ) : null}
