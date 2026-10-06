@@ -62,8 +62,10 @@ export default function RenderStage({
   const live = useRef({ styleId: style.id, venueId: venue.id });
   live.current = { styleId: style.id, venueId: venue.id };
 
-  const baseImage = uploadedImages[primary] ?? venue.image ?? null;
-  const previewImage = renderUrl ?? (renderUrl === null && renderId === null ? style.render ?? baseImage : baseImage);
+  // Only show real images — uploaded photo or a finished render. Never the
+  // illustrative style renders; the empty state prompts the user to upload instead.
+  const uploadedPreview = uploadedImages[primary] ?? null;
+  const previewImage = renderUrl ?? uploadedPreview;
   const lastAssistantMsg = [...messages].reverse().find((m) => m.role === "assistant");
   const hasUserMessages = messages.some((m) => m.role === "user");
 
@@ -177,12 +179,12 @@ export default function RenderStage({
               className="aspect-video w-full animate-fade-in object-cover"
             />
 
-            {/* Top-left: venue + style label */}
+            {/* Top-left: label */}
             <div className="absolute left-3 top-3 rounded-full bg-ink/55 px-3 py-1 text-[11px] text-cream backdrop-blur-sm">
-              {venue.name} · {style.name}
+              {renderUrl ? `${style.name} · AI render` : "Your venue"}
             </div>
 
-            {/* Top-right: render version picker */}
+            {/* Top-right: version history thumbnails */}
             {versions.length > 1 && (
               <div className="absolute right-3 top-3 flex items-center gap-1.5">
                 {versions.map((v, i) => (
@@ -203,55 +205,66 @@ export default function RenderStage({
               </div>
             )}
 
-            {/* Gradient scrim + style chips at bottom */}
+            {/* Gradient scrim at bottom */}
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/65 to-transparent px-4 pb-3 pt-10">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="mr-0.5 text-[11px] text-white/50">Style</span>
-                {STYLES.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => onStyle(s.id)}
-                    className={`rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${
-                      s.id === style.id
-                        ? "border-white bg-white/20 text-white backdrop-blur-sm"
-                        : "border-white/30 text-white/70 hover:border-white/60 hover:text-white"
-                    }`}
-                  >
-                    {s.name}
-                  </button>
-                ))}
-                {renderUrl && (
+              {renderUrl ? (
+                /* After generating: just show the current style + start over */
+                <div className="flex items-center gap-3">
+                  <span className="rounded-full border border-white/40 bg-white/15 px-3 py-1 text-[11px] text-white backdrop-blur-sm">
+                    {style.name}
+                  </span>
                   <button
                     type="button"
                     onClick={() => onRender(null)}
-                    className="ml-auto text-[11px] text-white/50 hover:text-white/80 underline-offset-2 hover:underline"
+                    className="text-[11px] text-white/60 underline-offset-2 hover:text-white hover:underline transition-colors"
                   >
                     Start over
                   </button>
-                )}
-              </div>
+                </div>
+              ) : (
+                /* Before generating: show all style options */
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="mr-0.5 text-[11px] text-white/50">Style</span>
+                  {STYLES.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => onStyle(s.id)}
+                      className={`rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${
+                        s.id === style.id
+                          ? "border-white bg-white/20 text-white backdrop-blur-sm"
+                          : "border-white/30 text-white/70 hover:border-white/60 hover:text-white"
+                      }`}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         ) : (
-          /* No image yet — upload prompt */
-          <div className="aspect-video flex flex-col items-center justify-center gap-3 p-8">
+          /* Empty state — no upload yet */
+          <div className="aspect-video flex flex-col items-center justify-center gap-4 px-8 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full border border-dashed border-clay/40">
               <svg className="h-7 w-7 text-clay/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3 20.25h18M16.5 3.75a.75.75 0 1 1 0 1.5.75.75 0 0 1 0-1.5Z" />
               </svg>
             </div>
-            <p className="font-serif text-xl text-ink">Upload your venue</p>
-            <p className="max-w-xs text-center text-sm text-ink/50">
-              Add a photo of your room and we'll generate a styled version around your brief.
-            </p>
+            <div>
+              <p className="font-serif text-2xl text-ink">Add your venue &amp; generate your look</p>
+              <p className="mt-2 max-w-sm text-sm text-ink/50">
+                Upload a photo of your room, choose a style, describe your vision — and we'll generate exactly how your wedding could look.
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="rounded-full bg-clay px-6 py-2 text-sm text-cream hover:bg-clay/90 transition-colors"
+              className="rounded-full bg-clay px-7 py-2.5 text-sm font-medium text-cream hover:bg-clay/90 transition-colors"
             >
-              Choose photo
+              Upload venue photo
             </button>
+            <p className="text-xs text-ink/35">or pick a sample room below</p>
           </div>
         )}
       </div>
@@ -399,6 +412,9 @@ export default function RenderStage({
               {sending ? "…" : "Generate"}
             </button>
           </div>
+          <p className="mt-2 text-[11px] text-ink/35">
+            The more descriptive you are — table layout, lighting, focal points, colours — the closer the result will be to your vision.
+          </p>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { BasketLine, CatalogueItem } from "@/lib/types";
 import { getStyle, getVenue } from "@/lib/styles";
@@ -39,11 +39,30 @@ export default function DesignPage() {
     if (!render) {
       setVersions([]);
       setRenderId(null);
+      localStorage.removeItem("styled:renderId");
       return;
     }
     setVersions((vs) => (vs.some((v) => v.id === render.id) ? vs : [...vs, render]));
     setRenderId(render.id);
+    localStorage.setItem("styled:renderId", render.id);
   }
+
+  // Restore last render on mount — re-fetch a fresh signed URL by render id.
+  useEffect(() => {
+    const saved = localStorage.getItem("styled:renderId");
+    if (!saved) return;
+    fetch(`/api/renders/${saved}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.status === "succeeded" && data.imageUrl) {
+          setVersions([{ id: saved, url: data.imageUrl }]);
+          setRenderId(saved);
+        } else {
+          localStorage.removeItem("styled:renderId");
+        }
+      })
+      .catch(() => localStorage.removeItem("styled:renderId"));
+  }, []);
 
   // Availability per supplier for the couple's wedding date.
   const shopAvailability = useShopAvailability(brief.weddingDate, brief.guestCount);
