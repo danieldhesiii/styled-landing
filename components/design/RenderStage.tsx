@@ -85,9 +85,10 @@ export default function RenderStage({
   live.current = { styleId: style.id, venueId: venue.id };
 
   const uploadedPreview = uploadedImages[primary] ?? null;
-  // The "before" image to compare a render against — the couple's photo if they
-  // uploaded one, otherwise the venue image we styled.
-  const originalImage = uploadedPreview ?? venue.image ?? null;
+  // The "before" image to compare a render against — only the couple's own
+  // uploaded photo. We deliberately do NOT fall back to a stock venue image, so
+  // before anything is uploaded the stage shows the text prompt, not a photo.
+  const originalImage = uploadedPreview;
   const previewImage = renderUrl ?? originalImage;
 
   // Keep the draft style in sync with the committed style (e.g. after a render
@@ -326,7 +327,7 @@ export default function RenderStage({
                 <div>
                   <p className="font-serif text-2xl text-ink">Add your venue &amp; generate your look</p>
                   <p className="mt-2 max-w-sm text-sm text-ink/50">
-                    Upload a photo of your room, pick a style and describe your vision — we'll generate exactly how your wedding could look.
+                    Upload a photo of your room, then just describe the look you want — no need to pick a style. We'll generate exactly how your wedding could look.
                   </p>
                 </div>
                 <button type="button" onClick={() => fileRef.current?.click()}
