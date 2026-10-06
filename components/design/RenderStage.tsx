@@ -274,28 +274,6 @@ export default function RenderStage({
         <div className="flex flex-wrap items-center gap-2">
           <span className="mr-0.5 text-xs text-ink/40">Room</span>
 
-          {/* Sample venue thumbnails — hidden once the couple uploads their own */}
-          {uploadedImages.length === 0 &&
-            SAMPLE_VENUES.map((v) => (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => onVenue(v.id)}
-                aria-pressed={v.id === venue.id}
-                title={v.name}
-                className={`h-11 w-11 overflow-hidden rounded-lg border-2 transition-colors ${
-                  v.id === venue.id ? "border-clay" : "border-sand hover:border-clay/50"
-                }`}
-              >
-                {v.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={v.image} alt={v.name} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="h-full w-full" style={{ background: v.gradient }} />
-                )}
-              </button>
-            ))}
-
           {/* Uploaded angle thumbnails */}
           {uploadedImages.map((src, i) => (
             <button

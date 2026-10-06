@@ -47,8 +47,9 @@ export function buildRenderPrompt(opts: {
   guestCount: number;
   items: CatalogueItem[];
   photoCount?: number;
+  itemImageCount?: number;
 }): string {
-  const { style, brief, guestCount, items, photoCount = 1 } = opts;
+  const { style, brief, guestCount, items, photoCount = 1, itemImageCount = 0 } = opts;
   const parts: string[] = [];
 
   parts.push(
@@ -58,6 +59,14 @@ export function buildRenderPrompt(opts: {
   );
   const refs = referenceNote(photoCount);
   if (refs) parts.push(refs);
+
+  // Product reference images follow the venue photos.
+  if (itemImageCount > 0) {
+    parts.push(
+      `The last ${itemImageCount} image${itemImageCount > 1 ? "s are" : " is"} reference photograph${itemImageCount > 1 ? "s" : ""} of specific pieces the couple has chosen. Study them carefully and reproduce each item's exact colour, material, shape and finish when you place it in the room.`
+    );
+  }
+
   parts.push(KEEP);
   parts.push(`Style: ${STYLE_DIRECTION[style.id] ?? `${style.name}. ${style.tagline}.`}`);
   parts.push(

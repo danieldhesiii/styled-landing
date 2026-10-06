@@ -1,5 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { requireUser } from "@/lib/server/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/server/env";
@@ -152,7 +154,29 @@ export async function POST(req: Request) {
       console.error("[generate] couldn't load base image:", err);
       return fail(500, "Couldn't load your venue photo.");
     }
-    prompt = buildRenderPrompt({ style, brief, guestCount, items, photoCount: base.images.length });
+    // Load product images to use as visual references (max 4, only items with images).
+    const itemImages: Buffer[] = [];
+    for (const item of items.slice(0, 4)) {
+      if (!item.image) continue;
+      try {
+        const buf = await readFile(path.join(process.cwd(), "public", item.image));
+        itemImages.push(buf);
+      } catch {
+        // Missing image file — skip silently.
+      }
+    }
+
+    prompt = buildRenderPrompt({
+      style,
+      brief,
+      guestCount,
+      items,
+      photoCount: base.images.length,
+      itemImageCount: itemImages.length,
+    });
+
+    // Stash item images so runRenderJob can append them as reference images.
+    (base as typeof base & { itemImages: Buffer[] }).itemImages = itemImages;
 
     // A render belongs to a brief. The studio doesn't persist briefs yet, so reuse
     // the guest's latest one (updating its style) or create it.
@@ -200,7 +224,8 @@ export async function POST(req: Request) {
     return fail(500, "Couldn't start your render.");
   }
 
-  after(() => runRenderJob({ admin, renderId, userId: user.id, images: base.images, prompt, size }));
+  const itemImages: Buffer[] = (base as typeof base & { itemImages?: Buffer[] }).itemImages ?? [];
+  after(() => runRenderJob({ admin, renderId, userId: user.id, images: [...base.images, ...itemImages], prompt, size }));
 
   return NextResponse.json(
     { ok: true, pending: false, status: "running", renderId, depth },
