@@ -23,6 +23,8 @@ interface Props {
   guestCount: number;
   isSaved: boolean;
   onRender: (render: RenderRef | null) => void;
+  /** Remove a generated version from the strip. */
+  onDeleteVersion: (id: string) => void;
   /** A style id, or "none" for a description-led look. */
   onStyle: (id: string) => void;
   onVenue: (venueId: string) => void;
@@ -57,6 +59,7 @@ export default function RenderStage({
   guestCount,
   isSaved,
   onRender,
+  onDeleteVersion,
   onStyle,
   onVenue: _onVenue,
   onAddAngle,
@@ -344,7 +347,7 @@ export default function RenderStage({
           <div className="mb-2 flex items-center gap-2">
             <span className="text-xs font-medium text-ink/50">Compare</span>
             <span className="text-[11px] text-ink/35">
-              tap to view the original or any version
+              tap to view · × to remove a version
             </span>
           </div>
           <div className="flex items-end gap-2.5 overflow-x-auto pb-1">
@@ -372,27 +375,38 @@ export default function RenderStage({
             {versions.map((v, i) => {
               const active = !showOriginal && v.id === renderId;
               return (
-                <button
-                  key={v.id}
-                  type="button"
-                  onClick={() => {
-                    setShowOriginal(false);
-                    onRender(v);
-                  }}
-                  aria-pressed={active}
-                  className="shrink-0 text-center"
-                  title={`Version ${i + 1}`}
-                >
-                  <span
-                    className={`block h-14 w-20 overflow-hidden rounded-lg border-2 transition-colors ${active ? "border-clay" : "border-sand hover:border-clay/50"}`}
+                <div key={v.id} className="group relative shrink-0 text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowOriginal(false);
+                      onRender(v);
+                    }}
+                    aria-pressed={active}
+                    className="block"
+                    title={`Version ${i + 1}`}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={v.url} alt={`Version ${i + 1}`} className="h-full w-full object-cover" />
-                  </span>
-                  <span className={`mt-1 block text-[10px] ${active ? "text-clay" : "text-ink/45"}`}>
-                    Version {i + 1}
-                  </span>
-                </button>
+                    <span
+                      className={`block h-14 w-20 overflow-hidden rounded-lg border-2 transition-colors ${active ? "border-clay" : "border-sand hover:border-clay/50"}`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={v.url} alt={`Version ${i + 1}`} className="h-full w-full object-cover" />
+                    </span>
+                    <span className={`mt-1 block text-[10px] ${active ? "text-clay" : "text-ink/45"}`}>
+                      Version {i + 1}
+                    </span>
+                  </button>
+                  {/* Remove this version from the strip. */}
+                  <button
+                    type="button"
+                    onClick={() => onDeleteVersion(v.id)}
+                    aria-label={`Delete version ${i + 1}`}
+                    title="Delete this version"
+                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-sand bg-white text-ink/50 shadow-sm hover:border-clay hover:text-clay transition-colors"
+                  >
+                    ×
+                  </button>
+                </div>
               );
             })}
           </div>

@@ -51,6 +51,16 @@ export default function DesignPage() {
     setRenderId(render.id);
   }
 
+  // Remove a version from the strip. If it was the one on show, fall back to the
+  // most recent remaining version (or clear the stage if none are left).
+  function deleteVersion(id: string) {
+    setVersions((vs) => {
+      const next = vs.filter((v) => v.id !== id);
+      if (renderId === id) setRenderId(next.length ? next[next.length - 1].id : null);
+      return next;
+    });
+  }
+
   // Restore the whole design on mount (brief, basket, render) so nothing is lost
   // when the couple navigates away and comes back. The render's signed URL is
   // re-fetched fresh by id, since signed URLs expire.
@@ -318,6 +328,7 @@ export default function DesignPage() {
                   itemIds={basket.map((l) => l.itemId)}
                   guestCount={brief.guestCount}
                   onRender={showRender}
+                  onDeleteVersion={deleteVersion}
                   onStyle={(id) => patchBrief({ styleId: id })}
                   onVenue={(id) => patchBrief({ venueId: id })}
                   onAddAngle={(url) =>
