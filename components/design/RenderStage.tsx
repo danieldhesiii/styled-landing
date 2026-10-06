@@ -27,18 +27,16 @@ interface Props {
   onShopItem: (itemId: string) => void;
 }
 
-// Approximate positions (% of image width/height) where each category
-// of item would typically appear in a wedding venue render.
-const HOTSPOT_POSITIONS: Partial<Record<Category, { x: number; y: number }[]>> = {
-  backdrops:       [{ x: 50, y: 22 }],
-  florals:         [{ x: 18, y: 58 }, { x: 78, y: 58 }],
-  centrepieces:    [{ x: 50, y: 65 }, { x: 30, y: 68 }],
-  furniture:       [{ x: 35, y: 78 }, { x: 60, y: 75 }],
-  lighting:        [{ x: 50, y: 10 }],
-  signage:         [{ x: 82, y: 42 }],
-  linen_tableware: [{ x: 62, y: 72 }],
-  bar:             [{ x: 86, y: 58 }],
-  cake_favours:    [{ x: 74, y: 66 }],
+// Approximate positions (% of image width/height) per category.
+const HOTSPOT_POSITIONS: Partial<Record<Category, { x: number; y: number }>> = {
+  backdrops:       { x: 50, y: 22 },
+  florals:         { x: 18, y: 55 },
+  centrepieces:    { x: 50, y: 65 },
+  furniture:       { x: 35, y: 76 },
+  lighting:        { x: 72, y: 12 },
+  signage:         { x: 82, y: 44 },
+  linen_tableware: { x: 62, y: 72 },
+  cake_favours:    { x: 74, y: 66 },
 };
 
 export default function RenderStage({
@@ -56,14 +54,15 @@ export default function RenderStage({
   onAddAngle,
   onShopItem,
 }: Props) {
-  const { getItem } = useCatalogue();
+  const { itemsForCategory } = useCatalogue();
   const [description, setDescription] = useState("");
   const [sending, setSending] = useState(false);
-  const [showGenPanel, setShowGenPanel] = useState(true);
+  const [showGenPanel, setShowGenPanel] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [primaryPhoto, setPrimaryPhoto] = useState(0);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [showOriginal, setShowOriginal] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const primary = Math.min(primaryPhoto, Math.max(0, uploadedImages.length - 1));
@@ -73,25 +72,36 @@ export default function RenderStage({
   const uploadedPreview = uploadedImages[primary] ?? null;
   const previewImage = renderUrl ?? uploadedPreview;
 
-  // Collapse the panel as soon as a render comes in.
+  // Expand the panel when a photo is uploaded (but no render yet).
   useEffect(() => {
-    if (renderUrl) setShowGenPanel(false);
+    if (uploadedImages.length > 0 && !renderUrl) setShowGenPanel(true);
+  }, [uploadedImages.length, renderUrl]);
+
+  // Collapse the panel and reset compare when a render arrives.
+  useEffect(() => {
+    if (renderUrl) {
+      setShowGenPanel(false);
+      setShowOriginal(false);
+    }
   }, [renderUrl]);
 
-  // Build hotspot dots from basket items.
+  // Build hotspot dots from style-matched catalogue items (one per category).
+  // We use the catalogue rather than the basket so there are always dots on a render
+  // — the user clicks them to discover what's available to buy.
   const hotspots = (() => {
-    if (!renderUrl) return [];
-    const usedSlots: Partial<Record<Category, number>> = {};
+    if (!renderUrl || showOriginal) return [];
     const result: { id: string; name: string; x: number; y: number }[] = [];
-    for (const id of itemIds) {
-      const item = getItem(id);
-      if (!item) continue;
-      const positions = HOTSPOT_POSITIONS[item.category];
-      if (!positions) continue;
-      const slot = usedSlots[item.category] ?? 0;
-      if (slot >= positions.length) continue;
-      usedSlots[item.category] = slot + 1;
-      result.push({ id: item.id, name: item.name, x: positions[slot].x, y: positions[slot].y });
+    for (const [cat, pos] of Object.entries(HOTSPOT_POSITIONS) as [Category, { x: number; y: number }][]) {
+      // Prefer basket items for this category, fall back to best style-matched catalogue item.
+      const basketItemInCat = itemIds
+        .map((id) => itemsForCategory(cat).find((i) => i.id === id))
+        .find(Boolean);
+      const catalogueItem =
+        basketItemInCat ??
+        itemsForCategory(cat).find((i) => i.styles.includes(style.id)) ??
+        itemsForCategory(cat)[0];
+      if (!catalogueItem) continue;
+      result.push({ id: catalogueItem.id, name: catalogueItem.name, x: pos.x, y: pos.y });
     }
     return result;
   })();
@@ -171,25 +181,50 @@ export default function RenderStage({
     }
   }
 
+  // The image to actually display (before/after toggle).
+  const displayImage = showOriginal ? uploadedPreview : previewImage;
+
   return (
     <div className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
 
       {/* ── IMAGE ──────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden bg-sand/40">
-        {previewImage ? (
+        {displayImage ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              key={previewImage}
-              src={previewImage}
-              alt="Your venue"
+              key={displayImage}
+              src={displayImage}
+              alt={showOriginal ? "Your original venue" : "Your styled venue"}
               className="aspect-video w-full animate-fade-in object-cover"
             />
 
             {/* Top-left label */}
             <div className="absolute left-3 top-3 rounded-full bg-ink/55 px-3 py-1 text-[11px] text-cream backdrop-blur-sm">
-              {renderUrl ? `${style.name} · AI render` : "Your venue"}
+              {showOriginal ? "Your venue" : renderUrl ? `${style.name} · AI render` : "Your venue"}
             </div>
+
+            {/* Before/after toggle — only when render AND original both exist */}
+            {renderUrl && uploadedPreview && (
+              <div className="absolute left-1/2 top-3 -translate-x-1/2">
+                <div className="flex overflow-hidden rounded-full border border-white/30 bg-ink/50 backdrop-blur-sm text-[11px] text-white">
+                  <button
+                    type="button"
+                    onClick={() => setShowOriginal(false)}
+                    className={`px-3 py-1 transition-colors ${!showOriginal ? "bg-white/20 font-medium" : "hover:bg-white/10"}`}
+                  >
+                    Styled
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowOriginal(true)}
+                    className={`px-3 py-1 transition-colors ${showOriginal ? "bg-white/20 font-medium" : "hover:bg-white/10"}`}
+                  >
+                    Original
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Version thumbnails top-right */}
             {versions.length > 1 && (
@@ -206,8 +241,8 @@ export default function RenderStage({
               </div>
             )}
 
-            {/* Style badge + start over — only shown on a real render */}
-            {renderUrl && (
+            {/* Style badge + start over — only on the styled render */}
+            {renderUrl && !showOriginal && (
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/55 to-transparent px-4 pb-3 pt-8">
                 <div className="flex items-center gap-3">
                   <span className="rounded-full border border-white/40 bg-white/15 px-3 py-1 text-[11px] text-white backdrop-blur-sm">
@@ -221,18 +256,17 @@ export default function RenderStage({
               </div>
             )}
 
-            {/* ── ITEM HOTSPOTS ──────────────────────────────────── */}
+            {/* ── ITEM HOTSPOTS (styled view only) ───────────────── */}
             {hotspots.map((h) => (
               <div
                 key={h.id}
                 className="absolute"
                 style={{ left: `${h.x}%`, top: `${h.y}%`, transform: "translate(-50%,-50%)" }}
               >
-                {/* Tooltip */}
                 {hoveredItem === h.id && (
-                  <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-xl bg-ink px-3 py-2 text-xs text-cream shadow-lg">
+                  <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-xl bg-ink px-3 py-2 text-xs text-cream shadow-lg z-10">
                     <p className="font-medium">{h.name}</p>
-                    <p className="mt-0.5 text-cream/60">Click to view in shop</p>
+                    <p className="mt-0.5 text-cream/60">Click to view in shop →</p>
                   </div>
                 )}
                 <button
@@ -240,11 +274,10 @@ export default function RenderStage({
                   onMouseEnter={() => setHoveredItem(h.id)}
                   onMouseLeave={() => setHoveredItem(null)}
                   onClick={() => onShopItem(h.id)}
-                  className="relative flex h-7 w-7 items-center justify-center"
+                  className="relative flex h-8 w-8 items-center justify-center"
                   aria-label={`View ${h.name} in shop`}
                 >
-                  {/* Pulse ring */}
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/60 opacity-75" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/50 opacity-75" />
                   <span className="relative flex h-4 w-4 rounded-full border-2 border-white bg-clay shadow-md" />
                 </button>
               </div>
@@ -259,6 +292,7 @@ export default function RenderStage({
             )}
           </>
         ) : (
+          /* ── EMPTY STATE ─────────────────────────────────────────── */
           <div className="aspect-video flex flex-col items-center justify-center gap-4 px-8 text-center">
             {sending ? (
               <>
@@ -283,7 +317,6 @@ export default function RenderStage({
                   className="rounded-full bg-clay px-7 py-2.5 text-sm font-medium text-cream hover:bg-clay/90 transition-colors">
                   Upload venue photo
                 </button>
-                <p className="text-xs text-ink/35">or pick a sample room below</p>
               </>
             )}
           </div>
@@ -315,15 +348,17 @@ export default function RenderStage({
       </div>
 
       {/* ── GENERATE PANEL ─────────────────────────────────────────── */}
-      {renderUrl && !showGenPanel ? (
-        /* Collapsed state — just show the "Generate new style" button */
+
+      {/* No photo uploaded yet — nothing to generate from */}
+      {!uploadedImages.length && !renderUrl ? null : renderUrl && !showGenPanel ? (
+        /* Collapsed — show "Generate new style" button */
         <div className="border-t border-sand px-4 py-3">
           <button type="button" onClick={() => setShowGenPanel(true)}
             className="flex w-full items-center justify-center gap-2 rounded-full border border-sand py-2.5 text-sm font-medium text-ink/60 hover:border-clay hover:text-ink transition-colors">
             <span>↺</span> Generate new style
           </button>
         </div>
-      ) : (
+      ) : showGenPanel ? (
         <div className="border-t border-sand px-5 py-5">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="font-serif text-lg text-ink">
@@ -358,7 +393,7 @@ export default function RenderStage({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              placeholder="e.g. round tables down the middle, a floral arch at the entrance, fairy lights draped across the ceiling, a stage along the back wall…"
+              placeholder="e.g. round tables down the middle, a floral arch at the entrance, fairy lights across the ceiling, a stage along the back wall…"
               className="w-full resize-none rounded-xl border border-sand bg-cream/50 px-3 py-2.5 text-sm text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-clay/30"
             />
             <p className="mt-1.5 text-[11px] text-ink/40">
@@ -366,20 +401,13 @@ export default function RenderStage({
             </p>
           </div>
 
-          {/* Generate button */}
           <button type="button" onClick={() => { if (renderUrl) onRender(null); generate(); }}
-            disabled={sending || (!uploadedImages.length && !venue.image)}
+            disabled={sending}
             className="w-full rounded-full bg-ink py-3 text-sm font-medium text-cream hover:bg-ink/90 disabled:bg-ink/30 transition-colors">
             {sending ? "Generating…" : "Generate →"}
           </button>
-
-          {!uploadedImages.length && (
-            <p className="mt-2 text-center text-[11px] text-ink/40">
-              Upload a venue photo above to generate your look
-            </p>
-          )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
