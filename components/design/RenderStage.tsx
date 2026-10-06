@@ -20,11 +20,13 @@ interface Props {
   versions: RenderRef[];
   itemIds: string[];
   guestCount: number;
+  isSaved: boolean;
   onRender: (render: RenderRef | null) => void;
   onStyle: (id: string) => void;
   onVenue: (venueId: string) => void;
   onAddAngle: (url: string) => void;
   onShopItem: (itemId: string) => void;
+  onToggleSave: () => void;
 }
 
 // A short description of the look each preset produces. These mirror the style
@@ -61,11 +63,13 @@ export default function RenderStage({
   versions,
   itemIds,
   guestCount,
+  isSaved,
   onRender,
   onStyle,
   onVenue: _onVenue,
   onAddAngle,
   onShopItem,
+  onToggleSave,
 }: Props) {
   const { itemsForCategory } = useCatalogue();
   const [description, setDescription] = useState("");
@@ -86,7 +90,10 @@ export default function RenderStage({
   live.current = { styleId: style.id, venueId: venue.id };
 
   const uploadedPreview = uploadedImages[primary] ?? null;
-  const previewImage = renderUrl ?? uploadedPreview;
+  // The "before" image to compare a render against — the couple's photo if they
+  // uploaded one, otherwise the venue image we styled.
+  const originalImage = uploadedPreview ?? venue.image ?? null;
+  const previewImage = renderUrl ?? originalImage;
 
   // Keep the draft style in sync with the committed style (e.g. after a render
   // commits, or state is restored).
@@ -206,8 +213,34 @@ export default function RenderStage({
     }
   }
 
+  const [downloading, setDownloading] = useState(false);
+
+  // Save the current render to the couple's device. Signed URLs are cross-origin,
+  // so fetch the bytes and download a blob (the download attribute is ignored
+  // cross-origin); fall back to opening the image if that's blocked.
+  async function downloadRender() {
+    if (!renderUrl || downloading) return;
+    setDownloading(true);
+    try {
+      const res = await fetch(renderUrl);
+      const blob = await res.blob();
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = `styled-${style.id}-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+    } catch {
+      window.open(renderUrl, "_blank", "noopener");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   // The image to actually display (before/after toggle).
-  const displayImage = showOriginal ? uploadedPreview : previewImage;
+  const displayImage = showOriginal ? originalImage : previewImage;
 
   return (
     <div className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
@@ -230,7 +263,7 @@ export default function RenderStage({
             </div>
 
             {/* Before/after toggle — only when render AND original both exist */}
-            {renderUrl && uploadedPreview && (
+            {renderUrl && originalImage && (
               <div className="absolute left-1/2 top-3 -translate-x-1/2">
                 <div className="flex overflow-hidden rounded-full border border-white/30 bg-ink/50 backdrop-blur-sm text-[11px] text-white">
                   <button
@@ -266,7 +299,7 @@ export default function RenderStage({
               </div>
             )}
 
-            {/* Style badge + start over — only on the styled render */}
+            {/* Style badge + actions — only on the styled render */}
             {renderUrl && !showOriginal && (
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/55 to-transparent px-4 pb-3 pt-8">
                 <div className="flex items-center gap-3">
@@ -277,6 +310,20 @@ export default function RenderStage({
                     className="text-[11px] text-white/55 underline-offset-2 hover:text-white hover:underline transition-colors">
                     Start over
                   </button>
+
+                  <div className="ml-auto flex items-center gap-2">
+                    <button type="button" onClick={onToggleSave}
+                      aria-pressed={isSaved}
+                      title={isSaved ? "Saved to your looks" : "Save to your looks"}
+                      className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] backdrop-blur-sm transition-colors ${isSaved ? "border-clay bg-clay text-cream" : "border-white/40 bg-white/15 text-white hover:bg-white/25"}`}>
+                      <span>{isSaved ? "♥" : "♡"}</span> {isSaved ? "Saved" : "Save"}
+                    </button>
+                    <button type="button" onClick={downloadRender} disabled={downloading}
+                      title="Download image"
+                      className="flex items-center gap-1.5 rounded-full border border-white/40 bg-white/15 px-3 py-1 text-[11px] text-white backdrop-blur-sm hover:bg-white/25 transition-colors disabled:opacity-60">
+                      <span>⤓</span> {downloading ? "Saving…" : "Download"}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -397,9 +444,16 @@ export default function RenderStage({
             )}
           </div>
 
+          <p className="mb-4 text-xs leading-relaxed text-ink/50">
+            Start from one of our styles, or skip them entirely and just describe the look you want —
+            your description leads the design.
+          </p>
+
           {/* Style preview cards — thumbnail + what the look produces */}
           <div className="mb-4">
-            <p className="mb-2 text-xs text-ink/50">Choose a style</p>
+            <p className="mb-2 text-xs text-ink/50">
+              Start from a style <span className="text-ink/30">(optional)</span>
+            </p>
             <div className="grid grid-cols-2 gap-2.5">
               {STYLES.map((s) => {
                 const selected = s.id === draftStyleId;
@@ -432,7 +486,7 @@ export default function RenderStage({
 
           {/* Description */}
           <div className="mb-4">
-            <p className="mb-2 text-xs text-ink/50">Describe your vision <span className="text-ink/30">(optional)</span></p>
+            <p className="mb-2 text-xs text-ink/50">Describe your vision</p>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}

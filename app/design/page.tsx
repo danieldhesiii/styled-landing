@@ -11,6 +11,7 @@ import ProductBrowser from "@/components/design/ProductBrowser";
 import BasketPanel from "@/components/design/BasketPanel";
 import CheckoutStep from "@/components/design/CheckoutStep";
 import HowItWorks from "@/components/design/HowItWorks";
+import SavedLooks, { type SavedLook } from "@/components/design/SavedLooks";
 import { useShopAvailability } from "@/components/availability/useAvailability";
 
 type Step = "studio" | "checkout";
@@ -19,6 +20,8 @@ export default function DesignPage() {
   const [step, setStep] = useState<Step>("studio");
   const [showHowTo, setShowHowTo] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
+  const [savedLooks, setSavedLooks] = useState<SavedLook[]>([]);
 
   const [brief, setBrief] = useState<Brief>({
     venueId: "manor_orangery",
@@ -91,6 +94,47 @@ export default function DesignPage() {
     }
   }, [brief, basket, renderId, restored]);
 
+  // Saved looks (favourites) — the renders themselves live server-side under the
+  // guest's session; here we just track which ones the couple has kept.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("styled:savedLooks");
+      if (raw) setSavedLooks(JSON.parse(raw) as SavedLook[]);
+    } catch {
+      // Ignore corrupt state.
+    }
+  }, []);
+
+  function persistSaved(next: SavedLook[]) {
+    setSavedLooks(next);
+    try {
+      localStorage.setItem("styled:savedLooks", JSON.stringify(next));
+    } catch {
+      // Non-fatal.
+    }
+  }
+
+  const isCurrentSaved = renderId !== null && savedLooks.some((l) => l.id === renderId);
+
+  function toggleSaveCurrent() {
+    if (!renderId) return;
+    if (savedLooks.some((l) => l.id === renderId)) {
+      persistSaved(savedLooks.filter((l) => l.id !== renderId));
+    } else {
+      persistSaved([
+        { id: renderId, styleId: brief.styleId, styleName: style.name, savedAt: Date.now() },
+        ...savedLooks,
+      ]);
+    }
+  }
+
+  function loadSavedLook(look: SavedLook, url: string) {
+    // Set the style without wiping the render (patchBrief would clear it).
+    setBrief((b) => ({ ...b, styleId: look.styleId }));
+    showRender({ id: look.id, url });
+    setShowSaved(false);
+  }
+
   // Availability per supplier for the couple's wedding date.
   const shopAvailability = useShopAvailability(brief.weddingDate, brief.guestCount);
 
@@ -136,6 +180,18 @@ export default function DesignPage() {
             Styled<span className="text-clay">.</span>
           </Link>
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => { setShowSaved(true); setShowSettings(false); }}
+              className="flex items-center gap-1.5 rounded-full border border-sand px-4 py-1.5 text-xs text-ink/50 hover:border-clay/50 hover:text-ink transition-colors"
+            >
+              <span className="text-[11px] text-clay">♥</span> Saved looks
+              {savedLooks.length > 0 && (
+                <span className="ml-0.5 rounded-full bg-clay/15 px-1.5 text-[10px] text-clay">
+                  {savedLooks.length}
+                </span>
+              )}
+            </button>
             <button
               type="button"
               onClick={() => { setShowHowTo(true); setShowSettings(false); }}
@@ -260,6 +316,8 @@ export default function DesignPage() {
                     setFocusedItemId(id);
                     productBrowserRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
+                  isSaved={isCurrentSaved}
+                  onToggleSave={toggleSaveCurrent}
                 />
 
                 {/* Products — always visible below the render */}
@@ -311,6 +369,16 @@ export default function DesignPage() {
 
       {/* How it works drawer */}
       {showHowTo && <HowItWorks onClose={() => setShowHowTo(false)} />}
+
+      {/* Saved looks drawer */}
+      {showSaved && (
+        <SavedLooks
+          looks={savedLooks}
+          onClose={() => setShowSaved(false)}
+          onLoad={loadSavedLook}
+          onUnsave={(id) => persistSaved(savedLooks.filter((l) => l.id !== id))}
+        />
+      )}
     </div>
   );
 }
