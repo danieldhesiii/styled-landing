@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Category, SampleVenue, StylePreset } from "@/lib/types";
+import type { SampleVenue, StylePreset } from "@/lib/types";
 import { STYLES, getStyle } from "@/lib/styles";
 import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
-import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 
 export interface RenderRef {
   id: string;
@@ -15,6 +14,8 @@ interface Props {
   venue: SampleVenue;
   uploadedImages: string[];
   style: StylePreset;
+  /** Display name for the committed look — "Your design" when no preset was used. */
+  styleName: string;
   renderUrl: string | null;
   renderId: string | null;
   versions: RenderRef[];
@@ -22,10 +23,12 @@ interface Props {
   guestCount: number;
   isSaved: boolean;
   onRender: (render: RenderRef | null) => void;
+  /** A style id, or "none" for a description-led look. */
   onStyle: (id: string) => void;
   onVenue: (venueId: string) => void;
   onAddAngle: (url: string) => void;
-  onShopItem: (itemId: string) => void;
+  /** Reveal the "Shop this look" list of pieces that make up this render. */
+  onShopLook: () => void;
   onToggleSave: () => void;
 }
 
@@ -42,22 +45,11 @@ const STYLE_BLURBS: Record<string, string> = {
     "Loose meadow wildflowers, timber trestle tables, crossback chairs and festoon lights overhead.",
 };
 
-// Approximate positions (% of image width/height) per category.
-const HOTSPOT_POSITIONS: Partial<Record<Category, { x: number; y: number }>> = {
-  backdrops:       { x: 50, y: 22 },
-  florals:         { x: 18, y: 55 },
-  centrepieces:    { x: 50, y: 65 },
-  furniture:       { x: 35, y: 76 },
-  lighting:        { x: 72, y: 12 },
-  signage:         { x: 82, y: 44 },
-  linen_tableware: { x: 62, y: 72 },
-  cake_favours:    { x: 74, y: 66 },
-};
-
 export default function RenderStage({
   venue,
   uploadedImages,
   style,
+  styleName,
   renderUrl,
   renderId,
   versions,
@@ -68,21 +60,21 @@ export default function RenderStage({
   onStyle,
   onVenue: _onVenue,
   onAddAngle,
-  onShopItem,
+  onShopLook,
   onToggleSave,
 }: Props) {
-  const { itemsForCategory } = useCatalogue();
   const [description, setDescription] = useState("");
   const [sending, setSending] = useState(false);
   const [showGenPanel, setShowGenPanel] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [primaryPhoto, setPrimaryPhoto] = useState(0);
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [showOriginal, setShowOriginal] = useState(false);
   // The style selected in the panel for the NEXT generation. Kept separate from
   // the committed style so browsing presets doesn't wipe the current render.
   const [draftStyleId, setDraftStyleId] = useState(style.id);
+  const [improving, setImproving] = useState(false);
+  const [improveError, setImproveError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const primary = Math.min(primaryPhoto, Math.max(0, uploadedImages.length - 1));
@@ -114,26 +106,34 @@ export default function RenderStage({
     }
   }, [renderUrl]);
 
-  // Build hotspot dots from style-matched catalogue items (one per category).
-  // We use the catalogue rather than the basket so there are always dots on a render
-  // — the user clicks them to discover what's available to buy.
-  const hotspots = (() => {
-    if (!renderUrl || showOriginal) return [];
-    const result: { id: string; name: string; x: number; y: number }[] = [];
-    for (const [cat, pos] of Object.entries(HOTSPOT_POSITIONS) as [Category, { x: number; y: number }][]) {
-      // Prefer basket items for this category, fall back to best style-matched catalogue item.
-      const basketItemInCat = itemIds
-        .map((id) => itemsForCategory(cat).find((i) => i.id === id))
-        .find(Boolean);
-      const catalogueItem =
-        basketItemInCat ??
-        itemsForCategory(cat).find((i) => i.styles.includes(style.id)) ??
-        itemsForCategory(cat)[0];
-      if (!catalogueItem) continue;
-      result.push({ id: catalogueItem.id, name: catalogueItem.name, x: pos.x, y: pos.y });
+  // Ask the server to rewrite the couple's rough note into a fuller styling
+  // brief, then drop it back into the box for them to tweak before generating.
+  async function improveDescription() {
+    const current = description.trim();
+    if (!current || improving) return;
+    setImproving(true);
+    setImproveError(null);
+    try {
+      const res = await fetch("/api/improve-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: current, styleId: draftStyleId || "none" }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) {
+        setImproveError(data?.error ?? "Couldn't improve that just now — try again.");
+      } else if (typeof data.prompt === "string" && data.prompt.trim()) {
+        setDescription(data.prompt.trim());
+        if (data.changed === false) {
+          setImproveError("That already reads well — tweak it or generate when ready.");
+        }
+      }
+    } catch {
+      setImproveError("Couldn't reach the writing helper — check your connection.");
+    } finally {
+      setImproving(false);
     }
-    return result;
-  })();
+  }
 
   async function generate(useStyleId: string) {
     if (sending) return;
@@ -259,52 +259,15 @@ export default function RenderStage({
 
             {/* Top-left label */}
             <div className="absolute left-3 top-3 rounded-full bg-ink/55 px-3 py-1 text-[11px] text-cream backdrop-blur-sm">
-              {showOriginal ? "Your venue" : renderUrl ? `${style.name} · AI render` : "Your venue"}
+              {showOriginal ? "Your venue · before" : renderUrl ? `${styleName} · AI render` : "Your venue"}
             </div>
-
-            {/* Before/after toggle — only when render AND original both exist */}
-            {renderUrl && originalImage && (
-              <div className="absolute left-1/2 top-3 -translate-x-1/2">
-                <div className="flex overflow-hidden rounded-full border border-white/30 bg-ink/50 backdrop-blur-sm text-[11px] text-white">
-                  <button
-                    type="button"
-                    onClick={() => setShowOriginal(false)}
-                    className={`px-3 py-1 transition-colors ${!showOriginal ? "bg-white/20 font-medium" : "hover:bg-white/10"}`}
-                  >
-                    Styled
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowOriginal(true)}
-                    className={`px-3 py-1 transition-colors ${showOriginal ? "bg-white/20 font-medium" : "hover:bg-white/10"}`}
-                  >
-                    Original
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Version thumbnails top-right */}
-            {versions.length > 1 && (
-              <div className="absolute right-3 top-3 flex gap-1.5">
-                {versions.map((v, i) => (
-                  <button key={v.id} type="button" onClick={() => onRender(v)}
-                    aria-pressed={v.id === renderId} title={`Version ${i + 1}`}
-                    className={`h-9 w-9 overflow-hidden rounded-lg border-2 transition-colors ${v.id === renderId ? "border-clay" : "border-white/50 hover:border-white"}`}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={v.url} alt="" className="h-full w-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
 
             {/* Style badge + actions — only on the styled render */}
             {renderUrl && !showOriginal && (
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/55 to-transparent px-4 pb-3 pt-8">
                 <div className="flex items-center gap-3">
                   <span className="rounded-full border border-white/40 bg-white/15 px-3 py-1 text-[11px] text-white backdrop-blur-sm">
-                    {style.name}
+                    {styleName}
                   </span>
                   <button type="button" onClick={() => onRender(null)}
                     className="text-[11px] text-white/55 underline-offset-2 hover:text-white hover:underline transition-colors">
@@ -312,6 +275,11 @@ export default function RenderStage({
                   </button>
 
                   <div className="ml-auto flex items-center gap-2">
+                    <button type="button" onClick={onShopLook}
+                      title="See the pieces that make up this look"
+                      className="flex items-center gap-1.5 rounded-full border border-clay bg-clay px-3.5 py-1 text-[11px] font-medium text-cream shadow-sm hover:bg-clay/90 transition-colors">
+                      <span>🛍</span> Shop this look
+                    </button>
                     <button type="button" onClick={onToggleSave}
                       aria-pressed={isSaved}
                       title={isSaved ? "Saved to your looks" : "Save to your looks"}
@@ -327,33 +295,6 @@ export default function RenderStage({
                 </div>
               </div>
             )}
-
-            {/* ── ITEM HOTSPOTS (styled view only) ───────────────── */}
-            {hotspots.map((h) => (
-              <div
-                key={h.id}
-                className="absolute"
-                style={{ left: `${h.x}%`, top: `${h.y}%`, transform: "translate(-50%,-50%)" }}
-              >
-                {hoveredItem === h.id && (
-                  <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-xl bg-ink px-3 py-2 text-xs text-cream shadow-lg z-10">
-                    <p className="font-medium">{h.name}</p>
-                    <p className="mt-0.5 text-cream/60">Click to view in shop →</p>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onMouseEnter={() => setHoveredItem(h.id)}
-                  onMouseLeave={() => setHoveredItem(null)}
-                  onClick={() => onShopItem(h.id)}
-                  className="relative flex h-8 w-8 items-center justify-center"
-                  aria-label={`View ${h.name} in shop`}
-                >
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/50 opacity-75" />
-                  <span className="relative flex h-4 w-4 rounded-full border-2 border-white bg-clay shadow-md" />
-                </button>
-              </div>
-            ))}
 
             {/* Generating overlay */}
             {sending && (
@@ -394,6 +335,69 @@ export default function RenderStage({
           </div>
         )}
       </div>
+
+      {/* ── COMPARE / VERSIONS BAR ─────────────────────────────────── */}
+      {/* A clear filmstrip: the original venue photo plus every look you've made.
+          Tap any one to view it full-size above — this is the compare & history. */}
+      {renderUrl && (
+        <div className="border-t border-sand px-4 py-3">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="text-xs font-medium text-ink/50">Compare</span>
+            <span className="text-[11px] text-ink/35">
+              tap to view the original or any version
+            </span>
+          </div>
+          <div className="flex items-end gap-2.5 overflow-x-auto pb-1">
+            {/* Original */}
+            {originalImage && (
+              <button
+                type="button"
+                onClick={() => setShowOriginal(true)}
+                aria-pressed={showOriginal}
+                className="shrink-0 text-center"
+                title="Your original venue"
+              >
+                <span
+                  className={`block h-14 w-20 overflow-hidden rounded-lg border-2 transition-colors ${showOriginal ? "border-clay" : "border-sand hover:border-clay/50"}`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={originalImage} alt="Original venue" className="h-full w-full object-cover" />
+                </span>
+                <span className={`mt-1 block text-[10px] ${showOriginal ? "text-clay" : "text-ink/45"}`}>
+                  Original
+                </span>
+              </button>
+            )}
+            {/* Each generated version, oldest first */}
+            {versions.map((v, i) => {
+              const active = !showOriginal && v.id === renderId;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => {
+                    setShowOriginal(false);
+                    onRender(v);
+                  }}
+                  aria-pressed={active}
+                  className="shrink-0 text-center"
+                  title={`Version ${i + 1}`}
+                >
+                  <span
+                    className={`block h-14 w-20 overflow-hidden rounded-lg border-2 transition-colors ${active ? "border-clay" : "border-sand hover:border-clay/50"}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={v.url} alt={`Version ${i + 1}`} className="h-full w-full object-cover" />
+                  </span>
+                  <span className={`mt-1 block text-[10px] ${active ? "text-clay" : "text-ink/45"}`}>
+                    Version {i + 1}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── ROOM PHOTO ROW ─────────────────────────────────────────── */}
       <div className="border-t border-sand px-4 py-3">
@@ -445,64 +449,85 @@ export default function RenderStage({
           </div>
 
           <p className="mb-4 text-xs leading-relaxed text-ink/50">
-            Start from one of our styles, or skip them entirely and just describe the look you want —
-            your description leads the design.
+            Just describe the look you want in your own words — colours, flowers, lighting, layout,
+            anything. You don't have to pick a style; your description leads the design.
           </p>
 
-          {/* Style preview cards — thumbnail + what the look produces */}
+          {/* Description — the primary input */}
           <div className="mb-4">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-medium text-ink/60">Describe your dream setup</p>
+              <button
+                type="button"
+                onClick={improveDescription}
+                disabled={improving || sending || !description.trim()}
+                className="flex items-center gap-1 rounded-full border border-sand px-2.5 py-1 text-[11px] text-clay hover:border-clay/60 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+                title="Let us expand your description into a clearer brief"
+              >
+                <span>✨</span> {improving ? "Improving…" : "Improve my description"}
+              </button>
+            </div>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              placeholder="e.g. blush and ivory roses with lots of trailing greenery, round tables down the middle, warm fairy lights across the ceiling, gold candlesticks and a floral arch at the entrance…"
+              className="w-full resize-none rounded-xl border border-sand bg-cream/50 px-3 py-2.5 text-sm text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-clay/30"
+            />
+            <p className="mt-1.5 text-[11px] text-ink/40">
+              {improveError
+                ? <span className="text-clay">{improveError}</span>
+                : "The more detail about your colours, flowers, lighting and layout, the better the result. Tap ✨ to have us flesh it out for you."}
+            </p>
+          </div>
+
+          {/* Optional style starting point — compact chips, not required */}
+          <div className="mb-5">
             <p className="mb-2 text-xs text-ink/50">
               Start from a style <span className="text-ink/30">(optional)</span>
             </p>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setDraftStyleId("")}
+                aria-pressed={draftStyleId === ""}
+                className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${draftStyleId === "" ? "border-clay bg-clay/10 font-medium text-ink" : "border-sand text-ink/60 hover:border-clay/50"}`}
+              >
+                No style — just my description
+              </button>
               {STYLES.map((s) => {
                 const selected = s.id === draftStyleId;
                 return (
-                  <button key={s.id} type="button" onClick={() => setDraftStyleId(s.id)}
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setDraftStyleId(s.id)}
                     aria-pressed={selected}
-                    className={`group overflow-hidden rounded-xl border text-left transition-colors ${selected ? "border-clay ring-2 ring-clay/30" : "border-sand hover:border-clay/50"}`}>
-                    <div className="relative aspect-[4/3] bg-sand/40">
-                      {s.render && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={s.render} alt={s.name} className="h-full w-full object-cover" />
-                      )}
-                      {selected && (
-                        <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-clay text-[11px] text-cream shadow">
-                          ✓
-                        </span>
-                      )}
-                    </div>
-                    <div className="px-2.5 py-2">
-                      <p className={`text-xs font-medium ${selected ? "text-ink" : "text-ink/70"}`}>{s.name}</p>
-                      <p className="mt-0.5 text-[11px] leading-snug text-ink/45">
-                        {STYLE_BLURBS[s.id] ?? s.tagline}
-                      </p>
-                    </div>
+                    title={STYLE_BLURBS[s.id] ?? s.tagline}
+                    className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${selected ? "border-clay bg-clay/10 font-medium text-ink" : "border-sand text-ink/60 hover:border-clay/50"}`}
+                  >
+                    {s.name}
                   </button>
                 );
               })}
             </div>
+            {draftStyleId !== "" && (
+              <p className="mt-2 text-[11px] leading-snug text-ink/45">
+                {STYLE_BLURBS[draftStyleId] ?? getStyle(draftStyleId).tagline}
+              </p>
+            )}
           </div>
 
-          {/* Description */}
-          <div className="mb-4">
-            <p className="mb-2 text-xs text-ink/50">Describe your vision</p>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              placeholder="e.g. round tables down the middle, a floral arch at the entrance, fairy lights across the ceiling, a stage along the back wall…"
-              className="w-full resize-none rounded-xl border border-sand bg-cream/50 px-3 py-2.5 text-sm text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-clay/30"
-            />
-            <p className="mt-1.5 text-[11px] text-ink/40">
-              The more detail you give about your layout, lighting and focal points, the better the result.
-            </p>
-          </div>
-
-          <button type="button" onClick={() => generate(draftStyleId)}
-            disabled={sending}
-            className="w-full rounded-full bg-ink py-3 text-sm font-medium text-cream hover:bg-ink/90 disabled:bg-ink/30 transition-colors">
-            {sending ? "Generating…" : renderUrl ? `Generate ${getStyle(draftStyleId).name} →` : "Generate →"}
+          <button type="button" onClick={() => generate(draftStyleId || "none")}
+            disabled={sending || (draftStyleId === "" && !description.trim())}
+            className="w-full rounded-full bg-ink py-3 text-sm font-medium text-cream hover:bg-ink/90 disabled:bg-ink/30 disabled:cursor-not-allowed transition-colors">
+            {sending
+              ? "Generating…"
+              : draftStyleId === ""
+                ? "Generate from my description →"
+                : renderUrl
+                  ? `Generate ${getStyle(draftStyleId).name} →`
+                  : "Generate →"}
           </button>
         </div>
       ) : null}

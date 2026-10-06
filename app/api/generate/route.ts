@@ -72,11 +72,18 @@ export async function POST(req: Request) {
     return fail(400, "Invalid request body.");
   }
 
+  // "none" means description-led: the couple skipped the preset styles and the
+  // design comes entirely from their own description.
   const styleId = typeof body.styleId === "string" ? body.styleId : "garden_romance";
-  if (!STYLES.some((s) => s.id === styleId)) return fail(400, "Unknown style.");
-  const style = getStyle(styleId);
+  const descriptionLed = styleId === "none";
+  if (!descriptionLed && !STYLES.some((s) => s.id === styleId)) return fail(400, "Unknown style.");
+  const style = descriptionLed ? null : getStyle(styleId);
 
   const brief = cleanBrief(body.prompt);
+  // Description-led renders need a description to work from.
+  if (descriptionLed && !brief) {
+    return fail(422, "Add a description of the look you want, or pick a style to start from.");
+  }
   const sampleVenueId = typeof body.venueId === "string" ? body.venueId : "";
   const useUpload = Array.isArray(body.images) && body.images.length > 0;
   const primaryIndex = typeof body.primaryIndex === "number" ? body.primaryIndex : 0;
@@ -97,7 +104,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       pending: true,
-      imageUrl: style.render ?? null,
+      imageUrl: style?.render ?? STYLES[0].render ?? null,
       message:
         "Render engine not connected yet. Showing an illustrative look for now — your brief has been captured.",
     });
@@ -125,7 +132,7 @@ export async function POST(req: Request) {
   let depth = 0;
   let briefId: string | null = null;
   let parentId: string | null = null;
-  let renderStyleId = styleId;
+  let renderStyleId: string | null = descriptionLed ? null : styleId;
   let renderSampleVenueId: string | null = null;
 
   if (parentRenderId) {
@@ -142,7 +149,7 @@ export async function POST(req: Request) {
     depth = parent.depth + 1;
     briefId = parent.briefId;
     parentId = parent.id;
-    renderStyleId = parent.styleId ?? styleId;
+    renderStyleId = parent.styleId ?? renderStyleId;
     renderSampleVenueId = parent.sampleVenueId;
   } else {
     try {
@@ -186,7 +193,7 @@ export async function POST(req: Request) {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    const fields = { style_id: styleId, guest_count: guestCount, venue_id: base.dbVenueId };
+    const fields = { style_id: renderStyleId, guest_count: guestCount, venue_id: base.dbVenueId };
     if (existing) {
       briefId = existing.id as string;
       await supabase.from("briefs").update(fields).eq("id", briefId);

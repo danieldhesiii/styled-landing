@@ -6,6 +6,8 @@ export interface SavedLook {
   id: string;
   styleId: string;
   styleName: string;
+  /** The original venue/room photo this look was styled from, for before/after. */
+  originalUrl?: string;
   savedAt: number;
 }
 
@@ -20,6 +22,8 @@ export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) 
   // Signed URLs expire, so fetch a fresh one per saved render on open.
   const [urls, setUrls] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(true);
+  // Which cards are currently showing their "before" (original) image.
+  const [comparing, setComparing] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -86,16 +90,48 @@ export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) 
             <div className="grid grid-cols-2 gap-3">
               {looks.map((l) => {
                 const url = urls[l.id];
+                const showingBefore = !!comparing[l.id] && !!l.originalUrl;
                 return (
                   <div key={l.id} className="overflow-hidden rounded-xl border border-sand bg-white shadow-sm">
                     <button type="button" onClick={() => url && onLoad(l, url)} disabled={!url}
-                      className="relative block aspect-[4/3] w-full bg-sand/40 disabled:cursor-not-allowed">
+                      className="relative block aspect-[4/3] w-full bg-sand/40 disabled:cursor-not-allowed"
+                      title="Open this look in the studio">
                       {url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={url} alt={l.styleName} className="h-full w-full object-cover" />
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={showingBefore ? l.originalUrl : url}
+                            alt={l.styleName}
+                            className="h-full w-full object-cover"
+                          />
+                          <span className="absolute left-1.5 top-1.5 rounded-full bg-ink/55 px-2 py-0.5 text-[9px] text-cream backdrop-blur-sm">
+                            {showingBefore ? "Before" : "After"}
+                          </span>
+                        </>
                       ) : (
                         <span className="flex h-full items-center justify-center text-[11px] text-ink/40">
                           {loading ? "Loading…" : "Unavailable"}
+                        </span>
+                      )}
+                      {/* Before/after toggle — only if we kept the original. */}
+                      {url && l.originalUrl && (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setComparing((c) => ({ ...c, [l.id]: !c[l.id] }));
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setComparing((c) => ({ ...c, [l.id]: !c[l.id] }));
+                            }
+                          }}
+                          className="absolute bottom-1.5 right-1.5 cursor-pointer rounded-full border border-white/40 bg-ink/55 px-2 py-0.5 text-[9px] text-cream backdrop-blur-sm hover:bg-ink/75 transition-colors"
+                        >
+                          {showingBefore ? "See after" : "See before"}
                         </span>
                       )}
                     </button>

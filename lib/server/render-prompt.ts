@@ -42,7 +42,7 @@ function referenceNote(photoCount: number): string | null {
 }
 
 export function buildRenderPrompt(opts: {
-  style: StylePreset;
+  style: StylePreset | null;
   brief: string;
   guestCount: number;
   items: CatalogueItem[];
@@ -68,7 +68,17 @@ export function buildRenderPrompt(opts: {
   }
 
   parts.push(KEEP);
-  parts.push(`Style: ${STYLE_DIRECTION[style.id] ?? `${style.name}. ${style.tagline}.`}`);
+  // The couple can either start from one of our preset looks or skip them and
+  // describe their own decoration. When there's no preset, their description
+  // below is the whole design direction — so only add style wording if a preset
+  // was chosen, and treat the free text as the decoration brief in both cases.
+  if (style) {
+    parts.push(`Style: ${STYLE_DIRECTION[style.id] ?? `${style.name}. ${style.tagline}.`}`);
+  } else {
+    parts.push(
+      "There is no preset style. Design the decor entirely from the couple's own description below — follow its colours, flowers, materials, lighting and overall mood exactly, and fill in tasteful, cohesive wedding styling for anything they don't specify."
+    );
+  }
   parts.push(
     `The wedding is for about ${guestCount} guests, which is roughly ${tablesFor(guestCount)} tables. Show as many tables as fit the room naturally with sensible spacing and a clear walkway; do not cram the room.`
   );
@@ -85,7 +95,7 @@ export function buildRenderPrompt(opts: {
 
   if (brief) {
     parts.push(
-      `The couple's own wishes, to follow wherever they are physically sensible in this room: "${brief}"`
+      `The couple's own description of the decoration and look they want — treat this as the leading design direction and follow its colours, florals, materials, lighting and mood wherever they are physically sensible in this room: "${brief}"`
     );
   }
 

@@ -45,6 +45,10 @@ export const env = {
   get imageModel() {
     return process.env.IMAGE_MODEL || "gpt-image-1";
   },
+  // Text model used for the "improve my description" helper in the studio.
+  get textModel() {
+    return process.env.TEXT_MODEL || "gpt-4o-mini";
+  },
   get renderQuality() {
     return process.env.RENDER_QUALITY || "medium"; // low | medium | high
   },

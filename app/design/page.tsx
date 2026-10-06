@@ -36,7 +36,7 @@ export default function DesignPage() {
   // Renders made for the current look (oldest first) and which one is showing.
   const [versions, setVersions] = useState<RenderRef[]>([]);
   const [renderId, setRenderId] = useState<string | null>(null);
-  const [focusedItemId, setFocusedItemId] = useState<string | undefined>(undefined);
+  const [shopLookSignal, setShopLookSignal] = useState(0);
   const [restored, setRestored] = useState(false);
   const productBrowserRef = useRef<HTMLDivElement>(null);
   const currentRender = versions.find((v) => v.id === renderId) ?? null;
@@ -122,7 +122,13 @@ export default function DesignPage() {
       persistSaved(savedLooks.filter((l) => l.id !== renderId));
     } else {
       persistSaved([
-        { id: renderId, styleId: brief.styleId, styleName: style.name, savedAt: Date.now() },
+        {
+          id: renderId,
+          styleId: brief.styleId,
+          styleName,
+          originalUrl: originalImage ?? undefined,
+          savedAt: Date.now(),
+        },
         ...savedLooks,
       ]);
     }
@@ -140,6 +146,10 @@ export default function DesignPage() {
 
   const venue = getVenue(brief.venueId);
   const style = getStyle(brief.styleId);
+  // "none" is a description-led look with no preset; show a neutral name for it.
+  const styleName = brief.styleId === "none" ? "Your design" : style.name;
+  // The "before" image a render is compared against / saved alongside.
+  const originalImage = brief.uploadedImages[0] ?? venue.image ?? null;
 
   const patchBrief = (patch: Partial<Brief>) => {
     // A render is only valid for the venue, photos and style it was made from.
@@ -301,6 +311,7 @@ export default function DesignPage() {
                   venue={headerVenue}
                   uploadedImages={brief.uploadedImages}
                   style={style}
+                  styleName={styleName}
                   renderUrl={currentRender?.url ?? null}
                   renderId={renderId}
                   versions={versions}
@@ -312,8 +323,8 @@ export default function DesignPage() {
                   onAddAngle={(url) =>
                     setBrief((b) => ({ ...b, uploadedImages: [...b.uploadedImages, url] }))
                   }
-                  onShopItem={(id) => {
-                    setFocusedItemId(id);
+                  onShopLook={() => {
+                    setShopLookSignal((n) => n + 1);
                     productBrowserRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
                   isSaved={isCurrentSaved}
@@ -327,7 +338,7 @@ export default function DesignPage() {
                     basket={basket}
                     weddingDate={brief.weddingDate}
                     availability={shopAvailability}
-                    focusedItemId={focusedItemId}
+                    lookSignal={shopLookSignal}
                     onWeddingDate={(d) => patchBrief({ weddingDate: d })}
                     onAdd={addItem}
                     onRemove={removeItem}
