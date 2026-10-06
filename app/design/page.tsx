@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { BasketLine, CatalogueItem } from "@/lib/types";
 import { getStyle, getVenue } from "@/lib/styles";
@@ -33,6 +33,8 @@ export default function DesignPage() {
   // Renders made for the current look (oldest first) and which one is showing.
   const [versions, setVersions] = useState<RenderRef[]>([]);
   const [renderId, setRenderId] = useState<string | null>(null);
+  const [focusedItemId, setFocusedItemId] = useState<string | undefined>(undefined);
+  const productBrowserRef = useRef<HTMLDivElement>(null);
   const currentRender = versions.find((v) => v.id === renderId) ?? null;
 
   function showRender(render: RenderRef | null) {
@@ -229,15 +231,20 @@ export default function DesignPage() {
                   onAddAngle={(url) =>
                     setBrief((b) => ({ ...b, uploadedImages: [...b.uploadedImages, url] }))
                   }
+                  onShopItem={(id) => {
+                    setFocusedItemId(id);
+                    productBrowserRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
                 />
 
                 {/* Products — always visible below the render */}
-                <div className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
+                <div ref={productBrowserRef} className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
                   <ProductBrowser
                     styleId={brief.styleId}
                     basket={basket}
                     weddingDate={brief.weddingDate}
                     availability={shopAvailability}
+                    focusedItemId={focusedItemId}
                     onWeddingDate={(d) => patchBrief({ weddingDate: d })}
                     onAdd={addItem}
                     onRemove={removeItem}

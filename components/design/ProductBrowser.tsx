@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { BasketLine, Category, CatalogueItem } from "@/lib/types";
 import { CATEGORY_META, categoryMeta } from "@/lib/categories";
 import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
@@ -13,6 +13,7 @@ interface Props {
   basket: BasketLine[];
   weddingDate: string;
   availability: ShopAvailability;
+  focusedItemId?: string;
   onWeddingDate: (date: string) => void;
   onAdd: (item: CatalogueItem) => void;
   onRemove: (itemId: string) => void;
@@ -23,11 +24,23 @@ export default function ProductBrowser({
   basket,
   weddingDate,
   availability,
+  focusedItemId,
   onWeddingDate,
   onAdd,
   onRemove,
 }: Props) {
-  const { itemsForCategory } = useCatalogue();
+  const { itemsForCategory, getItem } = useCatalogue();
+
+  useEffect(() => {
+    if (!focusedItemId) return;
+    const item = getItem(focusedItemId);
+    if (!item) return;
+    setCategory(item.category);
+    // Wait for the category switch to render before scrolling.
+    setTimeout(() => {
+      document.getElementById(`item-${focusedItemId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+  }, [focusedItemId, getItem]);
   const [category, setCategory] = useState<Category>("backdrops");
   const [matchOnly, setMatchOnly] = useState(true);
 
@@ -105,10 +118,12 @@ export default function ProductBrowser({
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((item) => {
             const active = inBasket(item.id);
+            const focused = item.id === focusedItemId;
             return (
               <div
                 key={item.id}
-                className="flex flex-col overflow-hidden rounded-2xl border border-sand bg-white shadow-sm"
+                id={`item-${item.id}`}
+                className={`flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-colors ${focused ? "border-clay ring-2 ring-clay/30" : "border-sand"}`}
               >
                 <div
                   className="relative flex aspect-[4/3] items-center justify-center"
