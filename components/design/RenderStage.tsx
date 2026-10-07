@@ -8,6 +8,8 @@ import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
 export interface RenderRef {
   id: string;
   url: string;
+  /** Catalogue item ids that make up this render — the "what's in the picture" list. */
+  itemIds?: string[];
 }
 
 interface Props {
@@ -73,6 +75,11 @@ export default function RenderStage({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [primaryPhoto, setPrimaryPhoto] = useState(0);
   const [showOriginal, setShowOriginal] = useState(false);
+  // "single" shows one image with the before/after filmstrip; "split" shows the
+  // original and the styled render side by side (original left, styled right).
+  const [compareMode, setCompareMode] = useState<"single" | "split">("single");
+  // After a fresh render, nudge the couple towards the Shop-this-look list.
+  const [showShopPrompt, setShowShopPrompt] = useState(false);
   // The style selected in the panel for the NEXT generation. Kept separate from
   // the committed style so browsing presets doesn't wipe the current render.
   const [draftStyleId, setDraftStyleId] = useState(style.id);
@@ -168,10 +175,12 @@ export default function RenderStage({
         if (live.current.venueId !== sentFor.venueId) {
           setShowGenPanel(true);
         } else {
-          onRender({ id: data.renderId, url: done.imageUrl });
+          onRender({ id: data.renderId, url: done.imageUrl, itemIds: done.itemIds });
+          setShowShopPrompt(true);
         }
       } else if (data?.imageUrl) {
         onRender({ id: data.renderId ?? "placeholder", url: data.imageUrl });
+        setShowShopPrompt(true);
       }
     } catch {
       // Silent — user can try again
@@ -180,7 +189,7 @@ export default function RenderStage({
     }
   }
 
-  async function waitForRender(id: string): Promise<{ imageUrl: string }> {
+  async function waitForRender(id: string): Promise<{ imageUrl: string; itemIds?: string[] }> {
     const deadline = Date.now() + 7 * 60 * 1000;
     let failures = 0;
     while (Date.now() < deadline) {
@@ -193,7 +202,8 @@ export default function RenderStage({
         if (++failures >= 4) throw new Error("Connection lost.");
         continue;
       }
-      if (data?.status === "succeeded" && data.imageUrl) return { imageUrl: data.imageUrl };
+      if (data?.status === "succeeded" && data.imageUrl)
+        return { imageUrl: data.imageUrl, itemIds: data.itemIds };
       if (data?.status === "failed" || data?.ok === false) {
         throw new Error(data?.error ?? "Render failed.");
       }
@@ -245,13 +255,113 @@ export default function RenderStage({
 
   // The image to actually display (before/after toggle).
   const displayImage = showOriginal ? originalImage : previewImage;
+  // Side-by-side compare is only possible once we have both a render and an
+  // original to compare it against.
+  const canSplit = !!renderUrl && !!originalImage;
+  const splitView = canSplit && compareMode === "split";
+
+  // Shared overlays, used by both the single and side-by-side image layouts.
+  const generatingOverlay = sending && (
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-ink/50 backdrop-blur-sm">
+      <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+      <p className="text-sm text-white">Generating your look…</p>
+    </div>
+  );
+
+  // A gentle pop-up after a fresh render, pointing the couple at the shop list.
+  const shopPromptCard = showShopPrompt && renderUrl && (
+    <div className="absolute inset-x-0 top-14 z-10 flex justify-center px-4 animate-fade-in">
+      <div className="flex max-w-md items-center gap-3 rounded-2xl border border-sand bg-cream/95 px-4 py-2.5 shadow-xl backdrop-blur">
+        <span className="text-lg">🛍</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium text-ink">Your look is ready</p>
+          <p className="text-[11px] leading-snug text-ink/55">
+            See the pieces in this picture and add the ones you love to your design.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => { setShowShopPrompt(false); onShopLook(); }}
+          className="shrink-0 rounded-full bg-ink px-3 py-1.5 text-[11px] font-medium text-cream hover:bg-ink/90 transition-colors"
+        >
+          Shop this look →
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowShopPrompt(false)}
+          aria-label="Dismiss"
+          className="shrink-0 text-ink/40 hover:text-ink transition-colors"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  );
+
+  // The gradient action bar (Shop / Save / Download) that sits on the styled render.
+  const actionBar = (
+    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/55 to-transparent px-4 pb-3 pt-8">
+      <div className="flex items-center gap-3">
+        <span className="rounded-full border border-white/40 bg-white/15 px-3 py-1 text-[11px] text-white backdrop-blur-sm">
+          {styleName}
+        </span>
+        <button type="button" onClick={() => onRender(null)}
+          className="text-[11px] text-white/55 underline-offset-2 hover:text-white hover:underline transition-colors">
+          Start over
+        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button type="button" onClick={onShopLook}
+            title="See the pieces that make up this look"
+            className="flex items-center gap-1.5 rounded-full border border-clay bg-clay px-3.5 py-1 text-[11px] font-medium text-cream shadow-sm hover:bg-clay/90 transition-colors">
+            <span>🛍</span> Shop this look
+          </button>
+          <button type="button" onClick={onToggleSave}
+            aria-pressed={isSaved}
+            title={isSaved ? "Saved to your looks" : "Save to your looks"}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] backdrop-blur-sm transition-colors ${isSaved ? "border-clay bg-clay text-cream" : "border-white/40 bg-white/15 text-white hover:bg-white/25"}`}>
+            <span>{isSaved ? "♥" : "♡"}</span> {isSaved ? "Saved" : "Save"}
+          </button>
+          <button type="button" onClick={downloadRender} disabled={downloading}
+            title="Download image"
+            className="flex items-center gap-1.5 rounded-full border border-white/40 bg-white/15 px-3 py-1 text-[11px] text-white backdrop-blur-sm hover:bg-white/25 transition-colors disabled:opacity-60">
+            <span>⤓</span> {downloading ? "Saving…" : "Download"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
 
       {/* ── IMAGE ──────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden bg-sand/40">
-        {displayImage ? (
+        {splitView ? (
+          /* ── SIDE-BY-SIDE COMPARE: original left, styled right ─────── */
+          <>
+            <div className="grid grid-cols-2">
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={originalImage!} alt="Your original venue"
+                  className="aspect-video w-full animate-fade-in object-cover" />
+                <div className="absolute left-3 top-3 rounded-full bg-ink/55 px-3 py-1 text-[11px] text-cream backdrop-blur-sm">
+                  Original
+                </div>
+              </div>
+              <div className="relative border-l border-white/50">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={previewImage!} alt="Your styled venue"
+                  className="aspect-video w-full animate-fade-in object-cover" />
+                <div className="absolute right-3 top-3 rounded-full bg-ink/55 px-3 py-1 text-[11px] text-cream backdrop-blur-sm">
+                  Styled · {styleName}
+                </div>
+              </div>
+            </div>
+            {actionBar}
+            {shopPromptCard}
+            {generatingOverlay}
+          </>
+        ) : displayImage ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -267,46 +377,10 @@ export default function RenderStage({
             </div>
 
             {/* Style badge + actions — only on the styled render */}
-            {renderUrl && !showOriginal && (
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/55 to-transparent px-4 pb-3 pt-8">
-                <div className="flex items-center gap-3">
-                  <span className="rounded-full border border-white/40 bg-white/15 px-3 py-1 text-[11px] text-white backdrop-blur-sm">
-                    {styleName}
-                  </span>
-                  <button type="button" onClick={() => onRender(null)}
-                    className="text-[11px] text-white/55 underline-offset-2 hover:text-white hover:underline transition-colors">
-                    Start over
-                  </button>
+            {renderUrl && !showOriginal && actionBar}
 
-                  <div className="ml-auto flex items-center gap-2">
-                    <button type="button" onClick={onShopLook}
-                      title="See the pieces that make up this look"
-                      className="flex items-center gap-1.5 rounded-full border border-clay bg-clay px-3.5 py-1 text-[11px] font-medium text-cream shadow-sm hover:bg-clay/90 transition-colors">
-                      <span>🛍</span> Shop this look
-                    </button>
-                    <button type="button" onClick={onToggleSave}
-                      aria-pressed={isSaved}
-                      title={isSaved ? "Saved to your looks" : "Save to your looks"}
-                      className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] backdrop-blur-sm transition-colors ${isSaved ? "border-clay bg-clay text-cream" : "border-white/40 bg-white/15 text-white hover:bg-white/25"}`}>
-                      <span>{isSaved ? "♥" : "♡"}</span> {isSaved ? "Saved" : "Save"}
-                    </button>
-                    <button type="button" onClick={downloadRender} disabled={downloading}
-                      title="Download image"
-                      className="flex items-center gap-1.5 rounded-full border border-white/40 bg-white/15 px-3 py-1 text-[11px] text-white backdrop-blur-sm hover:bg-white/25 transition-colors disabled:opacity-60">
-                      <span>⤓</span> {downloading ? "Saving…" : "Download"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Generating overlay */}
-            {sending && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-ink/50 backdrop-blur-sm">
-                <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                <p className="text-sm text-white">Generating your look…</p>
-              </div>
-            )}
+            {shopPromptCard}
+            {generatingOverlay}
           </>
         ) : (
           /* ── EMPTY STATE ─────────────────────────────────────────── */
@@ -345,11 +419,29 @@ export default function RenderStage({
           Tap any one to view it full-size above — this is the compare & history. */}
       {renderUrl && (
         <div className="border-t border-sand px-4 py-3">
-          <div className="mb-2 flex items-center gap-2">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium text-ink/50">Compare</span>
             <span className="text-[11px] text-ink/35">
               tap to view · × to remove a version
             </span>
+            {canSplit && (
+              <div className="ml-auto flex overflow-hidden rounded-full border border-sand text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setCompareMode("single")}
+                  className={`px-3 py-1 transition-colors ${compareMode === "single" ? "bg-clay text-cream" : "text-ink/55 hover:text-ink"}`}
+                >
+                  Single
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCompareMode("split")}
+                  className={`px-3 py-1 transition-colors ${compareMode === "split" ? "bg-clay text-cream" : "text-ink/55 hover:text-ink"}`}
+                >
+                  Side by side
+                </button>
+              </div>
+            )}
           </div>
           <div className="flex items-end gap-2.5 overflow-x-auto pb-1">
             {/* Original */}
