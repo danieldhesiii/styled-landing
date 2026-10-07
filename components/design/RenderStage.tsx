@@ -80,6 +80,9 @@ export default function RenderStage({
   const [compareMode, setCompareMode] = useState<"single" | "split">("single");
   // After a fresh render, nudge the couple towards the Shop-this-look list.
   const [showShopPrompt, setShowShopPrompt] = useState(false);
+  // Why a generation didn't happen (declined, failed or timed out), shown to the
+  // couple so a failed render never looks like nothing happened.
+  const [genError, setGenError] = useState<string | null>(null);
   // The style selected in the panel for the NEXT generation. Kept separate from
   // the committed style so browsing presets doesn't wipe the current render.
   const [draftStyleId, setDraftStyleId] = useState(style.id);
@@ -152,6 +155,7 @@ export default function RenderStage({
     // a render only represents the style it was made from).
     onStyle(useStyleId);
     setSending(true);
+    setGenError(null);
     const sentFor = { styleId: useStyleId, venueId: venue.id };
 
     try {
@@ -168,7 +172,7 @@ export default function RenderStage({
           primaryIndex: primary,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
 
       if (res.status === 202 && data?.renderId) {
         const done = await waitForRender(data.renderId);
@@ -181,9 +185,16 @@ export default function RenderStage({
       } else if (data?.imageUrl) {
         onRender({ id: data.renderId ?? "placeholder", url: data.imageUrl });
         setShowShopPrompt(true);
+      } else {
+        // The server declined (e.g. a render is still in flight, a daily limit,
+        // or a bad request). Show why instead of silently doing nothing.
+        setGenError(data?.error ?? "Couldn't start your render. Please try again in a moment.");
+        setShowGenPanel(true);
       }
-    } catch {
-      // Silent — user can try again
+    } catch (err) {
+      // The render itself failed or timed out, or the network dropped — tell the user.
+      setGenError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setShowGenPanel(true);
     } finally {
       setSending(false);
     }
@@ -333,6 +344,18 @@ export default function RenderStage({
 
   return (
     <div className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
+
+      {/* ── ERROR BANNER ───────────────────────────────────────────── */}
+      {genError && (
+        <div className="flex items-start gap-2 border-b border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700">
+          <span aria-hidden>⚠</span>
+          <span className="flex-1 leading-snug">{genError}</span>
+          <button type="button" onClick={() => setGenError(null)} aria-label="Dismiss"
+            className="shrink-0 text-red-400 hover:text-red-700 transition-colors">
+            ×
+          </button>
+        </div>
+      )}
 
       {/* ── IMAGE ──────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden bg-sand/40">
