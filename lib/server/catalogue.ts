@@ -8,6 +8,7 @@ import { createAnonClient } from "@/lib/supabase/anon";
 
 export interface ServerCatalogueItem extends CatalogueItem {
   supplierId: string;
+  supplierLogo?: string;
   updatedAt: string;
 }
 
@@ -30,11 +31,11 @@ interface ProductRow {
   icon: string;
   swatch: string;
   updated_at: string;
-  suppliers: { id: string; name: string; area: string } | null;
+  suppliers: { id: string; name: string; area: string; logo_url: string | null } | null;
 }
 
 const COLUMNS =
-  "id, name, category, slot, unit_price_pence, unit, qty_rule, styles, image, rating, review_count, lead_time_days, stock, capacity, note, icon, swatch, updated_at, suppliers(id, name, area)";
+  "id, name, category, slot, unit_price_pence, unit, qty_rule, styles, image, rating, review_count, lead_time_days, stock, capacity, note, icon, swatch, updated_at, suppliers(id, name, area, logo_url)";
 
 export async function loadCatalogue(): Promise<ServerCatalogueItem[]> {
   const { data, error } = await createAnonClient()
@@ -68,6 +69,7 @@ export async function loadCatalogue(): Promise<ServerCatalogueItem[]> {
       stock: (r.capacity === null ? "made_to_order" : "in_stock") as StockStatus,
       note: r.note ?? undefined,
       supplierId: r.suppliers!.id,
+      supplierLogo: r.suppliers!.logo_url ?? undefined,
       updatedAt: r.updated_at,
     }));
 }

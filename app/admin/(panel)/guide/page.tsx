@@ -114,6 +114,8 @@ export default function GuidePage() {
             <li>A supplier&apos;s <strong>Active</strong> toggle hides or shows <em>all</em> their products at once.</li>
             <li>Each product has its own <strong>Live / Hidden</strong> toggle.</li>
           </ul>
+          <p className="font-medium text-ink">Public profile</p>
+          <p>Every active supplier gets a public page at <strong>/suppliers/&lt;id&gt;</strong>, listed in the <Link href="/suppliers" className="text-clay hover:underline">Meet our suppliers</Link> directory. It shows their logo, area and every live piece — handy to share when onboarding them (&ldquo;here&apos;s your page on Styled&rdquo;). Switching a supplier or product off removes it from there too. Commission is never shown.</p>
         </Section>
 
         <Section id="availability" title="Availability">

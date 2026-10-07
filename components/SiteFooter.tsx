@@ -27,6 +27,7 @@ export default function SiteFooter() {
           </div>
           <div className="flex flex-col gap-2">
             <span className="text-xs uppercase tracking-wide text-ink/40">Suppliers</span>
+            <a href="/suppliers" className="text-ink/70 hover:text-ink">Meet our suppliers</a>
             <a href="/vendors" className="text-ink/70 hover:text-ink">List your business</a>
           </div>
         </nav>
