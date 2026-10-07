@@ -77,10 +77,13 @@ export async function loadItemsById(ids: string[]): Promise<Map<string, ServerCa
   return new Map(all.filter((i) => wanted.has(i.id)).map((i) => [i.id, i]));
 }
 
-// The decor categories that actually appear in a styled room render. We compose
-// a render only from catalogue pieces across these categories, so everything in
-// the picture is real and buyable, and "Shop this look" can list exactly them.
-const LOOK_CATEGORIES: Category[] = [
+// The decor categories that appear in a styled room render. We compose a render
+// only from catalogue pieces across these categories, so everything in the
+// picture is real and buyable, and "Shop this look" can list exactly them. The
+// set depends on what the room is being set up for: a reception has dining
+// tables, centrepieces and tableware; a ceremony has rows of chairs and an aisle
+// but no dining tables, so centrepieces and tableware don't apply.
+const RECEPTION_CATEGORIES: Category[] = [
   "backdrops",
   "florals",
   "centrepieces",
@@ -89,15 +92,24 @@ const LOOK_CATEGORIES: Category[] = [
   "lighting",
   "signage",
 ];
+const CEREMONY_CATEGORIES: Category[] = [
+  "backdrops",
+  "florals",
+  "furniture",
+  "lighting",
+  "signage",
+];
 
 // Choose the catalogue pieces a render will be built from: everything the couple
-// has already chosen, plus one style-matched piece for each decor category they
-// haven't covered — so the picture is a complete look made entirely of real
-// products. With no preset style, the first piece in each category is used.
+// has already chosen, plus one style-matched piece for each relevant decor
+// category they haven't covered — so the picture is a complete look made entirely
+// of real products. With no preset style, the first piece in each category is used.
 export async function selectLookItems(opts: {
   styleId: string | null;
   chosenIds: string[];
+  setting?: "reception" | "ceremony";
 }): Promise<ServerCatalogueItem[]> {
+  const categories = opts.setting === "ceremony" ? CEREMONY_CATEGORIES : RECEPTION_CATEGORIES;
   const all = await loadCatalogue();
   const byId = new Map(all.map((i) => [i.id, i]));
   const chosen = opts.chosenIds
@@ -105,7 +117,7 @@ export async function selectLookItems(opts: {
     .filter((i): i is ServerCatalogueItem => !!i);
   const covered = new Set(chosen.map((i) => i.category));
   const picks = [...chosen];
-  for (const cat of LOOK_CATEGORIES) {
+  for (const cat of categories) {
     if (covered.has(cat)) continue;
     const inCat = all.filter((i) => i.category === cat);
     const match =

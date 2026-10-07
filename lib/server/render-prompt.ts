@@ -24,6 +24,11 @@ const KEEP =
 export const MAX_BRIEF_CHARS = 600;
 export const MAX_ITEMS = 12;
 
+// What the room is being set up for. A reception is the seated meal (round or
+// long dining tables); a ceremony is the "I do" — rows of chairs facing a central
+// aisle with a focal point at the front, and no dining tables.
+export type RenderSetting = "reception" | "ceremony";
+
 // The couple's free text goes into a prompt, so keep it plain and bounded.
 export function cleanBrief(input: unknown): string {
   if (typeof input !== "string") return "";
@@ -46,16 +51,18 @@ export function buildRenderPrompt(opts: {
   brief: string;
   guestCount: number;
   items: CatalogueItem[];
+  setting?: RenderSetting;
   photoCount?: number;
   itemImageCount?: number;
 }): string {
-  const { style, brief, guestCount, items, photoCount = 1, itemImageCount = 0 } = opts;
+  const { style, brief, guestCount, items, setting = "reception", photoCount = 1, itemImageCount = 0 } = opts;
   const parts: string[] = [];
 
+  const subject = photoCount > 1 ? "the first photo of a wedding venue" : "this photo of a wedding venue";
   parts.push(
-    photoCount > 1
-      ? "Restyle the first photo of a wedding venue as a finished wedding reception, set and ready for the day."
-      : "Restyle this photo of a wedding venue as a finished wedding reception, set and ready for the day."
+    setting === "ceremony"
+      ? `Set up ${subject} for a wedding CEREMONY — a finished, photorealistic scene, ready for the couple to marry.`
+      : `Restyle ${subject} as a finished wedding reception, set and ready for the day.`
   );
   const refs = referenceNote(photoCount);
   if (refs) parts.push(refs);
@@ -79,9 +86,15 @@ export function buildRenderPrompt(opts: {
       "There is no preset style. Design the decor entirely from the couple's own description below — follow its colours, flowers, materials, lighting and overall mood exactly, and fill in tasteful, cohesive wedding styling for anything they don't specify."
     );
   }
-  parts.push(
-    `The wedding is for about ${guestCount} guests, which is roughly ${tablesFor(guestCount)} tables. Show as many tables as fit the room naturally with sensible spacing and a clear walkway; do not cram the room.`
-  );
+  if (setting === "ceremony") {
+    parts.push(
+      `Lay the room out for the ceremony: neat rows of chairs all facing forward towards the front of the room, in two blocks with a clear central aisle running down the middle for the couple to walk down. Seat about ${guestCount} guests. At the front, at the head of the aisle, place the ceremony focal point — an arch or floral backdrop where the couple will stand. Do NOT use any dining or banquet tables; this is the ceremony, not the meal.`
+    );
+  } else {
+    parts.push(
+      `The wedding is for about ${guestCount} guests, which is roughly ${tablesFor(guestCount)} tables. Show as many tables as fit the room naturally with sensible spacing and a clear walkway; do not cram the room.`
+    );
+  }
 
   if (items.length > 0) {
     const list = items

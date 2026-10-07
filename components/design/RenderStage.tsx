@@ -86,6 +86,8 @@ export default function RenderStage({
   // The style selected in the panel for the NEXT generation. Kept separate from
   // the committed style so browsing presets doesn't wipe the current render.
   const [draftStyleId, setDraftStyleId] = useState(style.id);
+  // What the room is being set for: the seated reception or the ceremony aisle.
+  const [setting, setSetting] = useState<"reception" | "ceremony">("reception");
   const [improving, setImproving] = useState(false);
   const [improveError, setImproveError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -170,6 +172,7 @@ export default function RenderStage({
           itemIds,
           guestCount,
           primaryIndex: primary,
+          setting,
         }),
       });
       const data = await res.json().catch(() => null);
@@ -582,6 +585,39 @@ export default function RenderStage({
             Just describe the look you want in your own words — colours, flowers, lighting, layout,
             anything. You don't have to pick a style; your description leads the design.
           </p>
+
+          {/* What the room is being set up for */}
+          <div className="mb-4">
+            <p className="mb-2 text-xs text-ink/50">What are we setting up?</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setSetting("reception")}
+                aria-pressed={setting === "reception"}
+                className={`flex-1 rounded-xl border px-3 py-2 text-left transition-colors ${setting === "reception" ? "border-clay bg-clay/10" : "border-sand hover:border-clay/50"}`}
+              >
+                <span className={`block text-xs font-medium ${setting === "reception" ? "text-ink" : "text-ink/70"}`}>
+                  🍽 Reception
+                </span>
+                <span className="mt-0.5 block text-[11px] leading-snug text-ink/45">
+                  Seated meal — dining tables &amp; centrepieces
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSetting("ceremony")}
+                aria-pressed={setting === "ceremony"}
+                className={`flex-1 rounded-xl border px-3 py-2 text-left transition-colors ${setting === "ceremony" ? "border-clay bg-clay/10" : "border-sand hover:border-clay/50"}`}
+              >
+                <span className={`block text-xs font-medium ${setting === "ceremony" ? "text-ink" : "text-ink/70"}`}>
+                  💍 Ceremony
+                </span>
+                <span className="mt-0.5 block text-[11px] leading-snug text-ink/45">
+                  Aisle — rows of chairs facing an arch
+                </span>
+              </button>
+            </div>
+          </div>
 
           {/* Description — the primary input */}
           <div className="mb-4">

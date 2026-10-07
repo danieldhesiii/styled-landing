@@ -52,6 +52,7 @@ interface GenerateRequest {
   guestCount?: unknown;
   primaryIndex?: unknown;
   parentRenderId?: unknown;
+  setting?: unknown;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -94,6 +95,10 @@ export async function POST(req: Request) {
   const parentRenderId = typeof body.parentRenderId === "string" ? body.parentRenderId : null;
   if (parentRenderId && !UUID.test(parentRenderId)) return fail(400, "Invalid render id.");
 
+  // Reception (seated meal) vs ceremony (aisle of chairs). Drives the layout
+  // instruction and which catalogue categories compose the look.
+  const setting: "reception" | "ceremony" = body.setting === "ceremony" ? "ceremony" : "reception";
+
   const itemIds = Array.isArray(body.itemIds)
     ? body.itemIds.filter((x): x is string => typeof x === "string").slice(0, MAX_ITEMS)
     : [];
@@ -123,6 +128,7 @@ export async function POST(req: Request) {
       items = await selectLookItems({
         styleId: descriptionLed ? null : styleId,
         chosenIds: itemIds,
+        setting,
       });
     }
   } catch (err) {
@@ -188,6 +194,7 @@ export async function POST(req: Request) {
       brief,
       guestCount,
       items,
+      setting,
       photoCount: base.images.length,
       itemImageCount: itemImages.length,
     });
