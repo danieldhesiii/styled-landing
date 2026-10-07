@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 
 type Mode = "signup" | "login";
@@ -22,6 +23,9 @@ export default function AuthDialog({ initialMode = "signup", onClose, onAuthed }
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Only portal after mount (document exists), and so SSR doesn't try to.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -80,10 +84,16 @@ export default function AuthDialog({ initialMode = "signup", onClose, onAuthed }
 
   const isSignup = mode === "signup";
 
-  return (
-    <>
-      <div className="fixed inset-0 z-50 bg-ink/40 backdrop-blur-sm" onClick={onClose} aria-hidden />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+  if (!mounted) return null;
+
+  // Portal to <body> so the fixed overlay is relative to the viewport, not the
+  // header (whose backdrop-blur would otherwise pin it to the header strip). The
+  // outer scroll container + min-h-full keeps the whole form reachable on short
+  // screens.
+  return createPortal(
+    <div className="fixed inset-0 z-[60] overflow-y-auto" role="dialog" aria-modal="true">
+      <div className="fixed inset-0 bg-ink/40 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div className="relative flex min-h-full items-center justify-center p-4">
         <form
           onSubmit={submit}
           onClick={(e) => e.stopPropagation()}
@@ -160,6 +170,7 @@ export default function AuthDialog({ initialMode = "signup", onClose, onAuthed }
           </p>
         </form>
       </div>
-    </>
+    </div>,
+    document.body
   );
 }
