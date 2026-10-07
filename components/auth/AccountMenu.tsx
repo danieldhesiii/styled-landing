@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/components/session/useUser";
 import AuthDialog from "@/components/auth/AuthDialog";
@@ -14,6 +14,17 @@ export default function AccountMenu({ onOpenOrders }: { onOpenOrders?: () => voi
   const { isAnonymous, email, loading } = useUser();
   const [authOpen, setAuthOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Staff accounts also get a shortcut into the /admin dashboard.
+  const [isStaff, setIsStaff] = useState(false);
+
+  useEffect(() => {
+    if (!email) { setIsStaff(false); return; }
+    let active = true;
+    fetch("/api/admin/me", { cache: "no-store" })
+      .then((r) => { if (active) setIsStaff(r.ok); })
+      .catch(() => { if (active) setIsStaff(false); });
+    return () => { active = false; };
+  }, [email]);
 
   async function logout() {
     await createClient().auth.signOut();
@@ -50,6 +61,15 @@ export default function AccountMenu({ onOpenOrders }: { onOpenOrders?: () => voi
           <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} aria-hidden />
           <div className="absolute right-0 top-full z-40 mt-2 w-52 overflow-hidden rounded-2xl border border-sand bg-white py-1 shadow-xl">
             <p className="truncate px-4 py-2 text-[11px] text-ink/40">{email}</p>
+            {isStaff && (
+              <a
+                href="/admin"
+                className="flex items-center justify-between px-4 py-2 text-left text-sm text-ink/70 hover:bg-cream hover:text-ink transition-colors"
+              >
+                Admin dashboard
+                <span className="rounded-full bg-ink px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-cream">Staff</span>
+              </a>
+            )}
             {onOpenOrders && (
               <button
                 type="button"
