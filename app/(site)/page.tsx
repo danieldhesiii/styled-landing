@@ -20,8 +20,8 @@ const HOW_IT_WORKS = [
   },
   {
     n: "03",
-    title: "Shop and deliver",
-    body: "Every item in your preview is a real product from a real vendor. Add to your order, pay once, and we coordinate delivery straight to your venue.",
+    title: "Order and deliver",
+    body: "Every item in your preview is a real product from a real vendor. Add it all to one order — we confirm each supplier for your date, you secure it with a single deposit, and we coordinate delivery straight to your venue.",
   },
 ];
 
@@ -44,7 +44,7 @@ const FEATURES = [
   {
     n: "IV",
     title: "One order, door to door",
-    body: "Pay for everything in a single transaction. We coordinate with each vendor and arrange delivery to your venue on your timeline.",
+    body: "Secure everything with a single deposit. We confirm each vendor, coordinate the details and arrange delivery to your venue on your timeline.",
   },
 ];
 
@@ -59,7 +59,7 @@ const FAQS = [
   },
   {
     q: "What happens once I place an order?",
-    a: "Styled coordinates with each vendor in your order, confirms stock and availability, and arranges delivery to your venue on the dates you set. You deal with us, not five different suppliers.",
+    a: "Your order starts as a request. Styled confirms stock and availability with each vendor for your date, then you secure the whole order with a single deposit. We arrange delivery to your venue on the dates you set — you deal with us, not five different suppliers.",
   },
   {
     q: "Where do you deliver?",

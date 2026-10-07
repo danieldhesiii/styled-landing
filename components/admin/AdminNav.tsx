@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/admin/vendors", label: "Vendors", match: (p: string) => p.startsWith("/admin/vendors") },
   { href: "/admin/suppliers", label: "Suppliers", match: (p: string) => p.startsWith("/admin/suppliers") },
   { href: "/admin/availability", label: "Availability", match: (p: string) => p.startsWith("/admin/availability") },
+  { href: "/admin/guide", label: "Guide", match: (p: string) => p.startsWith("/admin/guide") },
 ];
 
 export default function AdminNav({ email }: { email: string }) {
