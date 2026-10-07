@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { adminApi, ago } from "@/lib/admin-client";
 import { vendorCategoryLabel } from "@/lib/vendor-categories";
 
@@ -177,6 +178,11 @@ export default function VendorsPage() {
                     {ACTION_LABEL[s]}
                   </button>
                 ))}
+                {a.status === "accepted" && (
+                  <Link href={supplierSetupHref(a)} className="rounded-full bg-ink px-4 py-1.5 text-sm text-cream hover:bg-ink/90">
+                    Set up as supplier →
+                  </Link>
+                )}
               </div>
             </li>
           ))}
@@ -189,4 +195,13 @@ export default function VendorsPage() {
 // Applicants type "instagram.com/…" as often as a full URL; make the link work.
 function normalizeUrl(url: string): string {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
+// Deep-link to the Suppliers screen with the create form prefilled from the
+// application. Creating the supplier there marks this application accepted.
+function supplierSetupHref(a: Application): string {
+  const q = new URLSearchParams({ new: "1", name: a.business_name, application: a.id });
+  if (a.area) q.set("area", a.area);
+  if (a.email) q.set("email", a.email);
+  return `/admin/suppliers?${q.toString()}`;
 }

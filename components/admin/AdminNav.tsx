@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/admin", label: "Orders", match: (p: string) => p === "/admin" || p.startsWith("/admin/orders") },
   { href: "/admin/accounts", label: "Customers", match: (p: string) => p.startsWith("/admin/accounts") },
   { href: "/admin/vendors", label: "Vendors", match: (p: string) => p.startsWith("/admin/vendors") },
+  { href: "/admin/suppliers", label: "Suppliers", match: (p: string) => p.startsWith("/admin/suppliers") },
   { href: "/admin/availability", label: "Availability", match: (p: string) => p.startsWith("/admin/availability") },
 ];
 
