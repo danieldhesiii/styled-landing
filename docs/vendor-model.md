@@ -160,9 +160,10 @@ it's "pay only for results, at or below market rate."
 
 In rough priority:
 
-1. **Order notifications** — email/SMS to the supplier the moment they have lines to
-   confirm, with a deep link (and ideally one-tap confirm). This is what makes Tier 0
-   genuinely "do nothing but reply." *(Highest priority — closes the loop.)*
+1. **Order notifications** — ✅ *built (email)*: each supplier is emailed automatically
+   when a new order includes their items, with the lines to confirm and a portal link
+   (sent to their contact email + any portal logins; via Resend, logged if no provider
+   is set). Still to add: SMS, and one-tap confirm straight from the email.
 2. **Payouts & statements** — track what each supplier is owed per order, commission
    kept, and pay out (Stripe Connect is the usual tool). Needed before real money
    flows.

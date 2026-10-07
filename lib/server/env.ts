@@ -83,4 +83,19 @@ export const env = {
     const n = Number(process.env.RENDER_COST_PENCE);
     return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
   },
+
+  // Transactional email (supplier order notifications). Optional: without a
+  // Resend API key, emails are logged instead of sent, so local dev and preview
+  // work without a provider. NOTIFY_FROM_EMAIL must be a verified Resend sender
+  // in production.
+  get resendApiKeyIfSet() {
+    return process.env.RESEND_API_KEY || undefined;
+  },
+  get notifyFromEmail() {
+    return process.env.NOTIFY_FROM_EMAIL || "Styled <onboarding@resend.dev>";
+  },
+  // Absolute base URL for links in emails (the portal, order pages).
+  get siteUrl() {
+    return (process.env.NEXT_PUBLIC_SITE_URL || "https://styled-landing-zeta.vercel.app").replace(/\/$/, "");
+  },
 };

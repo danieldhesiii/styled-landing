@@ -6,6 +6,7 @@ import { clientIpHash } from "@/lib/server/limits";
 import { priceBasket, publicQuote } from "@/lib/server/quote";
 import { itemsBookedTooLate, loadOrderView, validateOrderFields } from "@/lib/server/orders";
 import { checkQuantities } from "@/lib/server/availability";
+import { notifySuppliersOfOrder } from "@/lib/server/notify";
 
 // POST /api/orders
 //
@@ -202,6 +203,11 @@ export async function POST(req: Request) {
     console.error("[orders] create_order failed:", error);
     return fail(500, "Couldn't place your order. Please try again.");
   }
+
+  // Tell each supplier they have items to confirm. Best effort and only on a
+  // genuinely new order (replays return earlier), so a couple is never emailed
+  // about, nor a supplier double-notified for, the same order twice.
+  await notifySuppliersOfOrder(admin, orderId as string);
 
   const order = await loadOrderView(supabase, orderId as string);
   return NextResponse.json({ ok: true, repeated: false, order, quote: publicQuote(quote) }, { status: 201 });

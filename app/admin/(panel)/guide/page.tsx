@@ -129,6 +129,8 @@ export default function GuidePage() {
             <li><strong>Products</strong> — set their prices, set units-per-day capacity, and show/hide each of their products.</li>
           </ul>
           <p>Their confirmations show up on the order here, logged as done by the supplier. You still make the final call on the whole order — a supplier confirming their lines doesn&apos;t confirm the order itself.</p>
+          <p className="font-medium text-ink">Order notifications</p>
+          <p>When a couple places an order, each supplier on it is <strong>emailed automatically</strong> with the items to confirm and a link to the portal (sent to their contact email and any portal logins). If a supplier has no email on file yet, nobody is emailed — relay it to them from the order until you&apos;ve added one. Emails send only in production with a mail provider configured; otherwise they&apos;re logged.</p>
         </Section>
 
         <Section id="availability" title="Availability">
