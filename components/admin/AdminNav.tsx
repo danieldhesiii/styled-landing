@@ -15,7 +15,7 @@ export default function AdminNav({ email }: { email: string }) {
 
   async function signOut() {
     await createClient().auth.signOut();
-    window.location.assign("/admin/login");
+    window.location.assign("/");
   }
 
   return (

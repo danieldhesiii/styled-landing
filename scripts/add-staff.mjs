@@ -80,7 +80,7 @@ if (error) throw error;
 console.log(`${email} is staff.`);
 if (password) {
   console.log(`\nPassword (shown once): ${password}`);
-  console.log("They sign in at /admin/login.");
+  console.log("They sign in with the normal account login on the site; the Admin dashboard link then appears for them.");
 } else {
   console.log("Their existing password is unchanged (use --reset to set a new one).");
 }

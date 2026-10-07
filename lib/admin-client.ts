@@ -1,7 +1,8 @@
 "use client";
 
 // Small helpers for the staff screens: calling the staff API (and going back to
-// the sign-in page if the session has ended), and formatting for humans.
+// the home page if the session has ended — there's no public staff login to send
+// them to), and formatting for humans.
 
 export interface ApiResult {
   ok: boolean;
@@ -19,7 +20,7 @@ export async function adminApi(path: string, method: "GET" | "POST" | "PATCH" | 
   });
   const data = await res.json().catch(() => null);
   if (res.status === 401 || res.status === 403) {
-    window.location.assign("/admin/login");
+    window.location.assign("/");
   }
   return { ok: res.ok && data?.ok !== false, status: res.status, data };
 }

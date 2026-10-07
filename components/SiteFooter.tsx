@@ -25,10 +25,6 @@ export default function SiteFooter() {
             <a href="/design" className="text-ink/70 hover:text-ink">Design your wedding</a>
             <a href="/order" className="text-ink/70 hover:text-ink">Track your order</a>
           </div>
-          <div className="flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-wide text-ink/40">Styled team</span>
-            <a href="/admin/login" className="text-ink/70 hover:text-ink">Staff login</a>
-          </div>
         </nav>
       </div>
       <div className="border-t border-sand py-6 text-center text-xs text-ink/40">
