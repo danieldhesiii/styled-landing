@@ -1,5 +1,6 @@
 import { loadCatalogue, type ServerCatalogueItem } from "@/lib/server/catalogue";
-import { quotePence, toPence, type PenceQuote } from "@/lib/quote";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { quotePence, toPence, COMMISSION_RATE, type PenceQuote } from "@/lib/quote";
 
 // The authoritative quote. The browser's basket is only a request ("these items,
 // these quantities"); prices, availability and totals are all decided here from
@@ -91,7 +92,31 @@ export async function priceBasket(raw: unknown): Promise<PricedBasket | Failure>
   if (quote.subtotalPence > MAX_SUBTOTAL_PENCE) {
     return { ok: false, status: 400, error: "That basket is larger than we can take online. Please contact us." };
   }
+  await applySupplierCommission(quote, items);
   return { ok: true, quote, items, lines: valid.lines };
+}
+
+// Recompute Styled's margin per line from each supplier's negotiated commission
+// rate, falling back to the platform default where a supplier has none. Read with
+// the service role: commission_rate is internal and not exposed to the anon
+// catalogue. This overrides the flat rate quotePence applies for the browser.
+async function applySupplierCommission(quote: PenceQuote, items: Map<string, ServerCatalogueItem>): Promise<void> {
+  if (quote.lines.length === 0) return;
+  const supplierIds = [...new Set(quote.lines.map((l) => items.get(l.item.id)!.supplierId))];
+
+  const { data } = await createAdminClient().from("suppliers").select("id, commission_rate").in("id", supplierIds);
+  const rateById = new Map<string, number>();
+  for (const row of data ?? []) {
+    if (row.commission_rate != null) rateById.set(row.id as string, Number(row.commission_rate) / 100);
+  }
+
+  let commissionPence = 0;
+  for (const line of quote.lines) {
+    const supplierId = items.get(line.item.id)!.supplierId;
+    const rate = rateById.get(supplierId) ?? COMMISSION_RATE;
+    commissionPence += Math.round(line.lineTotalPence * rate);
+  }
+  quote.commissionPence = commissionPence;
 }
 
 // What couples are shown. Commission is Styled's margin and stays server-side.

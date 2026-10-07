@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireStaff } from "@/lib/server/staff";
+import { parseProfile } from "@/lib/server/supplier-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export async function GET(req: Request) {
   const { admin } = auth;
 
   const [{ data: suppliers, error }, { data: products }] = await Promise.all([
-    admin.from("suppliers").select("id, name, area, contact_email, active, created_at").order("created_at", { ascending: false }),
+    admin.from("suppliers").select("id, name, area, contact_email, logo_url, commission_rate, active, created_at").order("created_at", { ascending: false }),
     admin.from("products").select("supplier_id, active"),
   ]);
   if (error) {
@@ -39,6 +40,8 @@ export async function GET(req: Request) {
       name: s.name,
       area: s.area,
       contactEmail: s.contact_email,
+      logoUrl: s.logo_url,
+      commissionRate: s.commission_rate === null ? null : Number(s.commission_rate),
       active: s.active,
       createdAt: s.created_at,
       products: counts.get(s.id)?.total ?? 0,
@@ -72,9 +75,19 @@ export async function POST(req: Request) {
   if (area.length < 2 || area.length > 120) return fail(422, "Please enter the area they cover.");
   if (contactEmail && (!EMAIL.test(contactEmail) || contactEmail.length > 160)) return fail(422, "That contact email isn't valid.");
 
+  const profile = parseProfile(body);
+  if (!profile.ok) return fail(422, profile.error);
+
   const { data, error } = await admin
     .from("suppliers")
-    .insert({ name, area, contact_email: contactEmail || null, active })
+    .insert({
+      name,
+      area,
+      contact_email: contactEmail || null,
+      logo_url: profile.logoUrl ?? null,
+      commission_rate: profile.commissionRate ?? null,
+      active,
+    })
     .select("id, name, area, contact_email, active")
     .single();
   if (error) {

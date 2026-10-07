@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireStaff } from "@/lib/server/staff";
+import { parseProfile } from "@/lib/server/supplier-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const { data: supplier } = await admin
     .from("suppliers")
-    .select("id, name, area, contact_email, active, created_at")
+    .select("id, name, area, contact_email, logo_url, commission_rate, active, created_at")
     .eq("id", id)
     .maybeSingle();
   if (!supplier) return fail(404, "Supplier not found.");
@@ -35,6 +36,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       name: supplier.name,
       area: supplier.area,
       contactEmail: supplier.contact_email,
+      logoUrl: supplier.logo_url,
+      commissionRate: supplier.commission_rate === null ? null : Number(supplier.commission_rate),
       active: supplier.active,
       createdAt: supplier.created_at,
     },
@@ -88,6 +91,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (typeof body.active !== "boolean") return fail(400, "active must be true or false.");
     patch.active = body.active;
   }
+  const profile = parseProfile(body);
+  if (!profile.ok) return fail(422, profile.error);
+  if (profile.logoUrl !== undefined) patch.logo_url = profile.logoUrl;
+  if (profile.commissionRate !== undefined) patch.commission_rate = profile.commissionRate;
+
   if (Object.keys(patch).length === 0) return fail(400, "Nothing to change.");
 
   const { data, error } = await admin.from("suppliers").update(patch).eq("id", id).select("id").maybeSingle();

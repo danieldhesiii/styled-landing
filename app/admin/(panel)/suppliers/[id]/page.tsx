@@ -13,6 +13,8 @@ interface Supplier {
   name: string;
   area: string;
   contactEmail: string | null;
+  logoUrl: string | null;
+  commissionRate: number | null;
   active: boolean;
 }
 interface Product {
@@ -44,7 +46,7 @@ export default function SupplierDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
 
-  const [edit, setEdit] = useState({ name: "", area: "", contactEmail: "" });
+  const [edit, setEdit] = useState({ name: "", area: "", contactEmail: "", logoUrl: "", commissionRate: "" });
   const [savingSupplier, setSavingSupplier] = useState(false);
 
   const [showAdd, setShowAdd] = useState(false);
@@ -57,7 +59,13 @@ export default function SupplierDetailPage() {
       if (!r.ok) return setError(r.data?.error ?? "Couldn't load the supplier.");
       const s = r.data.supplier as Supplier;
       setSupplier(s);
-      setEdit({ name: s.name, area: s.area, contactEmail: s.contactEmail ?? "" });
+      setEdit({
+        name: s.name,
+        area: s.area,
+        contactEmail: s.contactEmail ?? "",
+        logoUrl: s.logoUrl ?? "",
+        commissionRate: s.commissionRate === null ? "" : String(s.commissionRate),
+      });
       setProducts(r.data.products as Product[]);
     });
   }
@@ -111,9 +119,23 @@ export default function SupplierDetailPage() {
       {/* Supplier header + edit */}
       <div className="mt-3 rounded-3xl border border-sand bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="font-serif text-4xl text-ink">{supplier.name}</h1>
-            <p className="mt-1 text-sm text-ink/50">{supplier.area}</p>
+          <div className="flex items-center gap-4">
+            {supplier.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={supplier.logoUrl} alt="" className="h-14 w-14 shrink-0 rounded-full border border-sand object-cover" />
+            ) : (
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-cream text-lg font-medium text-ink/40">
+                {supplier.name.charAt(0).toUpperCase()}
+              </span>
+            )}
+            <div>
+              <h1 className="font-serif text-4xl text-ink">{supplier.name}</h1>
+              <p className="mt-1 text-sm text-ink/50">
+                {supplier.area}
+                {" · "}
+                {supplier.commissionRate === null ? "Default commission" : `${supplier.commissionRate}% commission`}
+              </p>
+            </div>
           </div>
           <label className="flex items-center gap-2 text-sm text-ink/70">
             <input
@@ -140,11 +162,20 @@ export default function SupplierDetailPage() {
             <label htmlFor="e-email" className={LABEL}>Contact email</label>
             <input id="e-email" type="email" value={edit.contactEmail} onChange={(e) => setEdit({ ...edit, contactEmail: e.target.value })} className={FIELD} />
           </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="e-logo" className={LABEL}>Logo URL</label>
+            <input id="e-logo" placeholder="https://… or /img/suppliers/…" value={edit.logoUrl} onChange={(e) => setEdit({ ...edit, logoUrl: e.target.value })} className={FIELD} />
+          </div>
+          <div>
+            <label htmlFor="e-commission" className={LABEL}>Commission %</label>
+            <input id="e-commission" type="number" min="0" max="100" step="0.5" placeholder="Default (12%)" value={edit.commissionRate} onChange={(e) => setEdit({ ...edit, commissionRate: e.target.value })} className={FIELD} />
+            <p className="mt-1 text-[11px] text-ink/40">Leave blank to use the platform default. Applies to new orders.</p>
+          </div>
         </div>
         <button
           type="button"
           disabled={savingSupplier}
-          onClick={() => saveSupplier({ name: edit.name, area: edit.area, contactEmail: edit.contactEmail })}
+          onClick={() => saveSupplier({ name: edit.name, area: edit.area, contactEmail: edit.contactEmail, logoUrl: edit.logoUrl, commissionRate: edit.commissionRate })}
           className="mt-4 rounded-full border border-sand px-5 py-2 text-sm text-ink/70 hover:border-clay/50 hover:text-ink disabled:opacity-40"
         >
           Save details

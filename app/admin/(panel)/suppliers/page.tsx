@@ -9,6 +9,8 @@ interface Supplier {
   name: string;
   area: string;
   contactEmail: string | null;
+  logoUrl: string | null;
+  commissionRate: number | null;
   active: boolean;
   products: number;
   activeProducts: number;
@@ -23,7 +25,7 @@ export default function SuppliersPage() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ name: "", area: "", contactEmail: "", applicationId: "" });
+  const [form, setForm] = useState({ name: "", area: "", contactEmail: "", logoUrl: "", commissionRate: "", applicationId: "" });
 
   useEffect(() => {
     adminApi("/api/admin/suppliers").then((r) => {
@@ -37,6 +39,8 @@ export default function SuppliersPage() {
         name: q.get("name") ?? "",
         area: q.get("area") ?? "",
         contactEmail: q.get("email") ?? "",
+        logoUrl: "",
+        commissionRate: "",
         applicationId: q.get("application") ?? "",
       });
       setOpen(true);
@@ -94,6 +98,14 @@ export default function SuppliersPage() {
               <label htmlFor="s-email" className={LABEL}>Contact email <span className="text-ink/40">(optional)</span></label>
               <input id="s-email" type="email" value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} className={FIELD} />
             </div>
+            <div>
+              <label htmlFor="s-logo" className={LABEL}>Logo URL <span className="text-ink/40">(optional)</span></label>
+              <input id="s-logo" placeholder="https://… or /img/suppliers/…" value={form.logoUrl} onChange={(e) => setForm({ ...form, logoUrl: e.target.value })} className={FIELD} />
+            </div>
+            <div>
+              <label htmlFor="s-commission" className={LABEL}>Commission % <span className="text-ink/40">(optional)</span></label>
+              <input id="s-commission" type="number" min="0" max="100" step="0.5" placeholder="Default (12%)" value={form.commissionRate} onChange={(e) => setForm({ ...form, commissionRate: e.target.value })} className={FIELD} />
+            </div>
           </div>
           <button type="submit" disabled={busy} className="mt-5 rounded-full bg-ink px-6 py-2.5 text-sm text-cream hover:bg-ink/90 disabled:bg-ink/30">
             {busy ? "Creating…" : "Create & add products"}
@@ -114,6 +126,7 @@ export default function SuppliersPage() {
               <tr className="border-b border-sand text-left text-xs uppercase tracking-wider text-ink/40">
                 <th className="px-5 py-3 font-medium">Supplier</th>
                 <th className="px-5 py-3 font-medium">Area</th>
+                <th className="px-5 py-3 text-right font-medium">Commission</th>
                 <th className="px-5 py-3 text-right font-medium">Products</th>
                 <th className="px-5 py-3 font-medium">Status</th>
               </tr>
@@ -122,10 +135,25 @@ export default function SuppliersPage() {
               {suppliers.map((s) => (
                 <tr key={s.id} className="transition-colors hover:bg-cream/60">
                   <td className="px-5 py-3">
-                    <Link href={`/admin/suppliers/${s.id}`} className="font-medium text-ink hover:text-clay">{s.name}</Link>
-                    {s.contactEmail && <div className="text-xs text-ink/40">{s.contactEmail}</div>}
+                    <div className="flex items-center gap-3">
+                      {s.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={s.logoUrl} alt="" className="h-8 w-8 shrink-0 rounded-full border border-sand object-cover" />
+                      ) : (
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cream text-xs font-medium text-ink/40">
+                          {s.name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                      <div>
+                        <Link href={`/admin/suppliers/${s.id}`} className="font-medium text-ink hover:text-clay">{s.name}</Link>
+                        {s.contactEmail && <div className="text-xs text-ink/40">{s.contactEmail}</div>}
+                      </div>
+                    </div>
                   </td>
                   <td className="px-5 py-3 text-ink/60">{s.area}</td>
+                  <td className="px-5 py-3 text-right tabular-nums text-ink/70">
+                    {s.commissionRate === null ? <span className="text-ink/30">Default</span> : `${s.commissionRate}%`}
+                  </td>
                   <td className="px-5 py-3 text-right tabular-nums text-ink/70">
                     {s.activeProducts}/{s.products} live
                   </td>
