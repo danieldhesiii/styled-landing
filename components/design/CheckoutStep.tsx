@@ -5,6 +5,7 @@ import type { BasketLine } from "@/lib/types";
 import { buildQuote, formatGBP } from "@/lib/quote";
 import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 import { useBasketAvailability } from "@/components/availability/useAvailability";
+import { useUser } from "@/components/session/useUser";
 import { availabilityLabel } from "@/lib/availability";
 
 interface Props {
@@ -47,8 +48,13 @@ export default function CheckoutStep({
   onOrdered,
 }: Props) {
   const { getItem, refresh } = useCatalogue();
+  const { email: accountEmail } = useUser();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  // Prefill the email for a signed-in couple so they don't retype it.
+  useEffect(() => {
+    if (accountEmail) setEmail((e) => e || accountEmail);
+  }, [accountEmail]);
   const [placed, setPlaced] = useState<PlacedOrder | null>(null);
   const [serverQuote, setServerQuote] = useState<ServerQuote | null>(null);
   const [error, setError] = useState<string | null>(null);

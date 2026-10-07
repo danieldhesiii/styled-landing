@@ -13,6 +13,8 @@ import BasketPanel from "@/components/design/BasketPanel";
 import CheckoutStep from "@/components/design/CheckoutStep";
 import HowItWorks from "@/components/design/HowItWorks";
 import SavedLooks, { type SavedLook } from "@/components/design/SavedLooks";
+import AccountMenu from "@/components/auth/AccountMenu";
+import MyOrdersDrawer from "@/components/order/MyOrdersDrawer";
 import { useShopAvailability } from "@/components/availability/useAvailability";
 
 type Step = "studio" | "checkout";
@@ -22,6 +24,7 @@ export default function DesignPage() {
   const [showHowTo, setShowHowTo] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
+  const [showOrders, setShowOrders] = useState(false);
   const [savedLooks, setSavedLooks] = useState<SavedLook[]>([]);
 
   const [brief, setBrief] = useState<Brief>({
@@ -272,6 +275,7 @@ export default function DesignPage() {
                 ← Back to design
               </button>
             )}
+            <AccountMenu onOpenOrders={() => { setShowOrders(true); setShowSettings(false); }} />
           </div>
         </div>
       </header>
@@ -446,6 +450,9 @@ export default function DesignPage() {
           onUnsave={unsaveLook}
         />
       )}
+
+      {/* My orders drawer */}
+      {showOrders && <MyOrdersDrawer onClose={() => setShowOrders(false)} />}
     </div>
   );
 }
