@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { SampleVenue, StylePreset } from "@/lib/types";
 import { STYLES, getStyle } from "@/lib/styles";
+import { SCENES, DEFAULT_SCENE, type SceneId } from "@/lib/scenes";
 import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
 
 export interface RenderRef {
@@ -86,8 +87,9 @@ export default function RenderStage({
   // The style selected in the panel for the NEXT generation. Kept separate from
   // the committed style so browsing presets doesn't wipe the current render.
   const [draftStyleId, setDraftStyleId] = useState(style.id);
-  // What the room is being set for: the seated reception or the ceremony aisle.
-  const [setting, setSetting] = useState<"reception" | "ceremony">("reception");
+  // Which wedding scene we're setting the room up for (reception, ceremony,
+  // party, drinks, proposal).
+  const [setting, setSetting] = useState<SceneId>(DEFAULT_SCENE);
   const [improving, setImproving] = useState(false);
   const [improveError, setImproveError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -586,36 +588,30 @@ export default function RenderStage({
             anything. You don't have to pick a style; your description leads the design.
           </p>
 
-          {/* What the room is being set up for */}
+          {/* Which wedding scene to set the room up for */}
           <div className="mb-4">
             <p className="mb-2 text-xs text-ink/50">What are we setting up?</p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setSetting("reception")}
-                aria-pressed={setting === "reception"}
-                className={`flex-1 rounded-xl border px-3 py-2 text-left transition-colors ${setting === "reception" ? "border-clay bg-clay/10" : "border-sand hover:border-clay/50"}`}
-              >
-                <span className={`block text-xs font-medium ${setting === "reception" ? "text-ink" : "text-ink/70"}`}>
-                  🍽 Reception
-                </span>
-                <span className="mt-0.5 block text-[11px] leading-snug text-ink/45">
-                  Seated meal — dining tables &amp; centrepieces
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSetting("ceremony")}
-                aria-pressed={setting === "ceremony"}
-                className={`flex-1 rounded-xl border px-3 py-2 text-left transition-colors ${setting === "ceremony" ? "border-clay bg-clay/10" : "border-sand hover:border-clay/50"}`}
-              >
-                <span className={`block text-xs font-medium ${setting === "ceremony" ? "text-ink" : "text-ink/70"}`}>
-                  💍 Ceremony
-                </span>
-                <span className="mt-0.5 block text-[11px] leading-snug text-ink/45">
-                  Aisle — rows of chairs facing an arch
-                </span>
-              </button>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {SCENES.map((s) => {
+                const active = setting === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSetting(s.id)}
+                    aria-pressed={active}
+                    title={s.blurb}
+                    className={`rounded-xl border px-3 py-2 text-left transition-colors ${active ? "border-clay bg-clay/10" : "border-sand hover:border-clay/50"}`}
+                  >
+                    <span className={`block text-xs font-medium ${active ? "text-ink" : "text-ink/70"}`}>
+                      {s.icon} {s.label}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] leading-snug text-ink/45">
+                      {s.blurb}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

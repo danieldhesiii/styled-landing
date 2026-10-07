@@ -1,4 +1,5 @@
 import type { CatalogueItem, Category, QtyRule, Slot, StockStatus } from "@/lib/types";
+import type { SceneId } from "@/lib/scenes";
 import { createAnonClient } from "@/lib/supabase/anon";
 
 // The live catalogue, read from the database as a signed-out visitor, so only
@@ -77,28 +78,19 @@ export async function loadItemsById(ids: string[]): Promise<Map<string, ServerCa
   return new Map(all.filter((i) => wanted.has(i.id)).map((i) => [i.id, i]));
 }
 
-// The decor categories that appear in a styled room render. We compose a render
+// The decor categories that appear in each wedding scene. We compose a render
 // only from catalogue pieces across these categories, so everything in the
 // picture is real and buyable, and "Shop this look" can list exactly them. The
-// set depends on what the room is being set up for: a reception has dining
-// tables, centrepieces and tableware; a ceremony has rows of chairs and an aisle
-// but no dining tables, so centrepieces and tableware don't apply.
-const RECEPTION_CATEGORIES: Category[] = [
-  "backdrops",
-  "florals",
-  "centrepieces",
-  "furniture",
-  "linen_tableware",
-  "lighting",
-  "signage",
-];
-const CEREMONY_CATEGORIES: Category[] = [
-  "backdrops",
-  "florals",
-  "furniture",
-  "lighting",
-  "signage",
-];
+// set depends on the scene: a reception has dining tables, centrepieces and
+// tableware; a ceremony has chairs and an arch but no dining; a party leans on a
+// bar, lighting and lounge furniture; a proposal is just florals and lighting.
+const SCENE_CATEGORIES: Record<SceneId, Category[]> = {
+  reception: ["backdrops", "florals", "centrepieces", "furniture", "linen_tableware", "lighting", "signage"],
+  ceremony: ["backdrops", "florals", "furniture", "lighting", "signage"],
+  party: ["backdrops", "florals", "furniture", "lighting", "signage", "bar"],
+  drinks: ["florals", "furniture", "lighting", "signage", "bar"],
+  proposal: ["backdrops", "florals", "lighting"],
+};
 
 // Choose the catalogue pieces a render will be built from: everything the couple
 // has already chosen, plus one style-matched piece for each relevant decor
@@ -107,9 +99,9 @@ const CEREMONY_CATEGORIES: Category[] = [
 export async function selectLookItems(opts: {
   styleId: string | null;
   chosenIds: string[];
-  setting?: "reception" | "ceremony";
+  setting?: SceneId;
 }): Promise<ServerCatalogueItem[]> {
-  const categories = opts.setting === "ceremony" ? CEREMONY_CATEGORIES : RECEPTION_CATEGORIES;
+  const categories = SCENE_CATEGORIES[opts.setting ?? "reception"] ?? SCENE_CATEGORIES.reception;
   const all = await loadCatalogue();
   const byId = new Map(all.map((i) => [i.id, i]));
   const chosen = opts.chosenIds

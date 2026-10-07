@@ -1,5 +1,6 @@
 import type { CatalogueItem } from "@/lib/types";
 import type { StylePreset } from "@/lib/types";
+import type { SceneId } from "@/lib/scenes";
 import { tablesFor } from "@/lib/quote";
 
 // Builds the instruction sent to the image-edit model. The model sees the venue
@@ -18,16 +19,42 @@ const STYLE_DIRECTION: Record<string, string> = {
     "Wildflower: timber trestle guest tables, crossback chairs, sage napkins, loose meadow flowers and mixed foliage runners, warm festoon lights overhead, relaxed natural charm.",
 };
 
-const KEEP =
+// What to preserve. Daytime scenes keep the real daylight; the evening party is
+// the one scene where we deliberately shift the room to a dusk / after-dark mood.
+const KEEP_DAYLIGHT =
   "Preserve exactly the venue's architecture: walls, windows, doors, ceiling, beams, floor, the view outside, the camera angle, perspective and natural light. Only add and change wedding styling inside the room. Photorealistic wedding venue photography. No people, no text, no watermarks.";
+const KEEP_EVENING =
+  "Preserve exactly the venue's architecture: walls, windows, doors, ceiling, beams, floor, the camera angle and perspective. Keep the room and viewpoint identical, but change the time of day to evening: the view outside should be dusk or dark, and the room lit warmly and atmospherically. Only add and change wedding styling inside the room. Photorealistic wedding venue photography. No people, no text, no watermarks.";
 
 export const MAX_BRIEF_CHARS = 600;
 export const MAX_ITEMS = 12;
 
-// What the room is being set up for. A reception is the seated meal (round or
-// long dining tables); a ceremony is the "I do" — rows of chairs facing a central
-// aisle with a focal point at the front, and no dining tables.
-export type RenderSetting = "reception" | "ceremony";
+// The wedding scene the couple is visualising. Each one restyles the same room
+// for a different part of the day, with its own layout and lighting.
+export type RenderSetting = SceneId;
+
+// Per-scene prompt pieces: how to open, and how to lay the room out. `guests` is
+// woven in where it helps the model judge scale.
+const SCENE_OPENING: Record<SceneId, (subject: string) => string> = {
+  reception: (s) => `Restyle ${s} as a finished wedding reception, set and ready for the day.`,
+  ceremony: (s) => `Set up ${s} for a wedding CEREMONY — a finished, photorealistic scene, ready for the couple to marry.`,
+  party: (s) => `Restyle ${s} as an evening wedding reception party, set for dancing and celebrating after dark.`,
+  drinks: (s) => `Restyle ${s} as a wedding drinks reception, set for guests to mingle with drinks and canapés.`,
+  proposal: (s) => `Restyle ${s} as an intimate, romantic marriage-proposal setting for just two people.`,
+};
+
+const SCENE_LAYOUT: Record<SceneId, (guests: number) => string> = {
+  reception: (g) =>
+    `The wedding is for about ${g} guests, which is roughly ${tablesFor(g)} tables. Show as many dining tables as fit the room naturally with sensible spacing and a clear walkway; do not cram the room.`,
+  ceremony: (g) =>
+    `Lay the room out for the ceremony: neat rows of chairs all facing forward towards the front of the room, in two blocks with a clear central aisle running down the middle for the couple to walk down. Seat about ${g} guests. At the front, at the head of the aisle, place the ceremony focal point — an arch or floral backdrop where the couple will stand. Do NOT use any dining or banquet tables; this is the ceremony, not the meal.`,
+  party: (g) =>
+    `Lay the room out for the evening party, for about ${g} guests: a clear central dancefloor, a stage or DJ booth at one end, a statement bar to one side, and relaxed lounge seating with a few small cocktail tables around the edges. Warm, atmospheric evening lighting — festoon lights, uplighting and candles. Energetic but elegant; no formal dining tables down the middle.`,
+  drinks: (g) =>
+    `Lay the room out for a standing drinks reception, for about ${g} guests: a stylish bar, scattered tall poseur / cocktail tables for guests to gather around, a few lounge seating clusters and plenty of room to mingle. No formal seated dining tables.`,
+  proposal: () =>
+    `Set the room for an intimate marriage proposal: a single romantic focal set-up for two — soft candlelight, lush florals, perhaps rose petals and fairy lights — centred in the space. No rows of guest chairs and no dining tables; this is a private, romantic moment, not an event for guests.`,
+};
 
 // The couple's free text goes into a prompt, so keep it plain and bounded.
 export function cleanBrief(input: unknown): string {
@@ -59,11 +86,7 @@ export function buildRenderPrompt(opts: {
   const parts: string[] = [];
 
   const subject = photoCount > 1 ? "the first photo of a wedding venue" : "this photo of a wedding venue";
-  parts.push(
-    setting === "ceremony"
-      ? `Set up ${subject} for a wedding CEREMONY — a finished, photorealistic scene, ready for the couple to marry.`
-      : `Restyle ${subject} as a finished wedding reception, set and ready for the day.`
-  );
+  parts.push(SCENE_OPENING[setting](subject));
   const refs = referenceNote(photoCount);
   if (refs) parts.push(refs);
 
@@ -74,7 +97,7 @@ export function buildRenderPrompt(opts: {
     );
   }
 
-  parts.push(KEEP);
+  parts.push(setting === "party" ? KEEP_EVENING : KEEP_DAYLIGHT);
   // The couple can either start from one of our preset looks or skip them and
   // describe their own decoration. When there's no preset, their description
   // below is the whole design direction — so only add style wording if a preset
@@ -86,15 +109,7 @@ export function buildRenderPrompt(opts: {
       "There is no preset style. Design the decor entirely from the couple's own description below — follow its colours, flowers, materials, lighting and overall mood exactly, and fill in tasteful, cohesive wedding styling for anything they don't specify."
     );
   }
-  if (setting === "ceremony") {
-    parts.push(
-      `Lay the room out for the ceremony: neat rows of chairs all facing forward towards the front of the room, in two blocks with a clear central aisle running down the middle for the couple to walk down. Seat about ${guestCount} guests. At the front, at the head of the aisle, place the ceremony focal point — an arch or floral backdrop where the couple will stand. Do NOT use any dining or banquet tables; this is the ceremony, not the meal.`
-    );
-  } else {
-    parts.push(
-      `The wedding is for about ${guestCount} guests, which is roughly ${tablesFor(guestCount)} tables. Show as many tables as fit the room naturally with sensible spacing and a clear walkway; do not cram the room.`
-    );
-  }
+  parts.push(SCENE_LAYOUT[setting](guestCount));
 
   if (items.length > 0) {
     const list = items

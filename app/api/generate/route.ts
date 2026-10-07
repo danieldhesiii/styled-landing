@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/server/env";
 import { loadItemsById, selectLookItems } from "@/lib/server/catalogue";
 import { STYLES, getStyle } from "@/lib/styles";
+import { DEFAULT_SCENE, isSceneId, type SceneId } from "@/lib/scenes";
 import {
   buildRefinePrompt,
   buildRenderPrompt,
@@ -95,9 +96,10 @@ export async function POST(req: Request) {
   const parentRenderId = typeof body.parentRenderId === "string" ? body.parentRenderId : null;
   if (parentRenderId && !UUID.test(parentRenderId)) return fail(400, "Invalid render id.");
 
-  // Reception (seated meal) vs ceremony (aisle of chairs). Drives the layout
-  // instruction and which catalogue categories compose the look.
-  const setting: "reception" | "ceremony" = body.setting === "ceremony" ? "ceremony" : "reception";
+  // Which wedding scene to set the room for (reception, ceremony, party, drinks,
+  // proposal). Drives the layout instruction and which catalogue categories
+  // compose the look.
+  const setting: SceneId = isSceneId(body.setting) ? body.setting : DEFAULT_SCENE;
 
   const itemIds = Array.isArray(body.itemIds)
     ? body.itemIds.filter((x): x is string => typeof x === "string").slice(0, MAX_ITEMS)
