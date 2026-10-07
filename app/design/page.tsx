@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 import type { BasketLine, CatalogueItem } from "@/lib/types";
 import { getStyle, getVenue } from "@/lib/styles";
 import { suggestedQty, formatGBP } from "@/lib/quote";
@@ -104,44 +105,87 @@ export default function DesignPage() {
     }
   }, [brief, basket, renderId, restored]);
 
-  // Saved looks (favourites) — the renders themselves live server-side under the
-  // guest's session; here we just track which ones the couple has kept.
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("styled:savedLooks");
-      if (raw) setSavedLooks(JSON.parse(raw) as SavedLook[]);
-    } catch {
-      // Ignore corrupt state.
-    }
-  }, []);
+  // Saved looks (favourites) live in the database under the couple's Supabase
+  // user (guest or account), so they persist and follow them across devices once
+  // they create an account. RLS keeps each couple to their own rows.
+  const supabase = useMemo(() => createClient(), []);
 
-  function persistSaved(next: SavedLook[]) {
-    setSavedLooks(next);
-    try {
-      localStorage.setItem("styled:savedLooks", JSON.stringify(next));
-    } catch {
-      // Non-fatal.
+  const refreshSavedLooks = useCallback(async () => {
+    const { data } = await supabase
+      .from("saved_looks")
+      .select("render_id, style_id, style_name, original_url, created_at")
+      .order("created_at", { ascending: false });
+    if (data) {
+      setSavedLooks(
+        data.map((r) => ({
+          id: r.render_id as string,
+          styleId: (r.style_id as string) ?? "none",
+          styleName: (r.style_name as string) ?? "Your design",
+          originalUrl: (r.original_url as string) ?? undefined,
+          savedAt: Date.parse(r.created_at as string) || Date.now(),
+        }))
+      );
     }
-  }
+  }, [supabase]);
+
+  // Load saved looks once a session exists, migrating anything an earlier version
+  // kept in localStorage into the account the first time.
+  useEffect(() => {
+    const sync = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      try {
+        const raw = localStorage.getItem("styled:savedLooks");
+        if (raw) {
+          const old = JSON.parse(raw) as SavedLook[];
+          if (Array.isArray(old) && old.length) {
+            await supabase.from("saved_looks").upsert(
+              old.map((l) => ({
+                owner_id: user.id,
+                render_id: l.id,
+                style_id: l.styleId,
+                style_name: l.styleName,
+                original_url: l.originalUrl ?? null,
+              })),
+              { onConflict: "owner_id,render_id", ignoreDuplicates: true }
+            );
+          }
+          localStorage.removeItem("styled:savedLooks");
+        }
+      } catch {
+        // Corrupt legacy state — ignore.
+      }
+      await refreshSavedLooks();
+    };
+    sync();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => sync());
+    return () => sub.subscription.unsubscribe();
+  }, [supabase, refreshSavedLooks]);
 
   const isCurrentSaved = renderId !== null && savedLooks.some((l) => l.id === renderId);
 
-  function toggleSaveCurrent() {
+  async function toggleSaveCurrent() {
     if (!renderId) return;
     if (savedLooks.some((l) => l.id === renderId)) {
-      persistSaved(savedLooks.filter((l) => l.id !== renderId));
+      setSavedLooks((looks) => looks.filter((l) => l.id !== renderId));
+      await supabase.from("saved_looks").delete().eq("render_id", renderId);
     } else {
-      persistSaved([
-        {
-          id: renderId,
-          styleId: brief.styleId,
-          styleName,
-          originalUrl: originalImage ?? undefined,
-          savedAt: Date.now(),
-        },
-        ...savedLooks,
+      setSavedLooks((looks) => [
+        { id: renderId, styleId: brief.styleId, styleName, originalUrl: originalImage ?? undefined, savedAt: Date.now() },
+        ...looks,
       ]);
+      await supabase.from("saved_looks").insert({
+        render_id: renderId,
+        style_id: brief.styleId,
+        style_name: styleName,
+        original_url: originalImage ?? null,
+      });
     }
+  }
+
+  async function unsaveLook(id: string) {
+    setSavedLooks((looks) => looks.filter((l) => l.id !== id));
+    await supabase.from("saved_looks").delete().eq("render_id", id);
   }
 
   function loadSavedLook(look: SavedLook, url: string, itemIds?: string[]) {
@@ -399,7 +443,7 @@ export default function DesignPage() {
           looks={savedLooks}
           onClose={() => setShowSaved(false)}
           onLoad={loadSavedLook}
-          onUnsave={(id) => persistSaved(savedLooks.filter((l) => l.id !== id))}
+          onUnsave={unsaveLook}
         />
       )}
     </div>
