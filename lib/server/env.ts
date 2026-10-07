@@ -53,14 +53,14 @@ export const env = {
     return process.env.RENDER_QUALITY || "medium"; // low | medium | high
   },
   get maxRendersPerDay() {
-    return Number(process.env.MAX_RENDERS_PER_DAY) || 10;
+    return Number(process.env.MAX_RENDERS_PER_DAY) || 100;
   },
   // Spend controls (all count non-failed renders in the last 24 hours).
   get maxRendersPerIpPerDay() {
-    return Number(process.env.MAX_RENDERS_PER_IP_PER_DAY) || 30;
+    return Number(process.env.MAX_RENDERS_PER_IP_PER_DAY) || 300;
   },
   get maxRendersGlobalPerDay() {
-    return Number(process.env.MAX_RENDERS_GLOBAL_PER_DAY) || 200;
+    return Number(process.env.MAX_RENDERS_GLOBAL_PER_DAY) || 1000;
   },
   // How many times one look can be refined before starting again from the photo.
   get maxRefinements() {
