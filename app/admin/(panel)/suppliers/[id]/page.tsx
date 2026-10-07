@@ -53,6 +53,11 @@ export default function SupplierDetailPage() {
   const [product, setProduct] = useState({ ...BLANK_PRODUCT });
   const [addingProduct, setAddingProduct] = useState(false);
 
+  const [logins, setLogins] = useState<{ userId: string; email: string }[]>([]);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [creatingLogin, setCreatingLogin] = useState(false);
+  const [newCredential, setNewCredential] = useState<{ email: string; password: string } | null>(null);
+
   function load() {
     adminApi(`/api/admin/suppliers/${id}`).then((r) => {
       if (r.status === 404) return setNotFound(true);
@@ -69,7 +74,25 @@ export default function SupplierDetailPage() {
       setProducts(r.data.products as Product[]);
     });
   }
-  useEffect(() => { if (id) load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [id]);
+  function loadLogins() {
+    adminApi(`/api/admin/suppliers/${id}/users`).then((r) => {
+      if (r.ok) setLogins(r.data.users as { userId: string; email: string }[]);
+    });
+  }
+  useEffect(() => { if (id) { load(); loadLogins(); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [id]);
+
+  async function createLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setNewCredential(null);
+    setCreatingLogin(true);
+    const r = await adminApi(`/api/admin/suppliers/${id}/users`, "POST", { email: loginEmail });
+    setCreatingLogin(false);
+    if (!r.ok) return setError(r.data?.error ?? "Couldn't create the login.");
+    if (r.data.password) setNewCredential({ email: r.data.email, password: r.data.password });
+    setLoginEmail("");
+    loadLogins();
+  }
 
   async function saveSupplier(patch: Record<string, unknown>) {
     setSavingSupplier(true);
@@ -180,6 +203,41 @@ export default function SupplierDetailPage() {
         >
           Save details
         </button>
+      </div>
+
+      {/* Portal logins */}
+      <div className="mt-6 rounded-3xl border border-sand bg-white p-6 shadow-sm">
+        <h2 className="font-serif text-xl text-ink">Portal logins</h2>
+        <p className="mt-1 text-sm text-ink/50">
+          Give this supplier access to the <span className="font-medium text-ink/70">/portal</span> to confirm their own orders and manage their products.
+        </p>
+
+        {logins.length > 0 && (
+          <ul className="mt-4 divide-y divide-sand rounded-2xl border border-sand">
+            {logins.map((u) => (
+              <li key={u.userId} className="px-4 py-2.5 text-sm text-ink/80">{u.email}</li>
+            ))}
+          </ul>
+        )}
+
+        {newCredential && (
+          <div className="mt-4 rounded-2xl bg-sage/15 px-4 py-3 text-sm text-ink/80">
+            <p className="font-medium text-ink">Login created — share these once, securely:</p>
+            <p className="mt-1">Email: <span className="font-mono">{newCredential.email}</span></p>
+            <p>Temporary password: <span className="font-mono">{newCredential.password}</span></p>
+            <p className="mt-1 text-xs text-ink/50">This password is shown only now. They sign in at /portal/login and should change it.</p>
+          </div>
+        )}
+
+        <form onSubmit={createLogin} className="mt-4 flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[220px]">
+            <label htmlFor="login-email" className={LABEL}>Email</label>
+            <input id="login-email" type="email" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="their@email.com" className={FIELD} />
+          </div>
+          <button type="submit" disabled={creatingLogin} className="rounded-full bg-ink px-5 py-2.5 text-sm text-cream hover:bg-ink/90 disabled:bg-ink/30">
+            {creatingLogin ? "Creating…" : "Create login"}
+          </button>
+        </form>
       </div>
 
       {error && (

@@ -30,6 +30,7 @@ const CONTENTS = [
   ["customers", "Customers"],
   ["vendors", "Vendors — applications"],
   ["suppliers", "Suppliers — onboarding & catalogue"],
+  ["portal", "Supplier portal (self-serve)"],
   ["availability", "Availability"],
   ["shop-rules", "What the shop shows (and why)"],
 ];
@@ -116,6 +117,18 @@ export default function GuidePage() {
           </ul>
           <p className="font-medium text-ink">Public profile</p>
           <p>Every active supplier gets a public page at <strong>/suppliers/&lt;id&gt;</strong>, listed in the <Link href="/suppliers" className="text-clay hover:underline">Meet our suppliers</Link> directory. It shows their logo, area and every live piece — handy to share when onboarding them (&ldquo;here&apos;s your page on Styled&rdquo;). Switching a supplier or product off removes it from there too. Commission is never shown.</p>
+        </Section>
+
+        <Section id="portal" title="Supplier portal (self-serve)">
+          <p>Suppliers can sign in at <strong>/portal</strong> to do their own bit, instead of you relaying everything. There&apos;s no public sign-up — you give them a login.</p>
+          <p className="font-medium text-ink">Giving a supplier access</p>
+          <p>Open the supplier in <Link href="/admin/suppliers" className="text-clay hover:underline">Suppliers</Link> and use <strong>Portal logins → Create login</strong> with their email. A brand-new account shows a one-time password to pass on securely (they change it after signing in); an existing Styled account is simply linked. One login belongs to one supplier.</p>
+          <p className="font-medium text-ink">What they can do</p>
+          <ul className="list-disc space-y-1 pl-5">
+            <li><strong>Orders</strong> — see orders that include their pieces (items, quantity, date, venue — never other suppliers&apos; lines, the couple&apos;s price, or commission) and <strong>confirm or decline</strong> each line themselves, while the order is still being reviewed.</li>
+            <li><strong>Products</strong> — set their prices, set units-per-day capacity, and show/hide each of their products.</li>
+          </ul>
+          <p>Their confirmations show up on the order here, logged as done by the supplier. You still make the final call on the whole order — a supplier confirming their lines doesn&apos;t confirm the order itself.</p>
         </Section>
 
         <Section id="availability" title="Availability">

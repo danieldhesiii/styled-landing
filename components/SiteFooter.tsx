@@ -29,6 +29,7 @@ export default function SiteFooter() {
             <span className="text-xs uppercase tracking-wide text-ink/40">Suppliers</span>
             <a href="/suppliers" className="text-ink/70 hover:text-ink">Meet our suppliers</a>
             <a href="/vendors" className="text-ink/70 hover:text-ink">List your business</a>
+            <a href="/portal/login" className="text-ink/70 hover:text-ink">Supplier login</a>
           </div>
         </nav>
       </div>
