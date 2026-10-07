@@ -89,7 +89,7 @@ export function buildRenderPrompt(opts: {
       .map((i) => `- ${i.name}`)
       .join("\n");
     parts.push(
-      `The couple has chosen these specific pieces. Include each one where it would naturally go:\n${list}`
+      `Dress the room using these specific pieces from our catalogue, and ONLY these — every element of styling in the picture (backdrop, florals, centrepieces, furniture, linen and tableware, lighting and signage) must be one of these pieces, placed where it would naturally go. Do not invent other decorative products:\n${list}`
     );
   }
 

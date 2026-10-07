@@ -5,7 +5,7 @@ import path from "node:path";
 import { requireUser } from "@/lib/server/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/server/env";
-import { loadItemsById } from "@/lib/server/catalogue";
+import { loadItemsById, selectLookItems } from "@/lib/server/catalogue";
 import { STYLES, getStyle } from "@/lib/styles";
 import {
   buildRefinePrompt,
@@ -110,11 +110,21 @@ export async function POST(req: Request) {
     });
   }
 
-  // Catalogue items come from the database by id; unknown or withdrawn ids are ignored.
+  // Work out the catalogue pieces this render is built from. A refinement keeps
+  // just the couple's explicitly chosen items; a new look is composed into a full
+  // catalogue-only look (their chosen items + a style-matched piece per decor
+  // category) so everything in the picture is real and shoppable.
   let items;
   try {
-    const found = await loadItemsById(itemIds);
-    items = itemIds.map((id) => found.get(id)).filter((i): i is NonNullable<typeof i> => !!i);
+    if (parentRenderId) {
+      const found = await loadItemsById(itemIds);
+      items = itemIds.map((id) => found.get(id)).filter((i): i is NonNullable<typeof i> => !!i);
+    } else {
+      items = await selectLookItems({
+        styleId: descriptionLed ? null : styleId,
+        chosenIds: itemIds,
+      });
+    }
   } catch (err) {
     console.error("[generate] couldn't load catalogue items:", err);
     return fail(500, "Couldn't start your render.");
@@ -161,9 +171,9 @@ export async function POST(req: Request) {
       console.error("[generate] couldn't load base image:", err);
       return fail(500, "Couldn't load your venue photo.");
     }
-    // Load product images to use as visual references (max 4, only items with images).
+    // Load product images to use as visual references (only items with images).
     const itemImages: Buffer[] = [];
-    for (const item of items.slice(0, 4)) {
+    for (const item of items.slice(0, 6)) {
       if (!item.image) continue;
       try {
         const buf = await readFile(path.join(process.cwd(), "public", item.image));

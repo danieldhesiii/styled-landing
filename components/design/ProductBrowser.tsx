@@ -15,6 +15,8 @@ interface Props {
   availability: ShopAvailability;
   /** Increment to switch the browser into the "Shop this look" list view. */
   lookSignal?: number;
+  /** Exact catalogue items that make up the current render (what's in the picture). */
+  lookItemIds?: string[];
   onWeddingDate: (date: string) => void;
   onAdd: (item: CatalogueItem) => void;
   onRemove: (itemId: string) => void;
@@ -39,6 +41,7 @@ export default function ProductBrowser({
   weddingDate,
   availability,
   lookSignal = 0,
+  lookItemIds,
   onWeddingDate,
   onAdd,
   onRemove,
@@ -60,10 +63,16 @@ export default function ProductBrowser({
 
   const inBasket = (id: string) => basket.some((b) => b.itemId === id);
 
-  // The pieces that make up the current look: everything the couple has already
-  // chosen, plus one style-matched suggestion for each decor category they
-  // haven't covered yet — so the list mirrors the styled render.
+  // The pieces that make up the current look. When a render is showing, these are
+  // the exact catalogue items it was built from — a faithful "what's in the
+  // picture" list. Otherwise we fall back to the couple's chosen items plus a
+  // style-matched suggestion per decor category.
   const lookItems: CatalogueItem[] = (() => {
+    if (lookItemIds && lookItemIds.length > 0) {
+      return lookItemIds
+        .map((id) => getItem(id))
+        .filter((i): i is CatalogueItem => !!i);
+    }
     const chosen = basket
       .map((b) => getItem(b.itemId))
       .filter((i): i is CatalogueItem => !!i);

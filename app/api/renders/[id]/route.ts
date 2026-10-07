@@ -14,7 +14,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const { data: render } = await supabase
     .from("renders")
-    .select("id, status, image_path, error_kind, parent_render_id, depth, created_at")
+    .select("id, status, image_path, error_kind, parent_render_id, depth, created_at, item_ids")
     .eq("id", id)
     .maybeSingle();
 
@@ -50,6 +50,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     renderId: render.id,
     status,
     imageUrl,
+    itemIds: (render.item_ids as string[] | null) ?? [],
     parentRenderId: render.parent_render_id,
     depth: render.depth,
     error: status === "failed" ? friendlyRenderError(errorKind) : null,

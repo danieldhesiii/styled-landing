@@ -14,13 +14,14 @@ export interface SavedLook {
 interface Props {
   looks: SavedLook[];
   onClose: () => void;
-  onLoad: (look: SavedLook, url: string) => void;
+  onLoad: (look: SavedLook, url: string, itemIds?: string[]) => void;
   onUnsave: (id: string) => void;
 }
 
 export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) {
   // Signed URLs expire, so fetch a fresh one per saved render on open.
   const [urls, setUrls] = useState<Record<string, string | null>>({});
+  const [itemIdsById, setItemIdsById] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   // Which cards are currently showing their "before" (original) image.
   const [comparing, setComparing] = useState<Record<string, boolean>>({});
@@ -37,11 +38,13 @@ export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) 
     let cancelled = false;
     (async () => {
       const next: Record<string, string | null> = {};
+      const nextItems: Record<string, string[]> = {};
       await Promise.all(
         looks.map(async (l) => {
           try {
             const data = await (await fetch(`/api/renders/${l.id}`)).json();
             next[l.id] = data?.status === "succeeded" && data.imageUrl ? data.imageUrl : null;
+            if (Array.isArray(data?.itemIds)) nextItems[l.id] = data.itemIds;
           } catch {
             next[l.id] = null;
           }
@@ -49,6 +52,7 @@ export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) 
       );
       if (!cancelled) {
         setUrls(next);
+        setItemIdsById(nextItems);
         setLoading(false);
       }
     })();
@@ -93,7 +97,7 @@ export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) 
                 const showingBefore = !!comparing[l.id] && !!l.originalUrl;
                 return (
                   <div key={l.id} className="overflow-hidden rounded-xl border border-sand bg-white shadow-sm">
-                    <button type="button" onClick={() => url && onLoad(l, url)} disabled={!url}
+                    <button type="button" onClick={() => url && onLoad(l, url, itemIdsById[l.id])} disabled={!url}
                       className="relative block aspect-[4/3] w-full bg-sand/40 disabled:cursor-not-allowed"
                       title="Open this look in the studio">
                       {url ? (

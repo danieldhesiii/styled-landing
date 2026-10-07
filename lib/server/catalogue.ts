@@ -76,3 +76,41 @@ export async function loadItemsById(ids: string[]): Promise<Map<string, ServerCa
   const all = await loadCatalogue();
   return new Map(all.filter((i) => wanted.has(i.id)).map((i) => [i.id, i]));
 }
+
+// The decor categories that actually appear in a styled room render. We compose
+// a render only from catalogue pieces across these categories, so everything in
+// the picture is real and buyable, and "Shop this look" can list exactly them.
+const LOOK_CATEGORIES: Category[] = [
+  "backdrops",
+  "florals",
+  "centrepieces",
+  "furniture",
+  "linen_tableware",
+  "lighting",
+  "signage",
+];
+
+// Choose the catalogue pieces a render will be built from: everything the couple
+// has already chosen, plus one style-matched piece for each decor category they
+// haven't covered — so the picture is a complete look made entirely of real
+// products. With no preset style, the first piece in each category is used.
+export async function selectLookItems(opts: {
+  styleId: string | null;
+  chosenIds: string[];
+}): Promise<ServerCatalogueItem[]> {
+  const all = await loadCatalogue();
+  const byId = new Map(all.map((i) => [i.id, i]));
+  const chosen = opts.chosenIds
+    .map((id) => byId.get(id))
+    .filter((i): i is ServerCatalogueItem => !!i);
+  const covered = new Set(chosen.map((i) => i.category));
+  const picks = [...chosen];
+  for (const cat of LOOK_CATEGORIES) {
+    if (covered.has(cat)) continue;
+    const inCat = all.filter((i) => i.category === cat);
+    const match =
+      (opts.styleId ? inCat.find((i) => i.styles.includes(opts.styleId!)) : undefined) ?? inCat[0];
+    if (match) picks.push(match);
+  }
+  return picks;
+}

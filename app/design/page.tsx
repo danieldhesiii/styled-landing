@@ -80,7 +80,7 @@ export default function DesignPage() {
             .then((r) => r.json())
             .then((data) => {
               if (data.status === "succeeded" && data.imageUrl && saved.renderId) {
-                setVersions([{ id: saved.renderId, url: data.imageUrl }]);
+                setVersions([{ id: saved.renderId, url: data.imageUrl, itemIds: data.itemIds }]);
                 setRenderId(saved.renderId);
               }
             })
@@ -144,10 +144,10 @@ export default function DesignPage() {
     }
   }
 
-  function loadSavedLook(look: SavedLook, url: string) {
+  function loadSavedLook(look: SavedLook, url: string, itemIds?: string[]) {
     // Set the style without wiping the render (patchBrief would clear it).
     setBrief((b) => ({ ...b, styleId: look.styleId }));
-    showRender({ id: look.id, url });
+    showRender({ id: look.id, url, itemIds });
     setShowSaved(false);
   }
 
@@ -350,6 +350,7 @@ export default function DesignPage() {
                     weddingDate={brief.weddingDate}
                     availability={shopAvailability}
                     lookSignal={shopLookSignal}
+                    lookItemIds={currentRender?.itemIds}
                     onWeddingDate={(d) => patchBrief({ weddingDate: d })}
                     onAdd={addItem}
                     onRemove={removeItem}
