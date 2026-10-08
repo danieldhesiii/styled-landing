@@ -75,6 +75,10 @@ export default function RenderStage({
   const [description, setDescription] = useState("");
   const [sending, setSending] = useState(false);
   const [showGenPanel, setShowGenPanel] = useState(false);
+  // "new" generates a fresh look from the venue photo (clears the current render);
+  // "tweak" edits the render that's showing, keeping everything the change doesn't
+  // mention. Tweak is only offered once a render exists.
+  const [panelMode, setPanelMode] = useState<"new" | "tweak">("new");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [primaryPhoto, setPrimaryPhoto] = useState(0);
@@ -156,11 +160,27 @@ export default function RenderStage({
     }
   }
 
-  async function generate(useStyleId: string) {
+  // Open the generate panel in a given mode, starting from a clean note so a
+  // leftover new-look brief never becomes a tweak instruction (or vice versa).
+  function openPanel(mode: "new" | "tweak") {
+    setPanelMode(mode);
+    setDescription("");
+    setGenError(null);
+    setImproveError(null);
+    setShowGenPanel(true);
+  }
+
+  // Generate a render. With `parentRenderId` this is a *tweak*: the model edits
+  // that render in place (keeping the room, angle, lighting and everything the
+  // note doesn't mention) and the result lands as a new version. Otherwise it's a
+  // fresh look from the venue photo, which replaces the current render.
+  async function generate(useStyleId: string, opts?: { parentRenderId?: string }) {
     if (sending) return;
-    // Commit the chosen style (this clears the old render, which is correct —
-    // a render only represents the style it was made from).
-    onStyle(useStyleId);
+    const refining = !!opts?.parentRenderId;
+    // A new look commits the chosen style (this clears the old render, which is
+    // correct — a render only represents the style it was made from). A tweak
+    // keeps the current render and style; we're editing it, not restyling.
+    if (!refining) onStyle(useStyleId);
     setSending(true);
     setGenError(null);
     const sentFor = { styleId: useStyleId, venueId: venue.id };
@@ -178,6 +198,7 @@ export default function RenderStage({
           guestCount,
           primaryIndex: primary,
           setting,
+          ...(opts?.parentRenderId ? { parentRenderId: opts.parentRenderId } : {}),
         }),
       });
       const data = await res.json().catch(() => null);
@@ -573,18 +594,26 @@ export default function RenderStage({
 
       {/* No photo uploaded yet — nothing to generate from */}
       {!uploadedImages.length && !renderUrl ? null : renderUrl && !showGenPanel ? (
-        /* Collapsed — show "Generate new style" button */
-        <div className="border-t border-sand px-4 py-3">
-          <button type="button" onClick={() => setShowGenPanel(true)}
-            className="flex w-full items-center justify-center gap-2 rounded-full border border-sand py-2.5 text-sm font-medium text-ink/60 hover:border-clay hover:text-ink transition-colors">
-            <span>↺</span> Generate new style
+        /* Collapsed — tweak the current look, or start a fresh style */
+        <div className="flex gap-2 border-t border-sand px-4 py-3">
+          <button type="button" onClick={() => openPanel("tweak")}
+            className="flex flex-1 items-center justify-center gap-2 rounded-full bg-ink py-2.5 text-sm font-medium text-cream hover:bg-ink/90 transition-colors">
+            <span>✎</span> Tweak this look
+          </button>
+          <button type="button" onClick={() => openPanel("new")}
+            className="flex flex-1 items-center justify-center gap-2 rounded-full border border-sand py-2.5 text-sm font-medium text-ink/60 hover:border-clay hover:text-ink transition-colors">
+            <span>↺</span> New style
           </button>
         </div>
       ) : showGenPanel ? (
         <div className="border-t border-sand px-5 py-5">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="font-serif text-lg text-ink">
-              {renderUrl ? "Generate new style" : "Generate your look"}
+              {!renderUrl
+                ? "Generate your look"
+                : panelMode === "tweak"
+                  ? "Tweak this look"
+                  : "Generate new style"}
             </h3>
             {renderUrl && (
               <button type="button" onClick={() => setShowGenPanel(false)}
@@ -594,6 +623,54 @@ export default function RenderStage({
             )}
           </div>
 
+          {/* Mode toggle — edit the current render, or start a fresh look. Only
+              meaningful once a render exists to tweak. */}
+          {renderUrl && (
+            <div className="mb-4 flex overflow-hidden rounded-full border border-sand text-xs">
+              <button type="button" onClick={() => openPanel("tweak")}
+                aria-pressed={panelMode === "tweak"}
+                className={`flex-1 px-3 py-1.5 transition-colors ${panelMode === "tweak" ? "bg-clay text-cream" : "text-ink/55 hover:text-ink"}`}>
+                ✎ Tweak this look
+              </button>
+              <button type="button" onClick={() => openPanel("new")}
+                aria-pressed={panelMode === "new"}
+                className={`flex-1 px-3 py-1.5 transition-colors ${panelMode === "new" ? "bg-clay text-cream" : "text-ink/55 hover:text-ink"}`}>
+                ↺ New style
+              </button>
+            </div>
+          )}
+
+          {renderUrl && panelMode === "tweak" ? (
+            /* ── TWEAK: a small change to the render that's showing ───────── */
+            <>
+              <p className="mb-4 text-xs leading-relaxed text-ink/50">
+                Keep this design and change only what you describe — the room, angle, lighting and
+                everything you don't mention stay exactly the same.
+              </p>
+              <div className="mb-4">
+                <p className="mb-2 text-xs font-medium text-ink/60">What would you like to change?</p>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  placeholder="e.g. make the floral arch fuller with blush roses, swap the chairs for gold chiavari, warmer lighting…"
+                  className="w-full resize-none rounded-xl border border-sand bg-cream/50 px-3 py-2.5 text-sm text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-clay/30"
+                />
+                <p className="mt-1.5 text-[11px] text-ink/40">
+                  {genError
+                    ? <span className="text-clay">{genError}</span>
+                    : "One or two changes at a time works best. Your new version is added alongside this one so you can compare."}
+                </p>
+              </div>
+              <button type="button"
+                onClick={() => { if (renderId) generate(style.id, { parentRenderId: renderId }); }}
+                disabled={sending || !description.trim() || !renderId}
+                className="w-full rounded-full bg-ink py-3 text-sm font-medium text-cream hover:bg-ink/90 disabled:bg-ink/30 disabled:cursor-not-allowed transition-colors">
+                {sending ? "Applying your changes…" : "Apply changes →"}
+              </button>
+            </>
+          ) : (
+          <>
           <p className="mb-4 text-xs leading-relaxed text-ink/50">
             Just describe the look you want in your own words — colours, flowers, lighting, layout,
             anything. You don't have to pick a style; your description leads the design.
@@ -702,6 +779,8 @@ export default function RenderStage({
                   ? `Generate ${getStyle(draftStyleId).name} →`
                   : "Generate →"}
           </button>
+          </>
+          )}
         </div>
       ) : null}
     </div>

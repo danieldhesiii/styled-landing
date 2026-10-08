@@ -11,7 +11,7 @@ const STEPS = [
   {
     n: "02",
     title: "Visualise your venue",
-    body: "On the Visualise tab, upload your own venue photos or pick one of our sample rooms. Tell our AI stylist how you'd like the room to look — describe a stage, the table layout, a flower arch — and we'll generate a styled render around your brief.",
+    body: "On the Visualise tab, upload your own venue photos or pick one of our sample rooms. Tell our AI stylist how you'd like the room to look — describe a stage, the table layout, a flower arch — and we'll generate a styled render around your brief. Once it's ready you can tweak that render with small changes (\"make the flowers blush pink\", \"add more candles\") or generate a whole new style — every version is saved side by side so you can compare.",
   },
   {
     n: "03",

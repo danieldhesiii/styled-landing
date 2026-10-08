@@ -59,7 +59,7 @@ export default function GuidePage() {
         <Section id="big-picture" title="The big picture">
           <p>Styled is a wedding visualiser and marketplace. Couples design their wedding against a photo of their venue, then order the real products in the picture. Two sides meet in this admin:</p>
           <ul className="list-disc space-y-1 pl-5">
-            <li><strong>Couples</strong> upload a venue, pick pieces from the catalogue, generate a styled preview, and place an order — which starts as a <em>request</em>, not a payment.</li>
+            <li><strong>Couples</strong> upload a venue, pick pieces from the catalogue, generate a styled preview — which they can then tweak with small changes or re-generate as a new style, each kept as a version to compare — and place an order, which starts as a <em>request</em>, not a payment.</li>
             <li><strong>Suppliers</strong> apply to join, you review and onboard them, and their products become the catalogue couples shop from.</li>
           </ul>
           <p>Your job in the middle: bring good suppliers on, keep their catalogue and availability honest, and move each order from request to confirmed to delivered.</p>
