@@ -18,11 +18,13 @@ export async function GET(req: Request) {
 
   const { data: blocks } = await admin
     .from("availability_overrides")
-    .select("id, day, note")
+    .select("id, day, note, source")
     .eq("supplier_id", supplierId)
     .eq("blocked", true)
     .gte("day", today)
     .order("day");
+
+  const { data: supplier } = await admin.from("suppliers").select("ical_url, ical_synced_at").eq("id", supplierId).maybeSingle();
 
   // Live orders per upcoming day for this supplier's products, to show alongside.
   const { data: products } = await admin.from("products").select("id").eq("supplier_id", supplierId);
@@ -48,7 +50,14 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    blocks: (blocks ?? []).map((b) => ({ id: b.id, day: b.day, note: b.note, liveOrders: ordersByDay.get(b.day as string) ?? 0 })),
+    blocks: (blocks ?? []).map((b) => ({
+      id: b.id,
+      day: b.day,
+      note: b.note,
+      source: b.source ?? "manual",
+      liveOrders: ordersByDay.get(b.day as string) ?? 0,
+    })),
+    ical: { url: supplier?.ical_url ?? null, syncedAt: supplier?.ical_synced_at ?? null },
   });
 }
 

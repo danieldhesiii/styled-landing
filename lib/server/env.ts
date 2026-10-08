@@ -98,4 +98,10 @@ export const env = {
   get siteUrl() {
     return (process.env.NEXT_PUBLIC_SITE_URL || "https://styled-landing-zeta.vercel.app").replace(/\/$/, "");
   },
+
+  // Shared secret for scheduled jobs (Vercel Cron sends it as a Bearer token).
+  // Without it the cron endpoint refuses to run, so set it to enable auto-sync.
+  get cronSecretIfSet() {
+    return process.env.CRON_SECRET || undefined;
+  },
 };

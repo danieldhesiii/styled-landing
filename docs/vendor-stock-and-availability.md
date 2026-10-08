@@ -113,16 +113,20 @@ on the hook for a date you can't do."
 - Vendor portal: vendors set their own **price, capacity, and on/off**. ✅
 
 - Vendors can **self-block dates** in the portal (`/portal/availability`) — mark days
-  they're booked elsewhere or away so couples can't request them then. ✅ *(new)*
+  they're booked elsewhere or away so couples can't request them then. ✅
+- Vendors can **sync a calendar** (iCal link from Google Calendar / Booqable /
+  Current RMS). Their busy days block automatically, re-synced daily (Vercel Cron) and
+  on demand. The "set and forget" option. ✅ *(new)*
 
 **The gap (what's not there yet):**
-- Vendor self-service is **supplier-level** (block a whole day). Per-**product** limits
-  on a specific date are still a staff job in Admin → Availability.
-- No **iCal calendar sync** yet — the "set and forget" option.
+- Vendor self-service is **supplier-level** (block/sync whole days). Per-**product**
+  limits on a specific date are still a staff job in Admin → Availability.
+- iCal **recurring events** (RRULE) aren't expanded — only their first occurrence is
+  blocked. One-off bookings (the common case) sync fully; the confirm step is the
+  backstop.
 
-**So the natural next build is** (1) **iCal import** so a vendor's existing calendar
-keeps Styled in sync automatically, and optionally (2) per-product date limits in the
-portal.
+**Config:** auto-sync runs daily if `CRON_SECRET` is set in Vercel (see `.env.example`);
+without it, vendors still sync on demand from the portal.
 
 ---
 

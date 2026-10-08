@@ -10,7 +10,7 @@ export interface ApiResult {
   data: any;
 }
 
-export async function vendorApi(path: string, method: "GET" | "POST" | "PATCH" | "DELETE" = "GET", body?: unknown): Promise<ApiResult> {
+export async function vendorApi(path: string, method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" = "GET", body?: unknown): Promise<ApiResult> {
   const res = await fetch(path, {
     method,
     headers: { "Content-Type": "application/json" },

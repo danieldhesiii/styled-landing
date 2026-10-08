@@ -128,7 +128,7 @@ export default function GuidePage() {
           <ul className="list-disc space-y-1 pl-5">
             <li><strong>Orders</strong> — see orders that include their pieces (items, quantity, delivery date, venue — never other suppliers&apos; lines, the couple&apos;s price, or commission) and <strong>confirm or decline</strong> each line themselves, while the order is still being reviewed.</li>
             <li><strong>Products</strong> — set their prices, set units-per-day capacity, and show/hide each of their products.</li>
-            <li><strong>Availability</strong> — <strong>block dates</strong> they&apos;re booked elsewhere or away, so couples can&apos;t request them then. (Per-<em>product</em> limits on a date are still a staff job in Admin → Availability.)</li>
+            <li><strong>Availability</strong> — <strong>block dates</strong> they&apos;re booked elsewhere or away, so couples can&apos;t request them then, or <strong>sync a calendar</strong> (Google/Booqable/Current RMS iCal link) so their busy days block automatically. (Per-<em>product</em> limits on a date are still a staff job in Admin → Availability.)</li>
           </ul>
           <p>Their confirmations show up on the order here, logged as done by the supplier. You still make the final call on the whole order — a supplier confirming their lines doesn&apos;t confirm the order itself.</p>
           <p className="font-medium text-ink">Order notifications</p>
