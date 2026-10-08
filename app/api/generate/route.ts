@@ -212,7 +212,15 @@ export async function POST(req: Request) {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    const fields = { style_id: renderStyleId, guest_count: guestCount, venue_id: base.dbVenueId };
+    // A description-led render has no preset style (renderStyleId is null). The
+    // briefs.style_id column is NOT NULL (default 'garden_romance'), so only set it
+    // when we actually have one — otherwise let the default stand (on insert) or
+    // leave the existing value untouched (on update).
+    const fields: { guest_count: number; venue_id: string | null; style_id?: string } = {
+      guest_count: guestCount,
+      venue_id: base.dbVenueId,
+    };
+    if (renderStyleId) fields.style_id = renderStyleId;
     if (existing) {
       briefId = existing.id as string;
       await supabase.from("briefs").update(fields).eq("id", briefId);
