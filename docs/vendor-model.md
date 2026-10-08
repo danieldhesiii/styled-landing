@@ -83,6 +83,10 @@ low-friction path marketplaces use to onboard suppliers fast. ([Getcarro][5])
 The vendor's final **confirm** is the safety net: even if our number is slightly off,
 nothing is promised to a couple until the supplier says yes.
 
+> For the day-to-day practicalities — how a vendor's catalogue gets on, how a date
+> stays accurate, the cross-channel double-booking risk, and what's built vs. still to
+> build — see [vendor-stock-and-availability.md](./vendor-stock-and-availability.md).
+
 ---
 
 ## 5. How a vendor "links" to us — four tiers, start at the bottom
