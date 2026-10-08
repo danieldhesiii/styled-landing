@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { BasketLine, CatalogueItem } from "@/lib/types";
 import { getStyle, getVenue } from "@/lib/styles";
 import { suggestedQty, formatGBP } from "@/lib/quote";
-import { type Brief } from "@/components/design/BriefStep";
+import { type Brief, type UploadedPhoto } from "@/components/design/BriefStep";
 import RenderStage, { type RenderRef } from "@/components/design/RenderStage";
 import ProductBrowser from "@/components/design/ProductBrowser";
 import BasketPanel from "@/components/design/BasketPanel";
@@ -77,7 +77,18 @@ export default function DesignPage() {
           basket?: BasketLine[];
           renderId?: string | null;
         };
-        if (saved.brief) setBrief((b) => ({ ...b, ...saved.brief }));
+        if (saved.brief) {
+          // Older saved state kept uploadedImages as plain URL strings; keep only
+          // entries in the current {id, url} shape (expired URLs are dropped anyway).
+          const restoredBrief = { ...saved.brief };
+          if (Array.isArray(restoredBrief.uploadedImages)) {
+            restoredBrief.uploadedImages = (restoredBrief.uploadedImages as unknown[]).filter(
+              (p): p is UploadedPhoto =>
+                !!p && typeof p === "object" && typeof (p as UploadedPhoto).id === "string" && typeof (p as UploadedPhoto).url === "string"
+            );
+          }
+          setBrief((b) => ({ ...b, ...restoredBrief }));
+        }
         if (Array.isArray(saved.basket)) setBasket(saved.basket);
         if (saved.renderId) {
           fetch(`/api/renders/${saved.renderId}`)
@@ -206,7 +217,7 @@ export default function DesignPage() {
   // "none" is a description-led look with no preset; show a neutral name for it.
   const styleName = brief.styleId === "none" ? "Your design" : style.name;
   // The "before" image a render is compared against / saved alongside.
-  const originalImage = brief.uploadedImages[0] ?? venue.image ?? null;
+  const originalImage = brief.uploadedImages[0]?.url ?? venue.image ?? null;
 
   const patchBrief = (patch: Partial<Brief>) => {
     // A render is only valid for the venue, photos and style it was made from.
@@ -234,9 +245,21 @@ export default function DesignPage() {
   }
 
   const headerVenue = useMemo(
-    () => ({ ...venue, image: brief.uploadedImages[0] ?? venue.image }),
+    () => ({ ...venue, image: brief.uploadedImages[0]?.url ?? venue.image }),
     [venue, brief.uploadedImages]
   );
+
+  // Remove an uploaded venue photo: drop it from the design and delete the stored
+  // file/record, so it's no longer used for the render either.
+  async function removeAngle(id: string) {
+    patchBrief({ uploadedImages: brief.uploadedImages.filter((p) => p.id !== id) });
+    try {
+      await fetch(`/api/venues/photos/${id}`, { method: "DELETE" });
+    } catch {
+      // The photo is already gone from the design; a failed delete just leaves an
+      // orphaned file, which is harmless.
+    }
+  }
 
   return (
     <div className="min-h-screen bg-cream">
@@ -379,9 +402,10 @@ export default function DesignPage() {
                   onDeleteVersion={deleteVersion}
                   onStyle={(id) => patchBrief({ styleId: id })}
                   onVenue={(id) => patchBrief({ venueId: id })}
-                  onAddAngle={(url) =>
-                    setBrief((b) => ({ ...b, uploadedImages: [...b.uploadedImages, url] }))
+                  onAddAngle={(photo) =>
+                    setBrief((b) => ({ ...b, uploadedImages: [...b.uploadedImages, photo] }))
                   }
+                  onRemoveAngle={removeAngle}
                   onShopLook={() => {
                     setShopLookSignal((n) => n + 1);
                     productBrowserRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });

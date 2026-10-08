@@ -15,7 +15,7 @@ export interface RenderRef {
 
 interface Props {
   venue: SampleVenue;
-  uploadedImages: string[];
+  uploadedImages: { id: string; url: string }[];
   style: StylePreset;
   /** Display name for the committed look — "Your design" when no preset was used. */
   styleName: string;
@@ -31,7 +31,9 @@ interface Props {
   /** A style id, or "none" for a description-led look. */
   onStyle: (id: string) => void;
   onVenue: (venueId: string) => void;
-  onAddAngle: (url: string) => void;
+  onAddAngle: (photo: { id: string; url: string }) => void;
+  /** Remove an uploaded venue photo (and its stored file). */
+  onRemoveAngle: (id: string) => void;
   /** Reveal the "Shop this look" list of pieces that make up this render. */
   onShopLook: () => void;
   onToggleSave: () => void;
@@ -66,6 +68,7 @@ export default function RenderStage({
   onStyle,
   onVenue: _onVenue,
   onAddAngle,
+  onRemoveAngle,
   onShopLook,
   onToggleSave,
 }: Props) {
@@ -98,7 +101,7 @@ export default function RenderStage({
   const live = useRef({ styleId: style.id, venueId: venue.id });
   live.current = { styleId: style.id, venueId: venue.id };
 
-  const uploadedPreview = uploadedImages[primary] ?? null;
+  const uploadedPreview = uploadedImages[primary]?.url ?? null;
   // The "before" image to compare a render against — only the couple's own
   // uploaded photo. We deliberately do NOT fall back to a stock venue image, so
   // before anything is uploaded the stage shows the text prompt, not a photo.
@@ -170,7 +173,7 @@ export default function RenderStage({
           prompt: description.trim(),
           styleId: useStyleId,
           venueId: venue.id,
-          images: uploadedImages,
+          images: uploadedImages.map((p) => p.url),
           itemIds,
           guestCount,
           primaryIndex: primary,
@@ -235,7 +238,7 @@ export default function RenderStage({
     setUploadError(null);
     try {
       const photo = await uploadVenuePhoto(file, { append: true });
-      onAddAngle(photo.url);
+      onAddAngle({ id: photo.id, url: photo.url });
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
@@ -538,13 +541,21 @@ export default function RenderStage({
       <div className="border-t border-sand px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="mr-0.5 text-xs text-ink/40">Room</span>
-          {uploadedImages.map((src, i) => (
-            <button key={i} type="button" onClick={() => setPrimaryPhoto(i)}
-              aria-pressed={i === primary}
-              className={`h-11 w-11 overflow-hidden rounded-lg border-2 transition-colors ${i === primary ? "border-clay" : "border-sand hover:border-clay/50"}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt={`Angle ${i + 1}`} className="h-full w-full object-cover" />
-            </button>
+          {uploadedImages.map((p, i) => (
+            <div key={p.id} className="group relative h-11 w-11">
+              <button type="button" onClick={() => setPrimaryPhoto(i)}
+                aria-pressed={i === primary}
+                title={i === primary ? "Primary view" : "Use as primary view"}
+                className={`h-11 w-11 overflow-hidden rounded-lg border-2 transition-colors ${i === primary ? "border-clay" : "border-sand hover:border-clay/50"}`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.url} alt={`Angle ${i + 1}`} className="h-full w-full object-cover" />
+              </button>
+              <button type="button" onClick={() => onRemoveAngle(p.id)}
+                aria-label={`Remove angle ${i + 1}`} title="Remove photo"
+                className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-sand bg-white text-[10px] leading-none text-ink/50 opacity-0 shadow-sm transition-opacity hover:text-clay group-hover:opacity-100 focus:opacity-100">
+                ×
+              </button>
+            </div>
           ))}
           <button type="button" onClick={() => fileRef.current?.click()}
             className="flex h-11 w-11 flex-col items-center justify-center rounded-lg border border-dashed border-sand text-ink/40 hover:border-clay hover:text-clay transition-colors"

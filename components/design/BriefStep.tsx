@@ -5,9 +5,15 @@ import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
 import { SAMPLE_VENUES, STYLES } from "@/lib/styles";
 import { formatGBP } from "@/lib/quote";
 
+/** An uploaded venue photo: its id (so it can be removed) and a signed URL. */
+export interface UploadedPhoto {
+  id: string;
+  url: string;
+}
+
 export interface Brief {
   venueId: string;
-  uploadedImages: string[];
+  uploadedImages: UploadedPhoto[];
   styleId: string;
   guestCount: number;
   weddingDate: string;
@@ -33,7 +39,7 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
     setUploadError(null);
     try {
       const photo = await uploadVenuePhoto(file);
-      onChange({ uploadedImages: [photo.url] });
+      onChange({ uploadedImages: [{ id: photo.id, url: photo.url }] });
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed. Please try again.");
     } finally {
@@ -91,7 +97,7 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
             {brief.uploadedImages.length > 0 ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={brief.uploadedImages[0]}
+                src={brief.uploadedImages[0].url}
                 alt="Your venue"
                 className="aspect-[4/3] w-full rounded-lg object-cover"
               />
