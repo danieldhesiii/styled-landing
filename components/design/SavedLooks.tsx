@@ -19,8 +19,10 @@ interface Props {
 }
 
 export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) {
-  // Signed URLs expire, so fetch a fresh one per saved render on open.
+  // Signed URLs expire, so fetch a fresh one per saved render on open — for both
+  // the styled render ("after") and the original venue photo ("before").
   const [urls, setUrls] = useState<Record<string, string | null>>({});
+  const [originalUrls, setOriginalUrls] = useState<Record<string, string>>({});
   const [itemIdsById, setItemIdsById] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   // Which cards are currently showing their "before" (original) image.
@@ -38,20 +40,26 @@ export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) 
     let cancelled = false;
     (async () => {
       const next: Record<string, string | null> = {};
+      const nextOriginals: Record<string, string> = {};
       const nextItems: Record<string, string[]> = {};
       await Promise.all(
         looks.map(async (l) => {
           try {
             const data = await (await fetch(`/api/renders/${l.id}`)).json();
             next[l.id] = data?.status === "succeeded" && data.imageUrl ? data.imageUrl : null;
+            // Prefer the freshly-signed original; fall back to anything stored.
+            const original = data?.originalUrl ?? l.originalUrl;
+            if (original) nextOriginals[l.id] = original;
             if (Array.isArray(data?.itemIds)) nextItems[l.id] = data.itemIds;
           } catch {
             next[l.id] = null;
+            if (l.originalUrl) nextOriginals[l.id] = l.originalUrl;
           }
         })
       );
       if (!cancelled) {
         setUrls(next);
+        setOriginalUrls(nextOriginals);
         setItemIdsById(nextItems);
         setLoading(false);
       }
@@ -94,7 +102,8 @@ export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) 
             <div className="grid grid-cols-2 gap-3">
               {looks.map((l) => {
                 const url = urls[l.id];
-                const showingBefore = !!comparing[l.id] && !!l.originalUrl;
+                const original = originalUrls[l.id];
+                const showingBefore = !!comparing[l.id] && !!original;
                 return (
                   <div key={l.id} className="overflow-hidden rounded-xl border border-sand bg-white shadow-sm">
                     <button type="button" onClick={() => url && onLoad(l, url, itemIdsById[l.id])} disabled={!url}
@@ -104,7 +113,7 @@ export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) 
                         <>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={showingBefore ? l.originalUrl : url}
+                            src={showingBefore ? original : url}
                             alt={l.styleName}
                             className="h-full w-full object-cover"
                           />
@@ -117,8 +126,8 @@ export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) 
                           {loading ? "Loading…" : "Unavailable"}
                         </span>
                       )}
-                      {/* Before/after toggle — only if we kept the original. */}
-                      {url && l.originalUrl && (
+                      {/* Before/after toggle — only if we have the original. */}
+                      {url && original && (
                         <span
                           role="button"
                           tabIndex={0}
