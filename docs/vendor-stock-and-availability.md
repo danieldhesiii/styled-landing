@@ -112,15 +112,17 @@ on the hook for a date you can't do."
 - The confirm step (staff and the vendor portal). ✅
 - Vendor portal: vendors set their own **price, capacity, and on/off**. ✅
 
+- Vendors can **self-block dates** in the portal (`/portal/availability`) — mark days
+  they're booked elsewhere or away so couples can't request them then. ✅ *(new)*
+
 **The gap (what's not there yet):**
-- Vendors can't **self-block specific dates** in the portal yet — right now that's a
-  staff job in Admin → Availability. (The engine supports it; it's just not exposed to
-  vendors.)
+- Vendor self-service is **supplier-level** (block a whole day). Per-**product** limits
+  on a specific date are still a staff job in Admin → Availability.
 - No **iCal calendar sync** yet — the "set and forget" option.
 
-**So the two natural next builds are:** (1) a vendor **availability calendar** in the
-portal (block dates / adjust a date's units themselves), and (2) **iCal import** so a
-vendor's existing calendar keeps Styled in sync automatically.
+**So the natural next build is** (1) **iCal import** so a vendor's existing calendar
+keeps Styled in sync automatically, and optionally (2) per-product date limits in the
+portal.
 
 ---
 

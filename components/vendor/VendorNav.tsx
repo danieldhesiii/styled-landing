@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 const LINKS = [
   { href: "/portal", label: "Orders", match: (p: string) => p === "/portal" },
   { href: "/portal/products", label: "Products", match: (p: string) => p.startsWith("/portal/products") },
+  { href: "/portal/availability", label: "Availability", match: (p: string) => p.startsWith("/portal/availability") },
 ];
 
 export default function VendorNav({ email, supplier }: { email: string; supplier: string }) {
