@@ -130,17 +130,20 @@ export async function notifySuppliersOfOrder(admin: SupabaseClient, orderId: str
 
     const { data: lines } = await admin
       .from("order_lines")
-      .select("supplier_id, product_name, quantity, unit")
+      .select("supplier_id, product_name, quantity, unit, needed_date")
       .eq("order_id", orderId);
     if (!lines || lines.length === 0) return;
 
-    // Group lines by supplier.
-    const bySupplier = new Map<string, { name: string; quantity: number; unit: string | null }[]>();
+    // Group lines by supplier, tracking their delivery date (shared by their lines).
+    const bySupplier = new Map<string, { deliveryDate: string | null; items: { name: string; quantity: number; unit: string | null }[] }>();
     for (const l of lines) {
       if (!l.supplier_id) continue;
-      const list = bySupplier.get(l.supplier_id as string) ?? [];
-      list.push({ name: l.product_name as string, quantity: l.quantity as number, unit: l.unit as string | null });
-      bySupplier.set(l.supplier_id as string, list);
+      const group = bySupplier.get(l.supplier_id as string) ?? {
+        deliveryDate: (l.needed_date as string | null) ?? (order.wedding_date as string | null),
+        items: [],
+      };
+      group.items.push({ name: l.product_name as string, quantity: l.quantity as number, unit: l.unit as string | null });
+      bySupplier.set(l.supplier_id as string, group);
     }
     if (bySupplier.size === 0) return;
 
@@ -167,15 +170,19 @@ export async function notifySuppliersOfOrder(admin: SupabaseClient, orderId: str
     }
 
     const portalUrl = `${env.siteUrl}/portal`;
-    const date = longDate(order.wedding_date as string | null);
+    const weddingDate = longDate(order.wedding_date as string | null);
     const venue = (order.venue_label as string | null) ?? null;
 
     const sends: Promise<boolean>[] = [];
-    for (const [supplierId, items] of bySupplier) {
+    for (const [supplierId, group] of bySupplier) {
       const supplier = supplierById.get(supplierId);
       const to = [...(supplier?.contact_email ? [supplier.contact_email as string] : []), ...(loginEmails.get(supplierId) ?? [])];
       if (to.length === 0) continue; // nobody to tell yet — staff can relay from admin
 
+      const items = group.items;
+      const deliveryDate = longDate(group.deliveryDate);
+      // Note the wedding day only when the delivery date is different.
+      const whenNote = group.deliveryDate && group.deliveryDate !== (order.wedding_date as string | null) ? ` (wedding ${weddingDate})` : "";
       const itemLines = items.map((i) => `${i.quantity} × ${i.name}${i.unit ? ` (${i.unit})` : ""}`);
       const count = items.length;
       const subject = `New Styled order to confirm — ${order.reference}`;
@@ -183,7 +190,7 @@ export async function notifySuppliersOfOrder(admin: SupabaseClient, orderId: str
       const text = [
         `Hi ${supplier?.name ?? "there"},`,
         ``,
-        `You have ${count} item${count === 1 ? "" : "s"} to confirm for a wedding on ${date}${venue ? ` at ${venue}` : ""}.`,
+        `You have ${count} item${count === 1 ? "" : "s"} to confirm for delivery on ${deliveryDate}${whenNote}${venue ? ` at ${venue}` : ""}.`,
         ``,
         ...itemLines.map((l) => `  • ${l}`),
         ``,
@@ -198,8 +205,8 @@ export async function notifySuppliersOfOrder(admin: SupabaseClient, orderId: str
         <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#2b2622">
           <p style="font-size:20px;font-weight:600">New order to confirm</p>
           <p>Hi ${escapeHtml(supplier?.name ?? "there")},</p>
-          <p>You have <strong>${count} item${count === 1 ? "" : "s"}</strong> to confirm for a wedding on
-             <strong>${escapeHtml(date)}</strong>${venue ? ` at <strong>${escapeHtml(venue)}</strong>` : ""}.</p>
+          <p>You have <strong>${count} item${count === 1 ? "" : "s"}</strong> to confirm for delivery on
+             <strong>${escapeHtml(deliveryDate)}</strong>${whenNote ? ` ${escapeHtml(whenNote.trim())}` : ""}${venue ? ` at <strong>${escapeHtml(venue)}</strong>` : ""}.</p>
           <ul>${itemLines.map((l) => `<li>${escapeHtml(l)}</li>`).join("")}</ul>
           <p style="margin:24px 0">
             <a href="${portalUrl}" style="background:#2b2622;color:#faf6f0;text-decoration:none;padding:12px 24px;border-radius:999px;display:inline-block">

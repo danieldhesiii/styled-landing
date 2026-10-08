@@ -37,6 +37,9 @@ interface PlacedOrder {
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const fmtDate = (d: string) =>
+  new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+
 export default function CheckoutStep({
   basket,
   weddingDate,
@@ -57,6 +60,9 @@ export default function CheckoutStep({
   }, [accountEmail]);
   const [placed, setPlaced] = useState<PlacedOrder | null>(null);
   const [serverQuote, setServerQuote] = useState<ServerQuote | null>(null);
+  // Per-supplier delivery dates. Default: everything on the wedding day.
+  const [splitDelivery, setSplitDelivery] = useState(false);
+  const [deliveryDates, setDeliveryDates] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   // Bumped to re-check availability after the server says something sold out.
@@ -135,6 +141,11 @@ export default function CheckoutStep({
           coupleName: name.trim(),
           email: email.trim(),
           weddingDate: weddingDate || undefined,
+          // Per-supplier delivery dates, only when the couple chose to split them.
+          deliveryDates:
+            weddingDate && splitDelivery
+              ? Object.fromEntries(view.groups.map((g) => [g.supplier, deliveryDates[g.supplier] || weddingDate]))
+              : undefined,
           styleId,
           guestCount,
           venueLabel,
@@ -317,6 +328,42 @@ export default function CheckoutStep({
               </div>
             ))}
           </div>
+          {weddingDate && (
+            <div className="mt-4 border-t border-sand pt-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-ink">Delivery</span>
+                {splitDelivery ? (
+                  <button type="button" onClick={() => { setSplitDelivery(false); setDeliveryDates({}); }} className="text-xs text-clay hover:underline">
+                    All on the day
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => setSplitDelivery(true)} className="text-xs text-clay hover:underline">
+                    Different days?
+                  </button>
+                )}
+              </div>
+              {!splitDelivery ? (
+                <p className="mt-1 text-xs text-ink/50">Everything arrives on your wedding day ({fmtDate(weddingDate)}).</p>
+              ) : (
+                <div className="mt-2 space-y-2">
+                  <p className="text-xs text-ink/50">When should each supplier deliver? Defaults to your wedding day.</p>
+                  {view.groups.map((g) => (
+                    <div key={g.supplier} className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate text-xs text-ink/70">{g.supplier}</span>
+                      <input
+                        type="date"
+                        value={deliveryDates[g.supplier] ?? weddingDate}
+                        min={new Date().toISOString().slice(0, 10)}
+                        onChange={(e) => setDeliveryDates((d) => ({ ...d, [g.supplier]: e.target.value }))}
+                        className="shrink-0 rounded-lg border border-sand px-2 py-1 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-clay/30"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="mt-4 border-t border-sand pt-4">
             <div className="flex justify-between text-sm">
               <span className="text-ink/60">Estimated total</span>

@@ -17,6 +17,7 @@ interface Order {
   reference: string;
   status: string;
   weddingDate: string | null;
+  deliveryDate: string | null;
   venue: string | null;
   actionable: boolean;
   lines: Line[];
@@ -88,7 +89,10 @@ export default function PortalOrdersPage() {
                   <div>
                     <h2 className="font-serif text-xl text-ink">{o.reference}</h2>
                     <p className="mt-1 text-sm text-ink/60">
-                      {longDay(o.weddingDate)}{o.venue ? ` · ${o.venue}` : ""}
+                      Deliver {longDay(o.deliveryDate)}{o.venue ? ` · ${o.venue}` : ""}
+                      {o.deliveryDate && o.weddingDate && o.deliveryDate !== o.weddingDate && (
+                        <span className="text-ink/40"> · wedding {longDay(o.weddingDate)}</span>
+                      )}
                     </p>
                   </div>
                   {o.actionable && pending.length > 0 && (

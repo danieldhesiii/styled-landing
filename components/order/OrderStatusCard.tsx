@@ -10,6 +10,7 @@ export interface OrderViewLine {
   quantity: number;
   lineTotalPence: number;
   supplierStatus: "pending" | "confirmed" | "declined";
+  neededDate: string | null;
 }
 
 export interface OrderView {
@@ -101,12 +102,19 @@ export default function OrderStatusCard({ order }: { order: OrderView }) {
           const declined = lines.some((l) => l.supplierStatus === "declined");
           const allIn = lines.every((l) => l.supplierStatus === "confirmed");
           const badge = declined ? LINE_BADGE.declined : allIn ? LINE_BADGE.confirmed : LINE_BADGE.pending;
+          // All of a supplier's lines share a delivery date; show it when it isn't
+          // the wedding day.
+          const deliveryDate = lines[0]?.neededDate ?? null;
+          const differentDay = deliveryDate && deliveryDate !== order.weddingDate;
           return (
             <section key={supplier}>
               <div className="flex items-center justify-between gap-2">
                 <h3 className="font-medium text-ink">{supplier}</h3>
                 <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${badge.cls}`}>{badge.label}</span>
               </div>
+              {differentDay && (
+                <p className="mt-0.5 text-xs text-clay">Delivery: {formatDay(deliveryDate)}</p>
+              )}
               <ul className="mt-2 divide-y divide-sand rounded-xl border border-sand">
                 {lines.map((l, i) => (
                   <li key={i} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">

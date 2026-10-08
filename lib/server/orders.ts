@@ -92,6 +92,17 @@ export function validateOrderFields(body: Record<string, unknown>): { ok: true; 
   };
 }
 
+// A valid delivery date: a real YYYY-MM-DD, not in the past, within five years.
+// (A delivery can be before or after the wedding — setup earlier, collection
+// later — so it isn't tied to the wedding date, only to being a sane future day.)
+export function isValidDeliveryDate(d: unknown): d is string {
+  if (typeof d !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+  const parsed = new Date(`${d}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== d) return false;
+  const today = Date.parse(new Date().toISOString().slice(0, 10) + "T00:00:00Z");
+  return parsed.getTime() >= today && parsed.getTime() <= today + 5 * 365 * DAY_MS;
+}
+
 // Items whose supplier needs more notice than the couple has left. Lead time is
 // the number of days ahead an item must be booked.
 export function itemsBookedTooLate(
@@ -135,13 +146,20 @@ interface LineRow {
   unit_price_pence: number;
   line_total_pence: number;
   supplier_status: string;
+  needed_date: string | null;
 }
 
 // What a couple sees of an order. Never includes commission, network hash or
 // the idempotency key.
 export function orderView(o: OrderRow, lines: LineRow[]) {
-  const bySupplier = new Map<string, number>();
-  for (const l of lines) bySupplier.set(l.supplier_name, (bySupplier.get(l.supplier_name) ?? 0) + l.line_total_pence);
+  // Per supplier: their total and their delivery date (all a supplier's lines
+  // share one date). Falls back to the wedding date when none was set.
+  const bySupplier = new Map<string, { totalPence: number; neededDate: string | null }>();
+  for (const l of lines) {
+    const g = bySupplier.get(l.supplier_name) ?? { totalPence: 0, neededDate: l.needed_date ?? o.wedding_date };
+    g.totalPence += l.line_total_pence;
+    bySupplier.set(l.supplier_name, g);
+  }
 
   return {
     id: o.id,
@@ -161,7 +179,7 @@ export function orderView(o: OrderRow, lines: LineRow[]) {
     subtotalPence: o.subtotal_pence,
     depositPence: o.deposit_pence,
     balancePence: o.subtotal_pence - o.deposit_pence,
-    bySupplier: [...bySupplier].map(([supplier, totalPence]) => ({ supplier, totalPence })),
+    bySupplier: [...bySupplier].map(([supplier, g]) => ({ supplier, totalPence: g.totalPence, neededDate: g.neededDate })),
     lines: lines.map((l) => ({
       productId: l.product_id,
       name: l.product_name,
@@ -171,6 +189,7 @@ export function orderView(o: OrderRow, lines: LineRow[]) {
       unitPricePence: l.unit_price_pence,
       lineTotalPence: l.line_total_pence,
       supplierStatus: l.supplier_status,
+      neededDate: l.needed_date ?? o.wedding_date,
     })),
   };
 }
@@ -178,7 +197,7 @@ export function orderView(o: OrderRow, lines: LineRow[]) {
 export const ORDER_VIEW_COLUMNS =
   "id, reference, couple_message, updated_at, status, created_at, couple_name, email, phone, wedding_date, venue_label, style_id, guest_count, subtotal_pence, deposit_pence, notes";
 export const LINE_VIEW_COLUMNS =
-  "product_id, product_name, supplier_name, unit, quantity, unit_price_pence, line_total_pence, supplier_status";
+  "product_id, product_name, supplier_name, unit, quantity, unit_price_pence, line_total_pence, supplier_status, needed_date";
 
 // Load an order and its lines as the signed-in guest (row level security makes
 // other people's orders invisible).

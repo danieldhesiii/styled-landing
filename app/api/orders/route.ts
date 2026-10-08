@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/server/env";
 import { clientIpHash } from "@/lib/server/limits";
 import { priceBasket, publicQuote } from "@/lib/server/quote";
-import { itemsBookedTooLate, loadOrderView, validateOrderFields } from "@/lib/server/orders";
+import { itemsBookedTooLate, isValidDeliveryDate, loadOrderView, validateOrderFields } from "@/lib/server/orders";
 import { checkQuantities } from "@/lib/server/availability";
 import { notifySuppliersOfOrder } from "@/lib/server/notify";
 
@@ -46,6 +46,20 @@ export async function POST(req: Request) {
   const parsed = validateOrderFields(body);
   if (!parsed.ok) return fail(parsed.status, parsed.error);
   const f = parsed.fields;
+
+  // Per-supplier delivery dates (keyed by supplier name, as grouped in checkout).
+  // Each supplier's items are delivered on their date; the default — and the only
+  // option without a wedding date set — is the wedding day itself. Availability is
+  // still reserved against the wedding date (see create_order); this is logistics.
+  const deliveryBySupplier = new Map<string, string>();
+  if (f.weddingDate && body.deliveryDates && typeof body.deliveryDates === "object") {
+    for (const [supplier, date] of Object.entries(body.deliveryDates as Record<string, unknown>)) {
+      if (!date || date === f.weddingDate) continue; // default day — nothing to record
+      if (!isValidDeliveryDate(date)) return fail(400, "One of your delivery dates isn't valid.");
+      deliveryBySupplier.set(supplier, date);
+    }
+  }
+  const deliveryDateFor = (supplierName: string): string | null => deliveryBySupplier.get(supplierName) ?? f.weddingDate;
 
   const admin = createAdminClient();
 
@@ -104,9 +118,20 @@ export async function POST(req: Request) {
   }
   if (!priced.ok) return fail(priced.status, priced.error, priced.extra);
 
-  const tooSoon = itemsBookedTooLate(f.weddingDate, [...priced.items.values()].filter((i) => priced.lines.some((l) => l.itemId === i.id)));
+  // Notice period: each item must be bookable far enough before the date it's
+  // actually needed — its delivery date, which can be earlier than the wedding.
+  const itemsOnOrder = [...priced.items.values()].filter((i) => priced.lines.some((l) => l.itemId === i.id));
+  const tooSoon: { itemId: string; name: string; leadTimeDays: number }[] = [];
+  if (f.weddingDate) {
+    const byDate = new Map<string, typeof itemsOnOrder>();
+    for (const item of itemsOnOrder) {
+      const d = deliveryDateFor(item.supplier) ?? f.weddingDate;
+      (byDate.get(d) ?? byDate.set(d, []).get(d)!).push(item);
+    }
+    for (const [d, items] of byDate) tooSoon.push(...itemsBookedTooLate(d, items));
+  }
   if (tooSoon.length > 0) {
-    return fail(422, "Some items need more notice than you have before your wedding date.", { tooSoon });
+    return fail(422, "Some items need more notice than you have before their delivery date.", { tooSoon });
   }
 
   // Is everything actually free on their wedding date? (The database re-checks this
@@ -175,6 +200,8 @@ export async function POST(req: Request) {
       unit_price_pence: l.unitPricePence,
       quantity: l.quantity,
       line_total_pence: l.lineTotalPence,
+      // Delivery date, if different from the wedding day (else create_order defaults it).
+      needed_date: deliveryBySupplier.get(l.item.supplier) ?? null,
     })),
   });
 

@@ -18,6 +18,7 @@ interface Line {
   supplier_status: "pending" | "confirmed" | "declined";
   supplier_note: string | null;
   supplier_decided_at: string | null;
+  needed_date: string | null;
 }
 interface OrderEvent {
   id: string;
@@ -211,12 +212,18 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
           {groups.map(([supplier, ls]) => {
             const pending = ls.filter((l) => l.supplier_status !== "confirmed");
+            // A supplier's delivery date (shared by its lines); flag when it's not the wedding day.
+            const deliveryDate = ls[0]?.needed_date ?? null;
+            const differentDay = deliveryDate && deliveryDate !== order.wedding_date;
             return (
               <div key={supplier} className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-sand bg-cream/50 px-5 py-3">
                   <div>
                     <p className="font-medium text-ink">{supplier}</p>
-                    <p className="text-xs text-ink/45">{money(ls.reduce((s, l) => s + l.line_total_pence, 0))}</p>
+                    <p className="text-xs text-ink/45">
+                      {money(ls.reduce((s, l) => s + l.line_total_pence, 0))}
+                      {differentDay && <span className="ml-2 text-clay">Deliver {longDay(deliveryDate)}</span>}
+                    </p>
                   </div>
                   {requested && pending.length > 0 && (
                     <button

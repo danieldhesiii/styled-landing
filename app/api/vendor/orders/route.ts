@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   // This supplier's lines, with the parts of the order they're allowed to see.
   const { data: lines, error } = await admin
     .from("order_lines")
-    .select("id, order_id, product_name, unit, quantity, supplier_status, supplier_note, orders!inner(reference, status, wedding_date, venue_label, created_at)")
+    .select("id, order_id, product_name, unit, quantity, supplier_status, supplier_note, needed_date, orders!inner(reference, status, wedding_date, venue_label, created_at)")
     .eq("supplier_id", supplierId)
     .order("created_at", { ascending: false });
   if (error) {
@@ -26,7 +26,7 @@ export async function GET(req: Request) {
 
   // Group lines under their order.
   const byOrder = new Map<string, {
-    orderId: string; reference: string; status: string; weddingDate: string | null; venue: string | null;
+    orderId: string; reference: string; status: string; weddingDate: string | null; deliveryDate: string | null; venue: string | null;
     actionable: boolean; lines: { id: string; name: string; unit: string | null; quantity: number; status: string; note: string | null }[];
   }>();
   for (const l of lines ?? []) {
@@ -36,6 +36,8 @@ export async function GET(req: Request) {
       reference: o.reference,
       status: o.status,
       weddingDate: o.wedding_date,
+      // This vendor's lines on an order share one delivery date; default to the wedding day.
+      deliveryDate: (l.needed_date as string | null) ?? o.wedding_date,
       venue: o.venue_label,
       actionable: lineEditable(o.status as OrderStatus),
       lines: [],
