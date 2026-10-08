@@ -75,6 +75,7 @@ export default function GuidePage() {
             <li><strong>Declined / Cancelled</strong> — not going ahead (a supplier can&apos;t do it, or the couple pulled out).</li>
           </ul>
           <p>Open an order to confirm or decline each supplier line, leave internal staff notes, and write a message the couple sees on their order-tracking page. No money is taken when the order is placed — the deposit secures the date once suppliers are confirmed.</p>
+          <p>When you mark an order <strong>confirmed, declined or cancelled</strong>, the couple is <strong>emailed automatically</strong> with your message and a link to their order page. (Declining requires a short message saying why — that&apos;s what they receive.) Emails send only with a mail provider configured; otherwise they&apos;re logged.</p>
         </Section>
 
         <Section id="customers" title="Customers">

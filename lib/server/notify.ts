@@ -50,6 +50,72 @@ export async function sendEmail(email: Email): Promise<boolean> {
 const longDate = (day: string | null) =>
   day ? new Date(`${day}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : "a date to confirm";
 
+const shell = (inner: string) =>
+  `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#2b2622">${inner}<p style="color:#8a8277;font-size:13px">— Styled</p></div>`;
+
+const button = (href: string, label: string) =>
+  `<p style="margin:24px 0"><a href="${href}" style="background:#2b2622;color:#faf6f0;text-decoration:none;padding:12px 24px;border-radius:999px;display:inline-block">${label}</a></p>`;
+
+// Tell the couple when a stylist confirms, declines or cancels their order. Best
+// effort: never throws into the caller. The couple's email and the stylist's
+// message come from the order itself; no internal fields are included.
+export async function notifyCoupleOfDecision(admin: SupabaseClient, orderId: string, status: "confirmed" | "declined" | "cancelled"): Promise<void> {
+  try {
+    const { data: order } = await admin
+      .from("orders")
+      .select("reference, couple_name, email, wedding_date, couple_message")
+      .eq("id", orderId)
+      .maybeSingle();
+    if (!order?.email) return;
+
+    const ref = order.reference as string;
+    const name = (order.couple_name as string | null)?.split(" ")[0] || "there";
+    const date = longDate(order.wedding_date as string | null);
+    const message = (order.couple_message as string | null) ?? null;
+    const orderUrl = `${env.siteUrl}/order?ref=${encodeURIComponent(ref)}`;
+
+    const copy: Record<typeof status, { subject: string; lead: string; cta: string }> = {
+      confirmed: {
+        subject: `Your Styled order is confirmed — ${ref}`,
+        lead: `Great news — every supplier has confirmed your order for <strong>${escapeHtml(date)}</strong>. The next step is your deposit to secure the date.`,
+        cta: "View your order & pay your deposit",
+      },
+      declined: {
+        subject: `An update on your Styled order — ${ref}`,
+        lead: `We're sorry — we weren't able to confirm your order for <strong>${escapeHtml(date)}</strong>.`,
+        cta: "View your order",
+      },
+      cancelled: {
+        subject: `Your Styled order has been cancelled — ${ref}`,
+        lead: `Your order for <strong>${escapeHtml(date)}</strong> has been cancelled.`,
+        cta: "View your order",
+      },
+    };
+    const c = copy[status];
+
+    const messageHtml = message ? `<p style="background:#f4efe8;border-radius:12px;padding:12px 16px">${escapeHtml(message)}</p>` : "";
+    const html = shell(
+      `<p style="font-size:20px;font-weight:600">${escapeHtml(c.subject.split(" — ")[0])}</p>` +
+      `<p>Hi ${escapeHtml(name)},</p><p>${c.lead}</p>${messageHtml}${button(orderUrl, c.cta)}` +
+      `<p style="color:#8a8277;font-size:13px">Order reference: ${escapeHtml(ref)}</p>`
+    );
+    const text = [
+      `Hi ${name},`,
+      ``,
+      c.lead.replace(/<[^>]+>/g, ""),
+      ...(message ? [``, message] : []),
+      ``,
+      `${c.cta}: ${orderUrl}`,
+      `Order reference: ${ref}`,
+      `— Styled`,
+    ].join("\n");
+
+    await sendEmail({ to: [order.email as string], subject: c.subject, html, text });
+  } catch (err) {
+    console.error("[notify] notifyCoupleOfDecision failed:", err);
+  }
+}
+
 // Email every supplier on a new order the lines they need to confirm. Best
 // effort: resolves recipients (the supplier's contact email plus any portal
 // logins), sends one email per supplier, and swallows all errors.

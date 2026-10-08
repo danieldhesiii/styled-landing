@@ -3,6 +3,7 @@ import { logOrderEvent, requireStaff } from "@/lib/server/staff";
 import { UUID, cleanText, loadAdminOrder } from "@/lib/server/admin-orders";
 import { STAFF_SETTABLE, blockingLines, canTransition, type OrderStatus } from "@/lib/server/order-workflow";
 import { checkQuantities } from "@/lib/server/availability";
+import { notifyCoupleOfDecision } from "@/lib/server/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -117,6 +118,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   for (const e of events) await logOrderEvent(admin, id, actor, e.type, e.detail);
+
+  // Let the couple know when their order is decided. Best effort; never blocks.
+  if (status === "confirmed" || status === "declined" || status === "cancelled") {
+    await notifyCoupleOfDecision(admin, id, status);
+  }
 
   return NextResponse.json({ ok: true, ...(await loadAdminOrder(admin, id)) });
 }

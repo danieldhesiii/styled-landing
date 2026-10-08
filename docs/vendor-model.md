@@ -164,6 +164,7 @@ In rough priority:
    when a new order includes their items, with the lines to confirm and a portal link
    (sent to their contact email + any portal logins; via Resend, logged if no provider
    is set). Still to add: SMS, and one-tap confirm straight from the email.
+   *(Couple-side notifications — order confirmed/declined/cancelled — are also built.)*
 2. **Payouts & statements** — track what each supplier is owed per order, commission
    kept, and pay out (Stripe Connect is the usual tool). Needed before real money
    flows.
