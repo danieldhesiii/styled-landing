@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { VENDOR_CATEGORY_VALUES } from "@/lib/vendor-categories";
+import { clientIpHash } from "@/lib/server/limits";
 
 // POST /api/vendor-applications
 //
@@ -55,6 +56,18 @@ export async function POST(req: Request) {
   if (message.length > 2000) return fail(422, "Please keep your message under 2000 characters.");
 
   const admin = createAdminClient();
+
+  // Cap submissions per network so the form can't be flooded. Uses the existing
+  // fixed-window counter (same as order lookup). Fail open if the check errors —
+  // a genuine application shouldn't be lost to a limiter hiccup.
+  const { data: allowed, error: limitError } = await admin.rpc("hit_rate_limit", {
+    p_key: `vendor_app:${clientIpHash(req)}`,
+    p_limit: 5,
+    p_window_seconds: 3600,
+  });
+  if (!limitError && allowed === false) {
+    return fail(429, "We've had a few applications from your network. Please try again later.");
+  }
 
   // If this email already has an application we haven't finished reviewing, don't
   // create a duplicate — tell them it's already with us. (A declined applicant is

@@ -13,9 +13,21 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const supplier = await loadPublicSupplier(id);
   if (!supplier) return { title: "Supplier · Styled" };
+  const description = `${supplier.name} (${supplier.area}) on Styled — ${supplier.productCount} wedding pieces you can design with and order to your venue.`;
+  // Prefer the supplier's logo for the share preview, else the first product photo.
+  const image = supplier.logoUrl ?? supplier.products.find((p) => p.image)?.image;
   return {
     title: `${supplier.name} · Styled`,
-    description: `${supplier.name} (${supplier.area}) on Styled — ${supplier.productCount} wedding pieces you can design with and order to your venue.`,
+    description,
+    alternates: { canonical: `/suppliers/${id}` },
+    openGraph: {
+      title: `${supplier.name} · Styled`,
+      description,
+      url: `/suppliers/${id}`,
+      type: "profile",
+      ...(image ? { images: [{ url: image }] } : {}),
+    },
+    twitter: { card: "summary", title: `${supplier.name} · Styled`, description },
   };
 }
 

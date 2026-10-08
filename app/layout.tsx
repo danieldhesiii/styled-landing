@@ -6,7 +6,7 @@ const DESCRIPTION =
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+    process.env.NEXT_PUBLIC_SITE_URL || "https://styled-landing-zeta.vercel.app"
   ),
   title: "Styled — see your wedding before the day",
   description: DESCRIPTION,
