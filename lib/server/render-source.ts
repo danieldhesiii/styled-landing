@@ -77,6 +77,7 @@ export interface ParentRender {
   depth: number;
   styleId: string | null;
   sampleVenueId: string | null;
+  lookReport: unknown | null; // what the picture being edited was built from
   base: BaseImages;
 }
 
@@ -88,7 +89,7 @@ export async function loadParentRender(opts: {
 }): Promise<ParentRender | null> {
   const { data: parent } = await opts.supabase
     .from("renders")
-    .select("id, brief_id, depth, style_id, sample_venue_id, image_path, status")
+    .select("id, brief_id, depth, style_id, sample_venue_id, image_path, status, look_report")
     .eq("id", opts.parentId)
     .maybeSingle();
   if (!parent || parent.status !== "succeeded" || !parent.image_path) return null;
@@ -102,6 +103,7 @@ export async function loadParentRender(opts: {
     depth: parent.depth as number,
     styleId: (parent.style_id as string | null) ?? null,
     sampleVenueId: (parent.sample_venue_id as string | null) ?? null,
+    lookReport: parent.look_report ?? null,
     base: await describe([Buffer.from(await blob.arrayBuffer())], { dbVenueId: null, photoIds: [] }),
   };
 }

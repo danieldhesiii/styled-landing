@@ -5,7 +5,9 @@ import path from "node:path";
 import { requireUser } from "@/lib/server/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/server/env";
-import { loadItemsById, selectLookItems } from "@/lib/server/catalogue";
+import { composeOrderableLook, usableDate } from "@/lib/server/look";
+import type { LookReport } from "@/lib/look";
+import { categoryMeta } from "@/lib/categories";
 import { STYLES, getStyle } from "@/lib/styles";
 import { DEFAULT_SCENE, isSceneId, type SceneId } from "@/lib/scenes";
 import {
@@ -54,6 +56,7 @@ interface GenerateRequest {
   primaryIndex?: unknown;
   parentRenderId?: unknown;
   setting?: unknown;
+  weddingDate?: unknown;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -94,6 +97,10 @@ export async function POST(req: Request) {
     Math.max(1, Math.round(typeof body.guestCount === "number" ? body.guestCount : 80))
   );
   const parentRenderId = typeof body.parentRenderId === "string" ? body.parentRenderId : null;
+  // The wedding date availability is checked against. Missing or in the past means
+  // "unchecked": we then only keep pieces the supplier could ever supply for this
+  // guest count, and tell the couple the date wasn't checked.
+  const weddingDate = usableDate(body.weddingDate);
   if (parentRenderId && !UUID.test(parentRenderId)) return fail(400, "Invalid render id.");
 
   // Which wedding scene to set the room for (reception, ceremony, party, drinks,
@@ -121,18 +128,24 @@ export async function POST(req: Request) {
   // just the couple's explicitly chosen items; a new look is composed into a full
   // catalogue-only look (their chosen items + a style-matched piece per decor
   // category) so everything in the picture is real and shoppable.
+  // Only pieces the couple could actually order: in stock, free on their date, and
+  // enough of them for their guest count (see lib/look.ts). Anything they chose
+  // that isn't is swapped for the closest available piece or left out, and the
+  // report says which. A refinement keeps exactly what they already have.
   let items;
+  let look: LookReport;
   try {
-    if (parentRenderId) {
-      const found = await loadItemsById(itemIds);
-      items = itemIds.map((id) => found.get(id)).filter((i): i is NonNullable<typeof i> => !!i);
-    } else {
-      items = await selectLookItems({
-        styleId: descriptionLed ? null : styleId,
-        chosenIds: itemIds,
-        setting,
-      });
-    }
+    const composed = await composeOrderableLook({
+      styleId: descriptionLed ? null : styleId,
+      chosenIds: itemIds,
+      setting,
+      weddingDate,
+      guestCount,
+      autoFill: !parentRenderId,
+      substitute: !parentRenderId,
+    });
+    items = composed.items;
+    look = composed.report;
   } catch (err) {
     console.error("[generate] couldn't load catalogue items:", err);
     return fail(500, "Couldn't start your render.");
@@ -164,6 +177,9 @@ export async function POST(req: Request) {
     }
     base = parent.base;
     prompt = buildRefinePrompt({ brief, items });
+    // The picture being edited was built from the parent's pieces, so that is still
+    // what's in it. Carry its report forward.
+    if (parent.lookReport) look = parent.lookReport as LookReport;
     depth = parent.depth + 1;
     briefId = parent.briefId;
     parentId = parent.id;
@@ -199,6 +215,7 @@ export async function POST(req: Request) {
       setting,
       photoCount: base.images.length,
       itemImageCount: itemImages.length,
+      leftPlain: look.leftPlain.map((c) => categoryMeta(c).label),
     });
 
     // Stash item images so runRenderJob can append them as reference images.
@@ -246,6 +263,7 @@ export async function POST(req: Request) {
     sample_venue_id: renderSampleVenueId,
     input_photo_ids: base.photoIds,
     item_ids: items.map((i) => i.id),
+    look_report: look,
     depth,
     client_ip_hash: ipHash,
   });
@@ -262,7 +280,7 @@ export async function POST(req: Request) {
   after(() => runRenderJob({ admin, renderId, userId: user.id, images: [...base.images, ...itemImages], prompt, size }));
 
   return NextResponse.json(
-    { ok: true, pending: false, status: "running", renderId, depth },
+    { ok: true, pending: false, status: "running", renderId, depth, look },
     { status: 202 }
   );
 }

@@ -82,3 +82,35 @@ each supplier's confirmation, and any message from their stylist.
 - Editing an order's items after it's placed, or reopening a declined order.
 - Live supplier stock feeds (capacity is entered by hand).
 - Two-factor sign-in for staff, and password reset (use `--reset`).
+
+## Stock-aware pictures and stock-list import
+
+**Pictures only show what can be ordered.** When a render is generated, it is built
+only from catalogue pieces that are active, free on the couple's wedding date, and
+that the supplier has enough of for their guest count (made-to-order pieces always
+count). Anything the couple chose that doesn't qualify is swapped for the closest
+available piece in the same category, or left out, and the studio's "What's in this
+picture" panel says which and why. A category with nothing available is left plain.
+The style presets describe mood and colour only; the listed pieces are the complete
+inventory the image model is told about. (The model can still occasionally draw a
+stray prop; the panel lists exactly what is orderable.) With no wedding date the
+render still goes ahead, flagged as not date-checked. The rule lives in
+`lib/look.ts` and is fed by `lib/server/look.ts`.
+
+**Try the studio without paying for renders:** run `npm run dev:fake-render` and set
+`OPENAI_API_KEY=test-key` and `OPENAI_BASE_URL=http://localhost:4010` in
+`.env.local`. It prints the exact prompt the app sends.
+
+**Stock-list import.** A supplier (portal, "Import stock") or staff (Admin, supplier
+page) uploads a CSV: product name, category, price, unit, quantity rule, capacity,
+lead time, styles, image link, note, active. Download the template from the page.
+- It always **previews first**: new, updated (with before and after), unchanged,
+  and problems by line. Nothing is saved until you apply.
+- Columns you leave out leave that detail unchanged. A blank capacity means made to
+  order. Nothing is ever deleted; products missing from the file are only reported.
+- Rows with problems are skipped and reported; valid rows apply in one transaction.
+- Matching is by `id` (if present) or by name, inside that supplier only.
+- A supplier's new products start **hidden** until staff review and switch them on.
+  Staff imports go live straight away.
+- Warns when stock is cut below what's already booked on a future date, and on very
+  large price changes. Every applied import is recorded in `stock_imports`.

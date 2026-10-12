@@ -6,17 +6,19 @@ import { tablesFor } from "@/lib/quote";
 // Builds the instruction sent to the image-edit model. The model sees the venue
 // photo itself, so the prompt only has to say what to keep and what to add.
 
-// Style wording matches the prompts used to make the landing-page renders
-// (scripts/generate-renders.mjs), so generated rooms look like the marketing ones.
+// A style is a MOOD: colours, materials and feeling. It deliberately names no
+// objects (no chairs, no glassware, no lighting). The catalogue pieces listed in
+// the prompt are the complete inventory of what may appear, so a style must never
+// introduce a product we might not have in stock.
 const STYLE_DIRECTION: Record<string, string> = {
   garden_romance:
-    "Garden Romance: round tables dressed in soft ivory linen, lush blush and white garden roses with trailing greenery centrepieces, gold chiavari chairs, delicate hanging floral installations and warm fairy lights. Romantic, soft, abundant florals.",
+    "Garden Romance mood: romantic, soft and abundant. A palette of blush, ivory, soft gold and fresh greenery; warm, gentle, candlelit glow.",
   classic_elegance:
-    "Classic Elegance, black-tie: round tables with crisp floor-length white linen, tall gold candelabra centrepieces with white roses and hydrangeas, crystal glassware, elegant chair draping and a refined formal look.",
+    "Classic Elegance mood: refined, formal, black-tie. A palette of ivory, white and gold with crisp, polished finishes.",
   modern_minimal:
-    "Modern Minimal: sleek long rectangular tables, a neutral palette of white and soft greige, low architectural greenery runners, clear acrylic ghost chairs, simple candles, uncluttered and contemporary.",
+    "Modern Minimal mood: clean, uncluttered and contemporary. A neutral palette of white and soft greige with sculptural, architectural restraint.",
   rustic_barn:
-    "Wildflower: timber trestle guest tables, crossback chairs, sage napkins, loose meadow flowers and mixed foliage runners, warm festoon lights overhead, relaxed natural charm.",
+    "Wildflower mood: relaxed, natural and warm. A palette of sage, meadow colours and warm wood with a loose, undone charm.",
 };
 
 // What to preserve. Daytime scenes keep the real daylight; the evening party is
@@ -81,8 +83,19 @@ export function buildRenderPrompt(opts: {
   setting?: RenderSetting;
   photoCount?: number;
   itemImageCount?: number;
+  // Decor categories with nothing the couple could order: shown plain, not invented.
+  leftPlain?: string[];
 }): string {
-  const { style, brief, guestCount, items, setting = "reception", photoCount = 1, itemImageCount = 0 } = opts;
+  const {
+    style,
+    brief,
+    guestCount,
+    items,
+    setting = "reception",
+    photoCount = 1,
+    itemImageCount = 0,
+    leftPlain = [],
+  } = opts;
   const parts: string[] = [];
 
   const subject = photoCount > 1 ? "the first photo of a wedding venue" : "this photo of a wedding venue";
@@ -111,19 +124,30 @@ export function buildRenderPrompt(opts: {
   }
   parts.push(SCENE_LAYOUT[setting](guestCount));
 
+  // The complete inventory. Everything in the picture that the couple could buy
+  // must be one of these pieces: these are in stock for their date.
   if (items.length > 0) {
     const list = items
       .slice(0, MAX_ITEMS)
       .map((i) => `- ${i.name}`)
       .join("\n");
     parts.push(
-      `Dress the room using these specific pieces from our catalogue, and ONLY these — every element of styling in the picture (backdrop, florals, centrepieces, furniture, linen and tableware, lighting and signage) must be one of these pieces, placed where it would naturally go. Do not invent other decorative products:\n${list}`
+      `COMPLETE INVENTORY. These are the ONLY decorative pieces that exist for this wedding. Every element of styling in the picture (backdrop, florals, centrepieces, furniture, linen and tableware, lighting and signage) must be one of these pieces, placed where it would naturally go. Do not add any other decorative object, flower arrangement, furniture, lighting, signage, linen or prop, even if it would look nice:\n${list}`
+    );
+  } else {
+    parts.push(
+      "No decorative pieces are available for this wedding, so leave the room plain and unstyled: do not invent any decor."
+    );
+  }
+  if (leftPlain.length > 0) {
+    parts.push(
+      `Leave these parts of the room plain and undecorated, because nothing is available for them: ${leftPlain.join(", ")}. Do not fill them with anything.`
     );
   }
 
   if (brief) {
     parts.push(
-      `The couple's own description of the decoration and look they want — treat this as the leading design direction and follow its colours, florals, materials, lighting and mood wherever they are physically sensible in this room: "${brief}"`
+      `The couple's own description. Use it for colours, mood, atmosphere and the overall feel, wherever that is physically sensible in this room. If it asks for particular objects that are not in the inventory above, do NOT add those objects; only take the colours and feeling from it: "${brief}"`
     );
   }
 
@@ -136,10 +160,11 @@ export function buildRefinePrompt(opts: { brief: string; items: CatalogueItem[] 
   const parts: string[] = [
     "This is a styled wedding venue render. Edit it according to the couple's request below.",
     "Keep everything else exactly the same: the room's architecture, camera angle, perspective, lighting, and every piece of styling that the request does not mention. Photorealistic wedding venue photography. No people, no text, no watermarks.",
+    "Do not introduce any new decorative object that is not already in the picture or named in the list below. Adjust position, arrangement, colour or amount of what's already there instead.",
   ];
   if (items.length > 0) {
     parts.push(
-      `If they are not already visible, also include these chosen pieces where they would naturally go:\n${items
+      `These are the only pieces available. If they are not already visible, you may include them where they would naturally go:\n${items
         .slice(0, MAX_ITEMS)
         .map((i) => `- ${i.name}`)
         .join("\n")}`

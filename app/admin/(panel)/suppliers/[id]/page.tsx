@@ -1,5 +1,6 @@
 "use client";
 
+import StockImportPanel from "@/components/stock/StockImportPanel";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -238,6 +239,11 @@ export default function SupplierDetailPage() {
             {creatingLogin ? "Creating…" : "Create login"}
           </button>
         </form>
+      </div>
+
+      {/* Bulk stock list */}
+      <div className="mt-6">
+        <StockImportPanel endpoint="/api/admin/stock-import" supplierId={id} onApplied={load} />
       </div>
 
       {error && (

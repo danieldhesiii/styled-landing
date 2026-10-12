@@ -5,12 +5,16 @@ import type { SampleVenue, StylePreset } from "@/lib/types";
 import { STYLES, getStyle } from "@/lib/styles";
 import { SCENES, DEFAULT_SCENE, type SceneId } from "@/lib/scenes";
 import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
+import type { LookReport } from "@/lib/look";
+import LookReportPanel from "@/components/design/LookReportPanel";
 
 export interface RenderRef {
   id: string;
   url: string;
   /** Catalogue item ids that make up this render — the "what's in the picture" list. */
   itemIds?: string[];
+  /** What the picture was built from: pieces in it, pieces left out and why. */
+  look?: LookReport;
 }
 
 interface Props {
@@ -24,6 +28,9 @@ interface Props {
   versions: RenderRef[];
   itemIds: string[];
   guestCount: number;
+  /** The couple's wedding date (YYYY-MM-DD or ""), so a render only uses what's free on it. */
+  weddingDate: string;
+  onWeddingDate: (date: string) => void;
   isSaved: boolean;
   onRender: (render: RenderRef | null) => void;
   /** Remove a generated version from the strip. */
@@ -39,17 +46,18 @@ interface Props {
   onToggleSave: () => void;
 }
 
-// A short description of the look each preset produces. These mirror the style
-// direction sent to the image model, so the couple knows what they'll get.
+// The mood each preset gives a render. These mirror the style direction sent to
+// the image model. They describe colour and feeling, not objects: which pieces
+// appear depends on what's in stock for the couple's date.
 const STYLE_BLURBS: Record<string, string> = {
   garden_romance:
-    "Lush blush & white garden roses, trailing greenery, gold chiavari chairs and warm fairy lights.",
+    "Romantic, soft and abundant: blush, ivory, soft gold and fresh greenery in a warm, candlelit glow.",
   classic_elegance:
-    "Tall gold candelabra, crisp white floor-length linen and crystal glassware — a refined black-tie look.",
+    "Refined, formal and black-tie: ivory, white and gold with crisp, polished finishes.",
   modern_minimal:
-    "Long tables, a neutral white & greige palette, low architectural greenery and clean sculptural stems.",
+    "Clean and contemporary: white and soft greige with sculptural, architectural restraint.",
   rustic_barn:
-    "Loose meadow wildflowers, timber trestle tables, crossback chairs and festoon lights overhead.",
+    "Relaxed, natural and warm: sage, meadow colours and warm wood with a loose, undone charm.",
 };
 
 export default function RenderStage({
@@ -62,6 +70,8 @@ export default function RenderStage({
   versions,
   itemIds,
   guestCount,
+  weddingDate,
+  onWeddingDate,
   isSaved,
   onRender,
   onDeleteVersion,
@@ -196,6 +206,7 @@ export default function RenderStage({
           images: uploadedImages.map((p) => p.url),
           itemIds,
           guestCount,
+          weddingDate: weddingDate || undefined,
           primaryIndex: primary,
           setting,
           ...(opts?.parentRenderId ? { parentRenderId: opts.parentRenderId } : {}),
@@ -208,7 +219,7 @@ export default function RenderStage({
         if (live.current.venueId !== sentFor.venueId) {
           setShowGenPanel(true);
         } else {
-          onRender({ id: data.renderId, url: done.imageUrl, itemIds: done.itemIds });
+          onRender({ id: data.renderId, url: done.imageUrl, itemIds: done.itemIds, look: done.look });
           setShowShopPrompt(true);
         }
       } else if (data?.imageUrl) {
@@ -229,7 +240,7 @@ export default function RenderStage({
     }
   }
 
-  async function waitForRender(id: string): Promise<{ imageUrl: string; itemIds?: string[] }> {
+  async function waitForRender(id: string): Promise<{ imageUrl: string; itemIds?: string[]; look?: LookReport }> {
     const deadline = Date.now() + 7 * 60 * 1000;
     let failures = 0;
     while (Date.now() < deadline) {
@@ -243,7 +254,7 @@ export default function RenderStage({
         continue;
       }
       if (data?.status === "succeeded" && data.imageUrl)
-        return { imageUrl: data.imageUrl, itemIds: data.itemIds };
+        return { imageUrl: data.imageUrl, itemIds: data.itemIds, look: data.look ?? undefined };
       if (data?.status === "failed" || data?.ok === false) {
         throw new Error(data?.error ?? "Render failed.");
       }
@@ -465,6 +476,15 @@ export default function RenderStage({
           </div>
         )}
       </div>
+
+      {/* ── WHAT'S IN THIS PICTURE ─────────────────────────────────── */}
+      {renderUrl && !showOriginal && versions.find((v) => v.id === renderId)?.look && (
+        <LookReportPanel
+          look={versions.find((v) => v.id === renderId)!.look!}
+          weddingDate={weddingDate}
+          onWeddingDate={onWeddingDate}
+        />
+      )}
 
       {/* ── COMPARE / VERSIONS BAR ─────────────────────────────────── */}
       {/* A clear filmstrip: the original venue photo plus every look you've made.

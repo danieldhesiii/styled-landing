@@ -15,7 +15,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const { data: render } = await supabase
     .from("renders")
-    .select("id, status, image_path, error_kind, parent_render_id, depth, created_at, item_ids, input_photo_ids, sample_venue_id")
+    .select("id, status, image_path, error_kind, parent_render_id, depth, created_at, item_ids, input_photo_ids, sample_venue_id, look_report")
     .eq("id", id)
     .maybeSingle();
 
@@ -71,6 +71,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   return NextResponse.json({
     ok: true,
     renderId: render.id,
+    // What the picture was built from: pieces in it, pieces left out and why.
+    look: render.look_report ?? null,
     status,
     imageUrl,
     originalUrl,

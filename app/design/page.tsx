@@ -397,6 +397,8 @@ export default function DesignPage() {
                   renderId={renderId}
                   versions={versions}
                   itemIds={basket.map((l) => l.itemId)}
+                  weddingDate={brief.weddingDate}
+                  onWeddingDate={(d) => patchBrief({ weddingDate: d })}
                   guestCount={brief.guestCount}
                   onRender={showRender}
                   onDeleteVersion={deleteVersion}

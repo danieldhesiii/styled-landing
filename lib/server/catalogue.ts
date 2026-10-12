@@ -7,6 +7,7 @@ import { createAnonClient } from "@/lib/supabase/anon";
 // orders must never be priced from a stale copy.
 
 export interface ServerCatalogueItem extends CatalogueItem {
+  capacity: number | null; // units the supplier can provide per day; null = made to order
   supplierId: string;
   supplierLogo?: string;
   updatedAt: string;
@@ -68,6 +69,7 @@ export async function loadCatalogue(): Promise<ServerCatalogueItem[]> {
       // see /api/availability.) The seed's placeholder stock label is no longer used.
       stock: (r.capacity === null ? "made_to_order" : "in_stock") as StockStatus,
       note: r.note ?? undefined,
+      capacity: r.capacity,
       supplierId: r.suppliers!.id,
       supplierLogo: r.suppliers!.logo_url ?? undefined,
       updatedAt: r.updated_at,
@@ -86,7 +88,7 @@ export async function loadItemsById(ids: string[]): Promise<Map<string, ServerCa
 // set depends on the scene: a reception has dining tables, centrepieces and
 // tableware; a ceremony has chairs and an arch but no dining; a party leans on a
 // bar, lighting and lounge furniture; a proposal is just florals and lighting.
-const SCENE_CATEGORIES: Record<SceneId, Category[]> = {
+export const SCENE_CATEGORIES: Record<SceneId, Category[]> = {
   reception: ["backdrops", "florals", "centrepieces", "furniture", "linen_tableware", "lighting", "signage"],
   ceremony: ["backdrops", "florals", "furniture", "lighting", "signage"],
   party: ["backdrops", "florals", "furniture", "lighting", "signage", "bar"],
@@ -94,6 +96,9 @@ const SCENE_CATEGORIES: Record<SceneId, Category[]> = {
   proposal: ["backdrops", "florals", "lighting"],
 };
 
+// DEPRECATED for renders: this ignores stock and the wedding date. Renders now use
+// composeOrderableLook (lib/server/look.ts), which only picks pieces the couple can
+// actually order. Kept only so nothing else that imports it breaks.
 // Choose the catalogue pieces a render will be built from: everything the couple
 // has already chosen, plus one style-matched piece for each relevant decor
 // category they haven't covered — so the picture is a complete look made entirely
