@@ -15,6 +15,25 @@ interface Product {
   capacity: number | null;
   leadTimeDays: number;
   active: boolean;
+  // What's free on the chosen day. effectiveCapacity null = made to order, 0 = blocked.
+  day: { effectiveCapacity: number | null; booked: number; available: number | null } | null;
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+function dayStatus(p: Product): { label: string; detail: string; tone: string } {
+  if (!p.active) return { label: "Hidden", detail: "not shown in the shop", tone: "bg-sand/60 text-ink/60" };
+  const d = p.day;
+  if (!d) return { label: "Unknown", detail: "couldn't check", tone: "bg-sand/60 text-ink/60" };
+  if (d.effectiveCapacity === null) return { label: "Made to order", detail: "no stock limit", tone: "bg-emerald-50 text-emerald-800" };
+  if (d.effectiveCapacity === 0) return { label: "Unavailable", detail: "blocked this day", tone: "bg-red-50 text-red-800" };
+  if ((d.available ?? 0) <= 0) return { label: "Fully booked", detail: `${d.booked} booked`, tone: "bg-red-50 text-red-800" };
+  const low = (d.available ?? 0) <= Math.max(1, Math.floor(d.effectiveCapacity * 0.2));
+  return {
+    label: `${d.available} free`,
+    detail: `of ${d.effectiveCapacity}${d.booked ? `, ${d.booked} booked` : ""}`,
+    tone: low ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800",
+  };
 }
 
 export default function PortalProductsPage() {
@@ -23,14 +42,16 @@ export default function PortalProductsPage() {
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState({ unitPrice: "", capacity: "" });
   const [saving, setSaving] = useState(false);
+  const [date, setDate] = useState(today);
 
-  function load() {
-    vendorApi("/api/vendor/products").then((r) => {
+  function load(day = date) {
+    vendorApi(`/api/vendor/products?date=${encodeURIComponent(day)}`).then((r) => {
       if (!r.ok) return setError(r.data?.error ?? "Couldn't load your products.");
       setProducts(r.data.products as Product[]);
     });
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(date); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date]);
 
   function startEdit(p: Product) {
     setEditing(p.id);
@@ -68,6 +89,16 @@ export default function PortalProductsPage() {
             : "Set your prices, how many you can supply per day, and what's shown in the shop."}
       </p>
 
+      {products && products.length > 0 && (
+        <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-ink/60">
+          <label htmlFor="avail-date" className="font-medium text-ink">Availability on</label>
+          <input id="avail-date" type="date" min={today()} value={date}
+            onChange={(e) => e.target.value && setDate(e.target.value)}
+            className="rounded-lg border border-sand px-3 py-1.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-clay/30" />
+          <span className="text-xs text-ink/40">Counts confirmed orders and any days you've blocked.</span>
+        </div>
+      )}
+
       {error && (
         <p role="alert" className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
       )}
@@ -87,6 +118,7 @@ export default function PortalProductsPage() {
                 <th className="px-5 py-3 font-medium">Category</th>
                 <th className="px-5 py-3 text-right font-medium">Price</th>
                 <th className="px-5 py-3 text-right font-medium">Per day</th>
+                <th className="px-5 py-3 font-medium">Free on {date}</th>
                 <th className="px-5 py-3 font-medium">In shop</th>
               </tr>
             </thead>
@@ -110,6 +142,7 @@ export default function PortalProductsPage() {
                           onChange={(e) => setDraft({ ...draft, capacity: e.target.value })}
                           className="w-28 rounded-lg border border-sand px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-clay/30" />
                       </td>
+                      <td className="px-5 py-3 text-xs text-ink/40">save to refresh</td>
                       <td className="px-5 py-3">
                         <div className="flex gap-2">
                           <button type="button" disabled={saving} onClick={() => saveEdit(p.id)}
@@ -123,6 +156,17 @@ export default function PortalProductsPage() {
                     <>
                       <td className="px-5 py-3 text-right tabular-nums text-ink/70">{money(p.unitPricePence)}</td>
                       <td className="px-5 py-3 text-right tabular-nums text-ink/60">{p.capacity ?? "—"}</td>
+                      <td className="px-5 py-3">
+                        {(() => {
+                          const st = dayStatus(p);
+                          return (
+                            <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${st.tone}`}>
+                              {st.label}
+                              <span className="ml-1 font-normal opacity-70">· {st.detail}</span>
+                            </span>
+                          );
+                        })()}
+                      </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
                           <label className="flex items-center gap-2 text-xs text-ink/60">
