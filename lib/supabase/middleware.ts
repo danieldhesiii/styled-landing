@@ -1,11 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// Keeps the guest session fresh. Supabase access tokens are short-lived; this
-// refreshes them and writes the new cookies onto both the request and the
-// response. It never creates a session: the browser does that on first visit to
-// the design studio (see components/session/GuestSession.tsx), so landing page
-// traffic and bots don't mint anonymous users.
+// Routes that require a real (non-anonymous) account.
+const PROTECTED = ["/design"];
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -28,8 +26,17 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Validates the token with Supabase Auth (getUser, not getSession).
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+  const needsAuth = PROTECTED.some((p) => pathname === p || pathname.startsWith(p + "/"));
+
+  if (needsAuth && (!user || user.is_anonymous)) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
 
   return response;
 }
