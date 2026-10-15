@@ -34,7 +34,7 @@ export default function SiteFooter() {
         </nav>
       </div>
       <div className="border-t border-sand py-6 text-center text-xs text-ink/40">
-        Styled · London · Essex · Hertfordshire · Renders are illustrative.
+        Styled · Available across the UK · Renders are illustrative.
       </div>
     </footer>
   );

@@ -92,7 +92,7 @@ export default function SuppliersPage() {
             </div>
             <div>
               <label htmlFor="s-area" className={LABEL}>Area covered</label>
-              <input id="s-area" required placeholder="e.g. London & Essex" value={form.area} onChange={(e) => setForm({ ...form, area: e.target.value })} className={FIELD} />
+              <input id="s-area" required placeholder="e.g. Nationwide UK" value={form.area} onChange={(e) => setForm({ ...form, area: e.target.value })} className={FIELD} />
             </div>
             <div className="sm:col-span-2">
               <label htmlFor="s-email" className={LABEL}>Contact email <span className="text-ink/40">(optional)</span></label>

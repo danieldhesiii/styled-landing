@@ -107,7 +107,7 @@ export default function VendorsPage() {
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
             <label htmlFor="area" className={LABEL}>Area you cover <span className="text-ink/40">(optional)</span></label>
-            <input id="area" name="area" maxLength={120} placeholder="e.g. London & Essex" className={FIELD} />
+            <input id="area" name="area" maxLength={120} placeholder="e.g. Nationwide UK" className={FIELD} />
           </div>
           <div>
             <label htmlFor="website" className={LABEL}>Website or Instagram <span className="text-ink/40">(optional)</span></label>

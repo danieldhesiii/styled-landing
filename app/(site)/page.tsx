@@ -63,7 +63,7 @@ const FAQS = [
   },
   {
     q: "Where do you deliver?",
-    a: "We are currently delivering across London, Essex and Hertfordshire. The rest of the UK is coming shortly.",
+    a: "We deliver across the whole of the UK. Suppliers ship direct to your venue wherever you are.",
   },
 ];
 
@@ -110,7 +110,7 @@ export default function Page() {
       {/* ------------------------------------------------- Trust band */}
       <section className="rounded-2xl border border-sand bg-sand/40 px-6 py-5">
         <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3 text-sm text-ink/60">
-          <span>London, Essex and Hertfordshire</span>
+          <span>Available across the UK</span>
           <span className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" aria-hidden />
           <span>Delivered to your venue</span>
           <span className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" aria-hidden />
