@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import CtaEmailForm from "@/components/CtaEmailForm";
 import VisualizerPreview from "@/components/VisualizerPreview";
 
 /* ------------------------------------------------------------------ *
@@ -227,19 +228,7 @@ export default function Page() {
           Create a free account, upload your venue photo and start putting your
           look together. When you are ready, order everything in one go.
         </p>
-        <div className="mx-auto mt-8 flex max-w-md flex-col gap-3 sm:flex-row">
-          <input
-            type="email"
-            placeholder="Your email address"
-            className="flex-1 rounded-full border border-sand bg-white px-5 py-3 text-sm text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-clay/40"
-          />
-          <Link
-            href="/design"
-            className="rounded-full bg-ink px-6 py-3 text-center text-cream hover:bg-ink/90"
-          >
-            Get started free
-          </Link>
-        </div>
+        <CtaEmailForm />
         <p className="mt-4 text-xs text-ink/40">
           No credit card needed. Cancel any time.
         </p>
