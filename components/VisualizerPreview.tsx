@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 
 const STYLES = [
@@ -20,26 +21,36 @@ export default function VisualizerPreview() {
           <div className="absolute left-2 top-2 z-10 rounded-full bg-ink/60 px-2.5 py-1 text-[11px] text-cream">
             Your venue
           </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src="/img/venues/manor_orangery.png"
             alt="Venue photo"
+            width={1024}
+            height={688}
+            priority
             className="aspect-[4/3] w-full object-cover"
           />
         </div>
 
-        {/* Styled result */}
+        {/* Styled result — all styles pre-loaded, active one shown */}
         <div className="relative overflow-hidden rounded-xl border border-clay/30">
           <div className="absolute left-2 top-2 z-10 rounded-full bg-clay/80 px-2.5 py-1 text-[11px] text-cream">
             Your look
           </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            key={active}
-            src={STYLES[active].src}
-            alt={STYLES[active].label}
-            className="aspect-[4/3] w-full animate-fade-in object-cover"
-          />
+          {/* Spacer establishes aspect ratio so stacked absolutes don't collapse the container */}
+          <div className="aspect-[4/3]" />
+          {STYLES.map((s, i) => (
+            <Image
+              key={s.src}
+              src={s.src}
+              alt={s.label}
+              width={1536}
+              height={1024}
+              priority={i === 0}
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+                i === active ? "opacity-100" : "opacity-0"
+              }`}
+            />
+          ))}
         </div>
       </div>
 

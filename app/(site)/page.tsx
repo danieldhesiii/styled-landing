@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import VisualizerPreview from "@/components/VisualizerPreview";
 
@@ -262,13 +263,11 @@ function StyleDemoPreview() {
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {renders.map((r) => (
         <figure key={r.label} className="overflow-hidden rounded-2xl border border-sand bg-white">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={r.src}
             alt={r.label === "Original venue" ? "Empty oak barn with timber beams, white walls and a wooden floor" : `Oak barn wedding reception in ${r.label} style, with guest dining tables and a raised wedding-party top table at the back`}
             width={1536}
             height={1024}
-            loading="lazy"
             className="aspect-[3/2] w-full object-contain"
           />
           <figcaption className="px-4 py-4">
@@ -288,8 +287,7 @@ function MarketplacePreview() {
       <div className="grid gap-5 md:grid-cols-3">
         {PRODUCTS.map((p) => (
           <article key={p.name} className="overflow-hidden rounded-2xl border border-sand bg-white">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={p.image} alt={p.alt} width={1536} height={1024} loading="lazy" className="aspect-[4/3] w-full object-cover" />
+            <Image src={p.image} alt={p.alt} width={1536} height={1024} className="aspect-[4/3] w-full object-cover" />
             <div className="p-5">
               <p className="text-xs font-medium text-clay">{p.category}</p>
               <h3 className="mt-2 font-serif text-2xl text-ink">{p.name}</h3>
