@@ -9,12 +9,32 @@ type Mode = "signup" | "login";
 
 function friendly(message: string): string {
   const m = message.toLowerCase();
-  if (m.includes("already registered") || m.includes("already been registered"))
+  if (
+    m.includes("already registered") ||
+    m.includes("already been registered") ||
+    m.includes("already in use") ||
+    m.includes("already exists")
+  )
     return "That email already has an account — try logging in instead.";
-  if (m.includes("invalid login")) return "That email and password don't match.";
+  if (m.includes("invalid login") || m.includes("invalid credentials"))
+    return "That email and password don't match.";
   if (m.includes("at least")) return "Your password needs to be at least 6 characters.";
   if (m.includes("valid email")) return "Please enter a valid email address.";
+  if (m.includes("email not confirmed"))
+    return "Please confirm your email address first, then sign in.";
   return message;
+}
+
+async function mergeAnonSession(anonUserId: string) {
+  try {
+    await fetch("/api/session/merge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ anonUserId }),
+    });
+  } catch {
+    // Non-critical: the user is signed in. Merge is best-effort.
+  }
 }
 
 function LoginForm() {
@@ -46,16 +66,33 @@ function LoginForm() {
     const supabase = createClient();
 
     try {
+      // Capture any anon session that exists before we replace it. We may need
+      // to migrate its data into the real account after a successful sign-in.
+      const { data: { user: current } } = await supabase.auth.getUser();
+      const anonId = current?.is_anonymous ? current.id : null;
+
       if (mode === "signup") {
-        const { data: { user: current } } = await supabase.auth.getUser();
         // If they already have an anonymous session, upgrade it in place so
-        // any renders / saved looks they made carry over.
-        const res = current?.is_anonymous
+        // any renders / saved looks / briefs they made carry over as the same
+        // user ID — no migration needed in this path.
+        const res = anonId
           ? await supabase.auth.updateUser({ email: email.trim(), password })
           : await supabase.auth.signUp({ email: email.trim(), password });
 
         if (res.error) {
-          setError(friendly(res.error.message));
+          const msg = res.error.message.toLowerCase();
+          if (
+            msg.includes("already") ||
+            msg.includes("in use") ||
+            msg.includes("exists")
+          ) {
+            // Email already registered. Switch to sign-in mode and keep their
+            // work in memory; after they sign in we will merge the anon session.
+            setError("That email already has an account. Sign in below to continue — your work will carry over.");
+            setMode("login");
+          } else {
+            setError(friendly(res.error.message));
+          }
         } else {
           // Try signing in immediately in case email confirmation is disabled.
           const { data: s } = await supabase.auth.signInWithPassword({
@@ -63,6 +100,8 @@ function LoginForm() {
             password,
           });
           if (s.session) {
+            // updateUser upgraded the anon session in place (same UUID), so no
+            // merge is needed. For a fresh signUp the user had no prior session.
             router.replace(next);
           } else {
             setNotice("Account created — check your email to confirm, then sign in.");
@@ -77,6 +116,11 @@ function LoginForm() {
         if (signInError) {
           setError(friendly(signInError.message));
         } else if (data.session) {
+          // If the user had an anonymous session before signing in, migrate its
+          // data (briefs, basket, renders, saved looks, storage) into this account.
+          if (anonId && anonId !== data.user?.id) {
+            await mergeAnonSession(anonId);
+          }
           router.replace(next);
         }
       }
