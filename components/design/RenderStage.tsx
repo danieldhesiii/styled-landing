@@ -46,6 +46,26 @@ interface Props {
   onToggleSave: () => void;
 }
 
+// Example venues shown in the empty state so couples can try the studio without
+// uploading a photo first. Each pre-fills a description and sets the sample
+// venue — the generate API uses the venue image when no upload is present.
+const EXAMPLE_VENUES = [
+  {
+    id: "manor_orangery",
+    label: "Manor Orangery",
+    image: "/img/venues/manor_orangery.png",
+    description:
+      "Romantic garden reception in a light, airy orangery with blush and ivory florals, round tables with white linen, trailing greenery and warm candlelight throughout",
+  },
+  {
+    id: "oak_barn",
+    label: "Oak Barn",
+    image: "/img/venues/oak_barn.png",
+    description:
+      "Rustic barn reception with exposed oak beams, loose wildflowers, festoon lights, wooden trestle tables and warm earthy tones",
+  },
+] as const;
+
 // The mood each preset gives a render. These mirror the style direction sent to
 // the image model. They describe colour and feeling, not objects: which pieces
 // appear depends on what's in stock for the couple's date.
@@ -471,6 +491,30 @@ export default function RenderStage({
                   className="rounded-full bg-clay px-7 py-2.5 text-sm font-medium text-cream hover:bg-clay/90 transition-colors">
                   Upload venue photo
                 </button>
+                {/* Example venue thumbnails — click to try without uploading */}
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[11px] text-ink/35">or try an example:</span>
+                  {EXAMPLE_VENUES.map((ex) => (
+                    <button
+                      key={ex.id}
+                      type="button"
+                      title={ex.label}
+                      onClick={() => {
+                        _onVenue(ex.id);
+                        setDescription(ex.description);
+                        setPanelMode("new");
+                        setShowGenPanel(true);
+                      }}
+                      className="group relative h-10 w-14 overflow-hidden rounded-lg border-2 border-sand hover:border-clay/70 transition-colors"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={ex.image} alt={ex.label} className="h-full w-full object-cover" />
+                      <span className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-ink/50 to-transparent pb-0.5 text-[9px] leading-none text-white opacity-0 transition-opacity group-hover:opacity-100">
+                        {ex.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </>
             )}
           </div>
@@ -612,8 +656,8 @@ export default function RenderStage({
 
       {/* ── GENERATE PANEL ─────────────────────────────────────────── */}
 
-      {/* No photo uploaded yet — nothing to generate from */}
-      {!uploadedImages.length && !renderUrl ? null : renderUrl && !showGenPanel ? (
+      {/* Hide panel only when nothing is ready AND user hasn't explicitly opened it (e.g. via an example venue) */}
+      {!uploadedImages.length && !renderUrl && !showGenPanel ? null : renderUrl && !showGenPanel ? (
         /* Collapsed — tweak the current look, or start a fresh style */
         <div className="flex gap-2 border-t border-sand px-4 py-3">
           <button type="button" onClick={() => openPanel("tweak")}
@@ -635,10 +679,12 @@ export default function RenderStage({
                   ? "Tweak this look"
                   : "Generate new style"}
             </h3>
-            {renderUrl && (
+            {/* Show cancel/close when there's a render to go back to, or when opened
+                via an example so the user can get back to the upload screen */}
+            {(renderUrl || !uploadedImages.length) && (
               <button type="button" onClick={() => setShowGenPanel(false)}
                 className="text-xs text-ink/40 hover:text-ink transition-colors">
-                Cancel
+                {renderUrl ? "Cancel" : "✕ Close"}
               </button>
             )}
           </div>
