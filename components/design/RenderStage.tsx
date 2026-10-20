@@ -129,6 +129,7 @@ export default function RenderStage({
   const [setting, setSetting] = useState<SceneId>(DEFAULT_SCENE);
   const [improving, setImproving] = useState(false);
   const [improveError, setImproveError] = useState<string | null>(null);
+  const [activeExample, setActiveExample] = useState<(typeof EXAMPLE_VENUES)[number] | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const primary = Math.min(primaryPhoto, Math.max(0, uploadedImages.length - 1));
@@ -136,10 +137,10 @@ export default function RenderStage({
   live.current = { styleId: style.id, venueId: venue.id };
 
   const uploadedPreview = uploadedImages[primary]?.url ?? null;
-  // The "before" image to compare a render against — only the couple's own
-  // uploaded photo. We deliberately do NOT fall back to a stock venue image, so
-  // before anything is uploaded the stage shows the text prompt, not a photo.
-  const originalImage = uploadedPreview;
+  // When an example venue is active and no real upload exists, use the example
+  // image as the stage background so the experience mirrors having uploaded a photo.
+  const activeExampleUrl = uploadedImages.length === 0 ? (activeExample?.image ?? null) : null;
+  const originalImage = uploadedPreview ?? activeExampleUrl;
   const previewImage = renderUrl ?? originalImage;
 
   // Keep the draft style in sync with the committed style (e.g. after a render
@@ -152,6 +153,11 @@ export default function RenderStage({
   useEffect(() => {
     if (uploadedImages.length > 0 && !renderUrl) setShowGenPanel(true);
   }, [uploadedImages.length, renderUrl]);
+
+  // Once a real upload lands, the example is no longer needed.
+  useEffect(() => {
+    if (uploadedImages.length > 0) setActiveExample(null);
+  }, [uploadedImages.length]);
 
   // Collapse the panel and reset compare when a render arrives.
   useEffect(() => {
@@ -456,8 +462,43 @@ export default function RenderStage({
 
             {/* Top-left label */}
             <div className="absolute left-3 top-3 rounded-full bg-ink/55 px-3 py-1 text-[11px] text-cream backdrop-blur-sm">
-              {showOriginal ? "Your venue · before" : renderUrl ? `${styleName} · AI render` : "Your venue"}
+              {showOriginal ? "Your venue · before" : renderUrl ? `${styleName} · AI render` : activeExample ? `Example · ${activeExample.label}` : "Your venue"}
             </div>
+
+            {/* Example switcher — bottom-left overlay when showing an example with no render */}
+            {activeExample && !renderUrl && (
+              <div className="absolute bottom-3 left-3 flex items-center gap-1.5">
+                {(EXAMPLE_VENUES as ReadonlyArray<(typeof EXAMPLE_VENUES)[number]>).filter((ex) => ex.id !== activeExample.id).map((ex) => (
+                  <button
+                    key={ex.id}
+                    type="button"
+                    title={`Switch to ${ex.label}`}
+                    onClick={() => {
+                      setActiveExample(ex);
+                      _onVenue(ex.id);
+                      setDescription(ex.description);
+                      setPanelMode("new");
+                      setShowGenPanel(true);
+                    }}
+                    className="group relative h-9 w-12 overflow-hidden rounded-lg border-2 border-white/60 shadow-md hover:border-white transition-colors"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={ex.image} alt={ex.label} className="h-full w-full object-cover" />
+                    <span className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-ink/50 to-transparent pb-0.5 text-[9px] leading-none text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                      {ex.label}
+                    </span>
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => { setActiveExample(null); setShowGenPanel(false); }}
+                  className="text-[10px] text-white/70 hover:text-white transition-colors"
+                  title="Use your own photo"
+                >
+                  × own photo
+                </button>
+              </div>
+            )}
 
             {/* Style badge + actions — only on the styled render */}
             {renderUrl && !showOriginal && actionBar}
@@ -500,6 +541,7 @@ export default function RenderStage({
                       type="button"
                       title={ex.label}
                       onClick={() => {
+                        setActiveExample(ex);
                         _onVenue(ex.id);
                         setDescription(ex.description);
                         setPanelMode("new");
@@ -656,8 +698,8 @@ export default function RenderStage({
 
       {/* ── GENERATE PANEL ─────────────────────────────────────────── */}
 
-      {/* Hide panel only when nothing is ready AND user hasn't explicitly opened it (e.g. via an example venue) */}
-      {!uploadedImages.length && !renderUrl && !showGenPanel ? null : renderUrl && !showGenPanel ? (
+      {/* Hide panel only when nothing is ready to work with */}
+      {!uploadedImages.length && !renderUrl && !showGenPanel && !activeExample ? null : renderUrl && !showGenPanel ? (
         /* Collapsed — tweak the current look, or start a fresh style */
         <div className="flex gap-2 border-t border-sand px-4 py-3">
           <button type="button" onClick={() => openPanel("tweak")}
@@ -679,9 +721,10 @@ export default function RenderStage({
                   ? "Tweak this look"
                   : "Generate new style"}
             </h3>
-            {/* Show cancel/close when there's a render to go back to, or when opened
-                via an example so the user can get back to the upload screen */}
-            {(renderUrl || !uploadedImages.length) && (
+            {/* Cancel back to the render (when a render exists), but don't show
+                a close button when an example is active — mirrors the uploaded-photo
+                experience where the panel stays open until you generate. */}
+            {(renderUrl || (!uploadedImages.length && !activeExample)) && (
               <button type="button" onClick={() => setShowGenPanel(false)}
                 className="text-xs text-ink/40 hover:text-ink transition-colors">
                 {renderUrl ? "Cancel" : "✕ Close"}
