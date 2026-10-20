@@ -52,6 +52,7 @@ export async function GET(req: Request) {
             // null = no stock limit (made to order); 0 effective = blocked that day
             effectiveCapacity: avail.get(p.id)!.effectiveCapacity,
             booked: avail.get(p.id)!.reserved,
+            held: avail.get(p.id)!.held, // in couples' baskets right now, not yet ordered
             available: avail.get(p.id)!.available,
           }
         : null,

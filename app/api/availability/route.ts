@@ -13,7 +13,8 @@ export const dynamic = "force-dynamic";
 // What's free on a wedding date, for every product in the shop, measured against
 // the quantity a couple of that size would normally order (per guest, per table
 // and so on). Used for the badges in the shop. Exact stock numbers are only
-// revealed when stock is running low.
+// revealed when stock is running low. The couple's own basket holds don't count
+// against them; everyone else's do.
 export async function GET(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
@@ -26,7 +27,7 @@ export async function GET(req: Request) {
 
   try {
     const catalogue = await loadCatalogue();
-    const raw = await loadAvailability(createAdminClient(), catalogue.map((i) => i.id), date);
+    const raw = await loadAvailability(createAdminClient(), catalogue.map((i) => i.id), date, { ownerId: auth.user.id });
     const items: Record<string, ReturnType<typeof classifyAvailability>> = {};
     for (const item of catalogue) {
       const a = raw.get(item.id);

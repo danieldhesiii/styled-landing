@@ -62,6 +62,13 @@ export default function ProductBrowser({
   }, [lookSignal]);
 
   const inBasket = (id: string) => basket.some((b) => b.itemId === id);
+  // Nothing left on their date (blocked, booked, or in another couple's basket),
+  // so it can't be added. Items with only a few left can still be added and the
+  // quantity lowered in the basket.
+  const noneLeft = (id: string) => {
+    const a = availability.items?.[id];
+    return a?.status === "unavailable" && !a.availableUnits;
+  };
 
   // The pieces that make up the current look. When a render is showing, these are
   // the exact catalogue items it was built from — a faithful "what's in the
@@ -87,7 +94,7 @@ export default function ProductBrowser({
   })();
 
   const lookTotal = lookItems.reduce((sum, i) => sum + i.unitPrice, 0);
-  const lookToAdd = lookItems.filter((i) => !inBasket(i.id));
+  const lookToAdd = lookItems.filter((i) => !inBasket(i.id) && !noneLeft(i.id));
 
   function addWholeLook() {
     for (const item of lookToAdd) onAdd(item);
@@ -264,13 +271,14 @@ export default function ProductBrowser({
                       <button
                         type="button"
                         onClick={() => (active ? onRemove(item.id) : onAdd(item))}
-                        className={`shrink-0 rounded-full px-3 py-2 text-xs font-medium transition-colors ${
+                        disabled={!active && noneLeft(item.id)}
+                        className={`shrink-0 rounded-full px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:bg-ink/20 disabled:text-ink/50 ${
                           active
                             ? "border border-clay bg-clay/10 text-clay hover:bg-clay/20"
                             : "bg-ink text-cream hover:bg-ink/90"
                         }`}
                       >
-                        {active ? "✓ Added" : "Add"}
+                        {active ? "✓ Added" : noneLeft(item.id) ? "Unavailable" : "Add"}
                       </button>
                     </li>
                   );
@@ -334,13 +342,14 @@ export default function ProductBrowser({
                       <button
                         type="button"
                         onClick={() => (active ? onRemove(item.id) : onAdd(item))}
-                        className={`mt-3 w-full rounded-full px-3 py-2 text-xs font-medium transition-colors ${
+                        disabled={!active && noneLeft(item.id)}
+                        className={`mt-3 w-full rounded-full px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:bg-ink/20 disabled:text-ink/50 ${
                           active
                             ? "border border-clay bg-clay/10 text-clay hover:bg-clay/20"
                             : "bg-ink text-cream hover:bg-ink/90"
                         }`}
                       >
-                        {active ? "✓ In your design" : "Add to design"}
+                        {active ? "✓ In your design" : noneLeft(item.id) ? "Not available on your date" : "Add to design"}
                       </button>
                     </div>
                   </div>

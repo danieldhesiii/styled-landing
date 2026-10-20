@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   if (!basket.ok) return NextResponse.json({ ok: false, error: basket.error }, { status: basket.status });
 
   try {
-    const checks = await checkQuantities(createAdminClient(), basket.lines, body.date);
+    const checks = await checkQuantities(createAdminClient(), basket.lines, body.date, { ownerId: auth.user.id });
     return NextResponse.json({
       ok: true,
       date: body.date,

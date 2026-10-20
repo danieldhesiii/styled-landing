@@ -143,6 +143,7 @@ export async function POST(req: Request) {
       guestCount,
       autoFill: !parentRenderId,
       substitute: !parentRenderId,
+      ownerId: user.id,
     });
     items = composed.items;
     look = composed.report;

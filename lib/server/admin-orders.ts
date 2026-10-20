@@ -36,7 +36,7 @@ export async function loadAdminOrder(admin: SupabaseClient, id: string) {
   let availability: Record<string, ItemAvailability> = {};
   if (order.wedding_date && lines?.length) {
     const wanted = lines.filter((l) => l.product_id).map((l) => ({ itemId: l.product_id as string, quantity: l.quantity as number }));
-    availability = Object.fromEntries(await checkQuantities(admin, wanted, order.wedding_date as string, id));
+    availability = Object.fromEntries(await checkQuantities(admin, wanted, order.wedding_date as string, { orderId: id }));
   }
 
   // The couple's most recent styled room, so the stylist can see what they're picturing.

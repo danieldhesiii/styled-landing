@@ -136,7 +136,13 @@ export default function BasketPanel({
                           className={`-mt-1 pl-3 text-[11px] ${a.status === "unavailable" ? "text-red-700" : "text-clay"}`}
                         >
                           {label}
-                          {a.status === "unavailable" ? ". Lower the quantity, remove it, or change your date." : ""}
+                          {a.status === "unavailable"
+                            ? a.reason === "held"
+                              ? a.availableUnits
+                                ? ". Lower the quantity, or check back: it frees up if they remove it."
+                                : ". Check back soon: it frees up if they remove it."
+                              : ". Lower the quantity, remove it, or change your date."
+                            : ""}
                         </p>
                       );
                     })()}

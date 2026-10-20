@@ -148,7 +148,8 @@ export async function POST(req: Request) {
       const checks = await checkQuantities(
         admin,
         priced.quote.lines.map((l) => ({ itemId: l.item.id, quantity: l.quantity })),
-        f.weddingDate
+        f.weddingDate,
+        { ownerId: user.id } // their own basket holds are what they're ordering
       );
       const short = [...checks].filter(([, a]) => a.status === "unavailable");
       if (short.length > 0) {

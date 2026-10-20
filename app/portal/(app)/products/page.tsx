@@ -16,7 +16,8 @@ interface Product {
   leadTimeDays: number;
   active: boolean;
   // What's free on the chosen day. effectiveCapacity null = made to order, 0 = blocked.
-  day: { effectiveCapacity: number | null; booked: number; available: number | null } | null;
+  // held = in couples' baskets right now (released if they remove it or leave).
+  day: { effectiveCapacity: number | null; booked: number; held: number; available: number | null } | null;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -27,11 +28,12 @@ function dayStatus(p: Product): { label: string; detail: string; tone: string } 
   if (!d) return { label: "Unknown", detail: "couldn't check", tone: "bg-sand/60 text-ink/60" };
   if (d.effectiveCapacity === null) return { label: "Made to order", detail: "no stock limit", tone: "bg-emerald-50 text-emerald-800" };
   if (d.effectiveCapacity === 0) return { label: "Unavailable", detail: "blocked this day", tone: "bg-red-50 text-red-800" };
-  if ((d.available ?? 0) <= 0) return { label: "Fully booked", detail: `${d.booked} booked`, tone: "bg-red-50 text-red-800" };
+  const taken = [d.booked ? `${d.booked} booked` : "", d.held ? `${d.held} in baskets` : ""].filter(Boolean).join(", ");
+  if ((d.available ?? 0) <= 0) return { label: "Fully booked", detail: taken || "none free", tone: "bg-red-50 text-red-800" };
   const low = (d.available ?? 0) <= Math.max(1, Math.floor(d.effectiveCapacity * 0.2));
   return {
     label: `${d.available} free`,
-    detail: `of ${d.effectiveCapacity}${d.booked ? `, ${d.booked} booked` : ""}`,
+    detail: `of ${d.effectiveCapacity}${taken ? `, ${taken}` : ""}`,
     tone: low ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800",
   };
 }

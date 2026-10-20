@@ -78,7 +78,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       // Stock may have been reduced since the order came in.
       if (order.wedding_date && body.force !== true) {
         const wanted = (lines ?? []).filter((l) => l.product_id).map((l) => ({ itemId: l.product_id as string, quantity: l.quantity as number }));
-        const checks = await checkQuantities(admin, wanted, order.wedding_date as string, id);
+        const checks = await checkQuantities(admin, wanted, order.wedding_date as string, { orderId: id });
         const conflicts = (lines ?? [])
           .filter((l) => l.product_id && checks.get(l.product_id as string)?.status === "unavailable")
           .map((l) => ({ lineId: l.id, name: l.product_name, availableUnits: checks.get(l.product_id as string)?.availableUnits ?? 0, requested: l.quantity }));

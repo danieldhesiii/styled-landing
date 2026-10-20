@@ -28,13 +28,14 @@ export async function composeOrderableLook(opts: {
   guestCount: number;
   autoFill?: boolean;
   substitute?: boolean;
+  ownerId?: string; // the couple, so their own basket holds don't count against them
 }): Promise<OrderableLook> {
   const catalogue = await loadCatalogue();
   const date = usableDate(opts.weddingDate);
 
   let availability: Map<string, DayAvailability> | null = null;
   if (date && catalogue.length > 0) {
-    const raw = await loadAvailability(createAdminClient(), catalogue.map((i) => i.id), date);
+    const raw = await loadAvailability(createAdminClient(), catalogue.map((i) => i.id), date, { ownerId: opts.ownerId });
     availability = new Map(
       [...raw].map(([id, a]) => [id, { effectiveCapacity: a.effectiveCapacity, available: a.available }])
     );

@@ -9,12 +9,16 @@ export interface ItemAvailability {
   // Units left on the day. Only reported when it matters (limited / unavailable).
   availableUnits: number | null;
   requiredQty: number;
-  reason?: "blocked" | "short";
+  // blocked = not offered that day; held = would fit, but it's in another
+  // couple's basket right now (it frees up if they remove it or leave); short =
+  // not enough units.
+  reason?: "blocked" | "held" | "short";
 }
 
 // effectiveCapacity: null = not limited by stock (made to order), 0 = blocked.
+// held: units in other couples' baskets (already taken out of available).
 export function classifyAvailability(
-  a: { effectiveCapacity: number | null; available: number | null },
+  a: { effectiveCapacity: number | null; available: number | null; held?: number },
   requiredQty: number
 ): ItemAvailability {
   if (a.effectiveCapacity === null || a.available === null) {
@@ -24,7 +28,9 @@ export function classifyAvailability(
     return { status: "unavailable", availableUnits: 0, requiredQty, reason: "blocked" };
   }
   if (a.available < requiredQty) {
-    return { status: "unavailable", availableUnits: a.available, requiredQty, reason: "short" };
+    const held = a.held ?? 0;
+    const reason = held > 0 && a.available + held >= requiredQty ? "held" : "short";
+    return { status: "unavailable", availableUnits: a.available, requiredQty, reason };
   }
   // Fits, but taking it would leave less than the same amount again.
   if (a.available < requiredQty * 2) {
@@ -47,9 +53,13 @@ export function availabilityLabel(a: ItemAvailability): { label: string; tone: B
     case "unavailable":
       return {
         label:
-          a.reason === "blocked" || !a.availableUnits
-            ? "Not available on your date"
-            : `Only ${a.availableUnits} available on your date`,
+          a.reason === "held"
+            ? a.availableUnits
+              ? `Only ${a.availableUnits} free: the rest is in another couple's basket`
+              : "In another couple's basket right now"
+            : a.reason === "blocked" || !a.availableUnits
+              ? "Not available on your date"
+              : `Only ${a.availableUnits} available on your date`,
         tone: "bad",
       };
     default:
