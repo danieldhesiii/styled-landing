@@ -352,7 +352,7 @@ export default function SupplierDetailPage() {
         {newCredential && (
           <div className="mt-4 rounded-2xl bg-sage/15 px-4 py-3 text-sm text-ink/80">
             <p className="font-medium text-ink">
-              Login created — share these once, securely:
+              Login created. Share these once, securely:
             </p>
             <p className="mt-1">
               Email: <span className="font-mono">{newCredential.email}</span>
@@ -709,7 +709,7 @@ export default function SupplierDetailPage() {
                     {money(p.unitPricePence)}
                   </td>
                   <td className="px-5 py-3 text-right tabular-nums text-ink/60">
-                    {p.capacity ?? "—"}
+                    {p.capacity ?? "Not set"}
                   </td>
                   <td className="px-5 py-3">
                     <label className="flex items-center gap-2 text-xs text-ink/60">

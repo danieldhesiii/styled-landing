@@ -38,7 +38,7 @@ export default function AuthDialog({ initialMode = "signup", onClose, onAuthed }
   function friendly(message: string): string {
     const m = message.toLowerCase();
     if (m.includes("already registered") || m.includes("already been registered"))
-      return "That email already has an account — try logging in instead.";
+      return "That email already has an account. Try logging in instead.";
     if (m.includes("invalid login")) return "That email and password don't match.";
     if (m.includes("at least")) return "Your password needs to be at least 6 characters.";
     if (m.includes("valid email")) return "Please enter a valid email address.";
@@ -67,7 +67,7 @@ export default function AuthDialog({ initialMode = "signup", onClose, onAuthed }
           onAuthed?.();
           onClose();
         } else {
-          setNotice("Almost there — check your email for a link to confirm your account.");
+          setNotice("Almost there. Check your email for a link to confirm your account.");
           setBusy(false);
         }
       } else {

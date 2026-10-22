@@ -20,7 +20,7 @@ export async function PUT(req: Request) {
     return fail(400, "Invalid request body.");
   }
   const url = typeof body.url === "string" ? body.url.trim() : "";
-  if (!/^https?:\/\/.+/i.test(url) || url.length > 2000) return fail(422, "Enter a valid calendar link (webcal links won't work — use the https version).");
+  if (!/^https?:\/\/.+/i.test(url) || url.length > 2000) return fail(422, "Enter a valid calendar link (webcal links won't work; use the https version).");
 
   await admin.from("suppliers").update({ ical_url: url }).eq("id", supplierId);
   const result = await syncSupplierCalendar(admin, supplierId, url);

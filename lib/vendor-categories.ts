@@ -18,6 +18,6 @@ export const VENDOR_CATEGORIES: { value: string; label: string }[] = [
 export const VENDOR_CATEGORY_VALUES = new Set(VENDOR_CATEGORIES.map((c) => c.value));
 
 export function vendorCategoryLabel(value: string | null | undefined): string {
-  if (!value) return "—";
+  if (!value) return "Not set";
   return VENDOR_CATEGORIES.find((c) => c.value === value)?.label ?? value;
 }

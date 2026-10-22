@@ -28,7 +28,7 @@ export default function VendorsPage() {
       });
       const json = await res.json().catch(() => null);
       if (res.ok) {
-        setDone(json?.message ?? "Thanks — your application is in. We'll be in touch soon.");
+        setDone(json?.message ?? "Thanks! Your application is in. We'll be in touch soon.");
         form.reset();
       } else {
         setError(json?.error ?? "Couldn't send your application. Please try again.");

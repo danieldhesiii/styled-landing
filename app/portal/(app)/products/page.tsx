@@ -268,7 +268,7 @@ export default function PortalProductsPage() {
                         {money(p.unitPricePence)}
                       </td>
                       <td className="px-5 py-3 text-right tabular-nums text-ink/60">
-                        {p.capacity ?? "—"}
+                        {p.capacity ?? "Not set"}
                       </td>
                       <td className="px-5 py-3">
                         {(() => {

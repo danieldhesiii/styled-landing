@@ -46,7 +46,7 @@ export default function PortalAvailabilityPage() {
     const r = await vendorApi("/api/vendor/availability/ical", "PUT", { url: icalInput.trim() });
     setIcalBusy(false);
     if (!r.ok) return setError(r.data?.error ?? "Couldn't connect that calendar.");
-    setNotice(`Calendar connected — ${r.data.blockedDays} busy ${r.data.blockedDays === 1 ? "day" : "days"} synced.`);
+    setNotice(`Calendar connected. ${r.data.blockedDays} busy ${r.data.blockedDays === 1 ? "day" : "days"} synced.`);
     setIcalInput("");
     load();
   }
@@ -58,7 +58,7 @@ export default function PortalAvailabilityPage() {
     const r = await vendorApi("/api/vendor/availability/ical", "POST");
     setIcalBusy(false);
     if (!r.ok) return setError(r.data?.error ?? "Couldn't sync your calendar.");
-    setNotice(`Synced — ${r.data.blockedDays} busy ${r.data.blockedDays === 1 ? "day" : "days"} from your calendar.`);
+    setNotice(`Synced: ${r.data.blockedDays} busy ${r.data.blockedDays === 1 ? "day" : "days"} from your calendar.`);
     load();
   }
 
@@ -83,9 +83,9 @@ export default function PortalAvailabilityPage() {
     setSaving(false);
     if (!r.ok) return setError(r.data?.error ?? "Couldn't block that date.");
     if (r.data.liveOrders > 0) {
-      setNotice(`Date blocked. Heads up: you already have ${r.data.liveOrders} order${r.data.liveOrders === 1 ? "" : "s"} on that day — blocking won't cancel them, it just stops new requests.`);
+      setNotice(`Date blocked. Heads up: you already have ${r.data.liveOrders} order${r.data.liveOrders === 1 ? "" : "s"} on that day. Blocking won't cancel them, it just stops new requests.`);
     } else {
-      setNotice("Date blocked — couples can no longer request you then.");
+      setNotice("Date blocked. Couples can no longer request you then.");
     }
     setDay("");
     setNote("");
@@ -131,7 +131,7 @@ export default function PortalAvailabilityPage() {
         <h2 className="font-serif text-xl text-ink">Sync your calendar</h2>
         <p className="mt-1 text-sm text-ink/50">
           Paste a read-only link (iCal / .ics) from Google Calendar, Booqable, Current RMS or similar, and the days you&apos;re
-          busy there will block automatically — nothing to keep up to date by hand.
+          busy there will block automatically, with nothing to keep up to date by hand.
         </p>
         {ical.url ? (
           <div className="mt-4">
@@ -199,7 +199,7 @@ export default function PortalAvailabilityPage() {
       )}
 
       <p className="mt-6 text-xs text-ink/40">
-        Need to limit a single product on a date (rather than your whole business)? Ask the Styled team — they can set per-product limits.
+        Need to limit a single product on a date (rather than your whole business)? Ask the Styled team. They can set per-product limits.
       </p>
     </div>
   );

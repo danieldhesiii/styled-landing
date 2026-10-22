@@ -8,17 +8,17 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL || "https://styled-landing-zeta.vercel.app"
   ),
-  title: "Styled — see your wedding before the day",
+  title: "Styled: see your wedding before the day",
   description: DESCRIPTION,
   openGraph: {
-    title: "Styled — see your wedding before the day",
+    title: "Styled: see your wedding before the day",
     description: DESCRIPTION,
     type: "website",
     images: [{ url: "/img/renders/garden_romance.jpg" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Styled — see your wedding before the day",
+    title: "Styled: see your wedding before the day",
     description: DESCRIPTION,
   },
 };

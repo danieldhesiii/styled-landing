@@ -295,7 +295,7 @@ export default function CheckoutStep({
             )}
           </div>
           <div className="rounded-xl border border-dashed border-sand bg-cream/50 p-4 text-sm text-ink/50">
-            Card payment is a placeholder in this preview — the deposit step will
+            Card payment is a placeholder in this preview. The deposit step will
             connect to our payment provider before launch. No card is charged.
           </div>
           {error && (

@@ -15,7 +15,7 @@ function friendly(message: string): string {
     m.includes("already in use") ||
     m.includes("already exists")
   )
-    return "That email already has an account — try logging in instead.";
+    return "That email already has an account. Try logging in instead.";
   if (m.includes("invalid login") || m.includes("invalid credentials"))
     return "That email and password don't match.";
   if (m.includes("at least")) return "Your password needs to be at least 6 characters.";
@@ -88,7 +88,7 @@ function LoginForm() {
           ) {
             // Email already registered. Switch to sign-in mode and keep their
             // work in memory; after they sign in we will merge the anon session.
-            setError("That email already has an account. Sign in below to continue — your work will carry over.");
+            setError("That email already has an account. Sign in below to continue. Your work will carry over.");
             setMode("login");
           } else {
             setError(friendly(res.error.message));
@@ -104,7 +104,7 @@ function LoginForm() {
             // merge is needed. For a fresh signUp the user had no prior session.
             router.replace(next);
           } else {
-            setNotice("Account created — check your email to confirm, then sign in.");
+            setNotice("Account created. Check your email to confirm, then sign in.");
             setMode("login");
           }
         }
@@ -125,7 +125,7 @@ function LoginForm() {
         }
       }
     } catch {
-      setError("Something went wrong — please try again.");
+      setError("Something went wrong. Please try again.");
     } finally {
       setBusy(false);
     }

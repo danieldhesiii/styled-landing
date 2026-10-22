@@ -28,8 +28,8 @@ const CONTENTS = [
   ["big-picture", "The big picture"],
   ["orders", "Orders"],
   ["customers", "Customers"],
-  ["vendors", "Vendors — applications"],
-  ["suppliers", "Suppliers — onboarding & catalogue"],
+  ["vendors", "Vendors: applications"],
+  ["suppliers", "Suppliers: onboarding & catalogue"],
   ["portal", "Supplier portal (self-serve)"],
   ["availability", "Availability"],
   ["shop-rules", "What the shop shows (and why)"],
@@ -59,7 +59,7 @@ export default function GuidePage() {
         <Section id="big-picture" title="The big picture">
           <p>Styled is a wedding visualiser and marketplace. Couples design their wedding against a photo of their venue, then order the real products in the picture. Two sides meet in this admin:</p>
           <ul className="list-disc space-y-1 pl-5">
-            <li><strong>Couples</strong> upload a venue, pick pieces from the catalogue, generate a styled preview — which they can then tweak with small changes or re-generate as a new style, each kept as a version to compare — and place an order, which starts as a <em>request</em>, not a payment.</li>
+            <li><strong>Couples</strong> upload a venue, pick pieces from the catalogue, generate a styled preview and place an order, which starts as a <em>request</em>, not a payment. They can tweak the preview with small changes or re-generate it as a new style, with each version kept for comparison.</li>
             <li><strong>Suppliers</strong> apply to join, you review and onboard them, and their products become the catalogue couples shop from.</li>
           </ul>
           <p>Your job in the middle: bring good suppliers on, keep their catalogue and availability honest, and move each order from request to confirmed to delivered.</p>
@@ -69,47 +69,47 @@ export default function GuidePage() {
           <p>The <Link href="/admin" className="text-clay hover:underline">Orders</Link> tab is the main queue. An order is a couple&apos;s request to book a basket of products for their wedding date.</p>
           <p className="font-medium text-ink">Status meanings</p>
           <ul className="list-disc space-y-1 pl-5">
-            <li><strong>Requested</strong> — just placed; no supplier has confirmed yet.</li>
-            <li><strong>Confirmed</strong> — you&apos;ve confirmed the suppliers can fulfil it for the date.</li>
-            <li><strong>Deposit paid</strong> — the couple has secured it with their 25% deposit.</li>
-            <li><strong>Declined / Cancelled</strong> — not going ahead (a supplier can&apos;t do it, or the couple pulled out).</li>
+            <li><strong>Requested</strong>: just placed; no supplier has confirmed yet.</li>
+            <li><strong>Confirmed</strong>: you&apos;ve confirmed the suppliers can fulfil it for the date.</li>
+            <li><strong>Deposit paid</strong>: the couple has secured it with their 25% deposit.</li>
+            <li><strong>Declined / Cancelled</strong>: not going ahead (a supplier can&apos;t do it, or the couple pulled out).</li>
           </ul>
-          <p>Open an order to confirm or decline each supplier line, leave internal staff notes, and write a message the couple sees on their order-tracking page. No money is taken when the order is placed — the deposit secures the date once suppliers are confirmed.</p>
-          <p>When you mark an order <strong>confirmed, declined or cancelled</strong>, the couple is <strong>emailed automatically</strong> with your message and a link to their order page. (Declining requires a short message saying why — that&apos;s what they receive.) Emails send only with a mail provider configured; otherwise they&apos;re logged.</p>
+          <p>Open an order to confirm or decline each supplier line, leave internal staff notes, and write a message the couple sees on their order-tracking page. No money is taken when the order is placed: the deposit secures the date once suppliers are confirmed.</p>
+          <p>When you mark an order <strong>confirmed, declined or cancelled</strong>, the couple is <strong>emailed automatically</strong> with your message and a link to their order page. (Declining requires a short message saying why: that&apos;s what they receive.) Emails send only with a mail provider configured; otherwise they&apos;re logged.</p>
         </Section>
 
         <Section id="customers" title="Customers">
-          <p>The <Link href="/admin/accounts" className="text-clay hover:underline">Customers</Link> tab lists couples who created an account, with how active each is (saved looks, renders, orders). Anonymous guests and staff accounts are left out. It&apos;s read-only — a pulse on who&apos;s using the product.</p>
+          <p>The <Link href="/admin/accounts" className="text-clay hover:underline">Customers</Link> tab lists couples who created an account, with how active each is (saved looks, renders, orders). Anonymous guests and staff accounts are left out. It&apos;s read-only: a pulse on who&apos;s using the product.</p>
         </Section>
 
-        <Section id="vendors" title="Vendors — applications">
+        <Section id="vendors" title="Vendors: applications">
           <p>Suppliers apply through the public <Link href="/vendors" className="text-clay hover:underline">&ldquo;List your business&rdquo;</Link> form. Their applications land in the <Link href="/admin/vendors" className="text-clay hover:underline">Vendors</Link> tab. Work each one through the pipeline:</p>
           <ol className="space-y-2">
-            <Step n="1"><strong>New</strong> — just came in. Read it, then mark it <strong>Reviewing</strong> while you check them out (website, area, fit).</Step>
-            <Step n="2"><strong>Reviewing</strong> — doing your due diligence. Contact them if needed; their email and website are one click away.</Step>
-            <Step n="3"><strong>Accept</strong> or <strong>Decline</strong> — your decision. Declining keeps the record but closes it (they can re-apply later).</Step>
+            <Step n="1"><strong>New</strong>: just came in. Read it, then mark it <strong>Reviewing</strong> while you check them out (website, area, fit).</Step>
+            <Step n="2"><strong>Reviewing</strong>: doing your due diligence. Contact them if needed; their email and website are one click away.</Step>
+            <Step n="3"><strong>Accept</strong> or <strong>Decline</strong>: your decision. Declining keeps the record but closes it (they can re-apply later).</Step>
             <Step n="4">On an accepted application, hit <strong>&ldquo;Set up as supplier →&rdquo;</strong>. That opens the Suppliers create form, prefilled with their details, so you can turn them into a live listing.</Step>
           </ol>
           <p className="text-ink/50">There is deliberately no way to become a supplier without you accepting them here.</p>
         </Section>
 
-        <Section id="suppliers" title="Suppliers — onboarding & catalogue">
-          <p>The <Link href="/admin/suppliers" className="text-clay hover:underline">Suppliers</Link> tab is where a supplier becomes a real, shoppable listing. This is the only place to add catalogue products — no code needed.</p>
+        <Section id="suppliers" title="Suppliers: onboarding & catalogue">
+          <p>The <Link href="/admin/suppliers" className="text-clay hover:underline">Suppliers</Link> tab is where a supplier becomes a real, shoppable listing. This is the only place to add catalogue products: no code needed.</p>
           <p className="font-medium text-ink">Create a supplier</p>
           <ul className="list-disc space-y-1 pl-5">
-            <li><strong>Name &amp; area</strong> — shown to couples alongside each product.</li>
-            <li><strong>Logo</strong> — a URL to their logo (optional; an initial is shown if blank).</li>
-            <li><strong>Commission %</strong> — Styled&apos;s cut on their products. Leave blank to use the platform default (12%). This is internal and never shown to couples. It&apos;s applied to <em>new</em> orders.</li>
+            <li><strong>Name &amp; area</strong>: shown to couples alongside each product.</li>
+            <li><strong>Logo</strong>: a URL to their logo (optional; an initial is shown if blank).</li>
+            <li><strong>Commission %</strong>: Styled&apos;s cut on their products. Leave blank to use the platform default (12%). This is internal and never shown to couples. It&apos;s applied to <em>new</em> orders.</li>
           </ul>
           <p className="font-medium text-ink">Add products</p>
           <p>Open a supplier and add each piece. Key fields:</p>
           <ul className="list-disc space-y-1 pl-5">
-            <li><strong>Category</strong> — which part of the shop it appears in.</li>
-            <li><strong>Price &amp; unit</strong> — e.g. £45 &ldquo;per table&rdquo;.</li>
-            <li><strong>Quantity worked out</strong> — fixed, per guest, per table, or one per venue. This sets the suggested quantity from the couple&apos;s guest count.</li>
-            <li><strong>Units per day (capacity)</strong> — how many they can supply on any one date. Leave blank for made-to-order (not stock-limited). This feeds availability.</li>
-            <li><strong>Shown in the render</strong> — if it has a render slot, it can appear in the generated preview; otherwise it&apos;s shop-only (e.g. attire, cake).</li>
-            <li><strong>Styles</strong> — which look(s) it suits, so the visualiser picks it for matching designs.</li>
+            <li><strong>Category</strong>: which part of the shop it appears in.</li>
+            <li><strong>Price &amp; unit</strong>: e.g. £45 &ldquo;per table&rdquo;.</li>
+            <li><strong>Quantity worked out</strong>: fixed, per guest, per table, or one per venue. This sets the suggested quantity from the couple&apos;s guest count.</li>
+            <li><strong>Units per day (capacity)</strong>: how many they can supply on any one date. Leave blank for made-to-order (not stock-limited). This feeds availability.</li>
+            <li><strong>Shown in the render</strong>: if it has a render slot, it can appear in the generated preview; otherwise it&apos;s shop-only (e.g. attire, cake).</li>
+            <li><strong>Styles</strong>: which look(s) it suits, so the visualiser picks it for matching designs.</li>
           </ul>
           <p className="font-medium text-ink">Switches</p>
           <ul className="list-disc space-y-1 pl-5">
@@ -117,22 +117,22 @@ export default function GuidePage() {
             <li>Each product has its own <strong>Live / Hidden</strong> toggle.</li>
           </ul>
           <p className="font-medium text-ink">Public profile</p>
-          <p>Every active supplier gets a public page at <strong>/suppliers/&lt;id&gt;</strong>, listed in the <Link href="/suppliers" className="text-clay hover:underline">Meet our suppliers</Link> directory. It shows their logo, area and every live piece — handy to share when onboarding them (&ldquo;here&apos;s your page on Styled&rdquo;). Switching a supplier or product off removes it from there too. Commission is never shown.</p>
+          <p>Every active supplier gets a public page at <strong>/suppliers/&lt;id&gt;</strong>, listed in the <Link href="/suppliers" className="text-clay hover:underline">Meet our suppliers</Link> directory. It shows their logo, area and every live piece: handy to share when onboarding them (&ldquo;here&apos;s your page on Styled&rdquo;). Switching a supplier or product off removes it from there too. Commission is never shown.</p>
         </Section>
 
         <Section id="portal" title="Supplier portal (self-serve)">
-          <p>Suppliers can sign in at <strong>/portal</strong> to do their own bit, instead of you relaying everything. There&apos;s no public sign-up — you give them a login.</p>
+          <p>Suppliers can sign in at <strong>/portal</strong> to do their own bit, instead of you relaying everything. There&apos;s no public sign-up: you give them a login.</p>
           <p className="font-medium text-ink">Giving a supplier access</p>
           <p>Open the supplier in <Link href="/admin/suppliers" className="text-clay hover:underline">Suppliers</Link> and use <strong>Portal logins → Create login</strong> with their email. A brand-new account shows a one-time password to pass on securely (they change it after signing in); an existing Styled account is simply linked. One login belongs to one supplier.</p>
           <p className="font-medium text-ink">What they can do</p>
           <ul className="list-disc space-y-1 pl-5">
-            <li><strong>Orders</strong> — see orders that include their pieces (items, quantity, delivery date, venue — never other suppliers&apos; lines, the couple&apos;s price, or commission) and <strong>confirm or decline</strong> each line themselves, while the order is still being reviewed.</li>
-            <li><strong>Products</strong> — set their prices, set units-per-day capacity, and show/hide each of their products.</li>
-            <li><strong>Availability</strong> — <strong>block dates</strong> they&apos;re booked elsewhere or away, so couples can&apos;t request them then, or <strong>sync a calendar</strong> (Google/Booqable/Current RMS iCal link) so their busy days block automatically. (Per-<em>product</em> limits on a date are still a staff job in Admin → Availability.)</li>
+            <li><strong>Orders</strong>: see orders that include their pieces (items, quantity, delivery date, venue, but never other suppliers&apos; lines, the couple&apos;s price, or commission) and <strong>confirm or decline</strong> each line themselves, while the order is still being reviewed.</li>
+            <li><strong>Products</strong>: set their prices, set units-per-day capacity, and show/hide each of their products.</li>
+            <li><strong>Availability</strong>: <strong>block dates</strong> they&apos;re booked elsewhere or away, so couples can&apos;t request them then, or <strong>sync a calendar</strong> (Google/Booqable/Current RMS iCal link) so their busy days block automatically. (Per-<em>product</em> limits on a date are still a staff job in Admin → Availability.)</li>
           </ul>
-          <p>Their confirmations show up on the order here, logged as done by the supplier. You still make the final call on the whole order — a supplier confirming their lines doesn&apos;t confirm the order itself.</p>
+          <p>Their confirmations show up on the order here, logged as done by the supplier. You still make the final call on the whole order: a supplier confirming their lines doesn&apos;t confirm the order itself.</p>
           <p className="font-medium text-ink">Order notifications</p>
-          <p>When a couple places an order, each supplier on it is <strong>emailed automatically</strong> with the items to confirm and a link to the portal (sent to their contact email and any portal logins). If a supplier has no email on file yet, nobody is emailed — relay it to them from the order until you&apos;ve added one. Emails send only in production with a mail provider configured; otherwise they&apos;re logged.</p>
+          <p>When a couple places an order, each supplier on it is <strong>emailed automatically</strong> with the items to confirm and a link to the portal (sent to their contact email and any portal logins). If a supplier has no email on file yet, nobody is emailed: relay it to them from the order until you&apos;ve added one. Emails send only in production with a mail provider configured; otherwise they&apos;re logged.</p>
         </Section>
 
         <Section id="availability" title="Availability">
@@ -144,7 +144,7 @@ export default function GuidePage() {
           <ul className="list-disc space-y-1 pl-5">
             <li><strong>Stock label</strong> comes from capacity: blank capacity shows as &ldquo;made to order&rdquo;; a number means it&apos;s stock-limited per day.</li>
             <li><strong>Availability on a date</strong> = capacity (or a day override) minus what live orders have already reserved, after any blocks.</li>
-            <li><strong>Commission</strong> is added per line from the supplier&apos;s rate (or the default) — it&apos;s Styled&apos;s margin, recorded on the order, never shown to the couple.</li>
+            <li><strong>Commission</strong> is added per line from the supplier&apos;s rate (or the default): it&apos;s Styled&apos;s margin, recorded on the order, never shown to the couple.</li>
             <li>Prices are snapshotted onto an order when it&apos;s placed, so later catalogue edits never change an existing order.</li>
           </ul>
         </Section>

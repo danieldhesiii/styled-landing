@@ -62,7 +62,7 @@ const FAQS = [
   },
   {
     q: "What happens once I place an order?",
-    a: "Your order starts as a request. Styled confirms stock and availability with each vendor for your date, then you secure the whole order with a single deposit. We arrange delivery to your venue on the dates you set — you deal with us, not five different suppliers.",
+    a: "Your order starts as a request. Styled confirms stock and availability with each vendor for your date, then you secure the whole order with a single deposit. We arrange delivery to your venue on the dates you set. You deal with us, not five different suppliers.",
   },
   {
     q: "Where do you deliver?",

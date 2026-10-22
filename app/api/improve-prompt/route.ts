@@ -48,9 +48,9 @@ export async function POST(req: Request) {
   const system =
     "You help couples describe how they want their wedding reception room to look. " +
     "Rewrite the user's note into one vivid, concrete styling brief for an image generator. " +
-    "Keep their actual intent, colours and ideas — expand and clarify, never replace them with a different wedding. " +
+    "Keep their actual intent, colours and ideas: expand and clarify, never replace them with a different wedding. " +
     "Mention colour palette, flowers/greenery, table layout, linen, lighting and any focal points, but only build on what they implied. " +
-    "British English. 2–4 sentences, no lists, no preamble, no quotes — just the description.";
+    "British English. 2–4 sentences, no lists, no preamble, no quotes: just the description.";
   const user = styleName
     ? `They are starting from our "${styleName}" style. Their note: ${brief}`
     : `Their note: ${brief}`;

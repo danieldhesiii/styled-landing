@@ -187,7 +187,7 @@ export default function PortalOrdersPage() {
 
                 {!o.actionable && (
                   <p className="mt-3 text-xs text-ink/40">
-                    This order is {o.status.replace("_", " ")} — no further
+                    This order is {o.status.replace("_", " ")} : no further
                     action needed.
                   </p>
                 )}

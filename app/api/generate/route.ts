@@ -136,7 +136,7 @@ export async function POST(req: Request) {
       pending: true,
       imageUrl: style?.render ?? STYLES[0].render ?? null,
       message:
-        "Render engine not connected yet. Showing an illustrative look for now — your brief has been captured.",
+        "Render engine not connected yet. Showing an illustrative look for now. Your brief has been captured.",
     });
   }
 

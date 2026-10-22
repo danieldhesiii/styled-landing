@@ -80,7 +80,7 @@ export default function AccountsPage() {
                 <tr key={a.id} className="transition-colors hover:bg-cream/60">
                   <td className="px-5 py-3 font-medium text-ink">{a.email}</td>
                   <td className="px-5 py-3 text-ink/60">{shortDay(a.createdAt.slice(0, 10))}</td>
-                  <td className="px-5 py-3 text-ink/60">{a.lastSignInAt ? ago(a.lastSignInAt) : "—"}</td>
+                  <td className="px-5 py-3 text-ink/60">{a.lastSignInAt ? ago(a.lastSignInAt) : "Not set"}</td>
                   <td className="px-5 py-3 text-right tabular-nums text-ink/70">{a.savedLooks}</td>
                   <td className="px-5 py-3 text-right tabular-nums text-ink/70">{a.renders}</td>
                   <td className="px-5 py-3 text-right tabular-nums text-ink/70">{a.orders}</td>

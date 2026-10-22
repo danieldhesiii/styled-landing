@@ -39,7 +39,7 @@ export type RenderSetting = SceneId;
 // woven in where it helps the model judge scale.
 const SCENE_OPENING: Record<SceneId, (subject: string) => string> = {
   reception: (s) => `Restyle ${s} as a finished wedding reception, set and ready for the day.`,
-  ceremony: (s) => `Set up ${s} for a wedding CEREMONY — a finished, photorealistic scene, ready for the couple to marry.`,
+  ceremony: (s) => `Set up ${s} for a wedding CEREMONY: a finished, photorealistic scene, ready for the couple to marry.`,
   party: (s) => `Restyle ${s} as an evening wedding reception party, set for dancing and celebrating after dark.`,
   drinks: (s) => `Restyle ${s} as a wedding drinks reception, set for guests to mingle with drinks and canapés.`,
   proposal: (s) => `Restyle ${s} as an intimate, romantic marriage-proposal setting for just two people.`,
@@ -49,13 +49,13 @@ const SCENE_LAYOUT: Record<SceneId, (guests: number) => string> = {
   reception: (g) =>
     `The wedding is for about ${g} guests, which is roughly ${tablesFor(g)} tables. Show as many dining tables as fit the room naturally with sensible spacing and a clear walkway; do not cram the room.`,
   ceremony: (g) =>
-    `Lay the room out for the ceremony: neat rows of chairs all facing forward towards the front of the room, in two blocks with a clear central aisle running down the middle for the couple to walk down. Seat about ${g} guests. At the front, at the head of the aisle, place the ceremony focal point — an arch or floral backdrop where the couple will stand. Do NOT use any dining or banquet tables; this is the ceremony, not the meal.`,
+    `Lay the room out for the ceremony: neat rows of chairs all facing forward towards the front of the room, in two blocks with a clear central aisle running down the middle for the couple to walk down. Seat about ${g} guests. At the front, at the head of the aisle, place the ceremony focal point: an arch or floral backdrop where the couple will stand. Do NOT use any dining or banquet tables; this is the ceremony, not the meal.`,
   party: (g) =>
-    `Lay the room out for the evening party, for about ${g} guests: a clear central dancefloor, a stage or DJ booth at one end, a statement bar to one side, and relaxed lounge seating with a few small cocktail tables around the edges. Warm, atmospheric evening lighting — festoon lights, uplighting and candles. Energetic but elegant; no formal dining tables down the middle.`,
+    `Lay the room out for the evening party, for about ${g} guests: a clear central dancefloor, a stage or DJ booth at one end, a statement bar to one side, and relaxed lounge seating with a few small cocktail tables around the edges. Warm, atmospheric evening lighting: festoon lights, uplighting and candles. Energetic but elegant; no formal dining tables down the middle.`,
   drinks: (g) =>
     `Lay the room out for a standing drinks reception, for about ${g} guests: a stylish bar, scattered tall poseur / cocktail tables for guests to gather around, a few lounge seating clusters and plenty of room to mingle. No formal seated dining tables.`,
   proposal: () =>
-    `Set the room for an intimate marriage proposal: a single romantic focal set-up for two — soft candlelight, lush florals, perhaps rose petals and fairy lights — centred in the space. No rows of guest chairs and no dining tables; this is a private, romantic moment, not an event for guests.`,
+    `Set the room for an intimate marriage proposal: a single romantic focal set-up for two, centred in the space, with soft candlelight, lush florals, perhaps rose petals and fairy lights. No rows of guest chairs and no dining tables; this is a private, romantic moment, not an event for guests.`,
 };
 
 // The couple's free text goes into a prompt, so keep it plain and bounded.
@@ -119,7 +119,7 @@ export function buildRenderPrompt(opts: {
     parts.push(`Style: ${STYLE_DIRECTION[style.id] ?? `${style.name}. ${style.tagline}.`}`);
   } else {
     parts.push(
-      "There is no preset style. Design the decor entirely from the couple's own description below — follow its colours, flowers, materials, lighting and overall mood exactly, and fill in tasteful, cohesive wedding styling for anything they don't specify."
+      "There is no preset style. Design the decor entirely from the couple's own description below: follow its colours, flowers, materials, lighting and overall mood exactly, and fill in tasteful, cohesive wedding styling for anything they don't specify."
     );
   }
   parts.push(SCENE_LAYOUT[setting](guestCount));

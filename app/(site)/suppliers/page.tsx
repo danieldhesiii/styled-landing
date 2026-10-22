@@ -26,7 +26,7 @@ export default async function SuppliersIndexPage() {
 
       {suppliers.length === 0 ? (
         <div className="mt-12 rounded-3xl border border-dashed border-sand px-6 py-16 text-center text-sm text-ink/50">
-          Our supplier network is being set up — check back very soon.
+          Our supplier network is being set up. Check back very soon.
         </div>
       ) : (
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

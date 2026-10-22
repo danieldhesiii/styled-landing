@@ -199,19 +199,19 @@ export default function RenderStage({
       const data = await res.json();
       if (!res.ok || !data?.ok) {
         setImproveError(
-          data?.error ?? "Couldn't improve that just now — try again.",
+          data?.error ?? "Couldn't improve that just now. Try again.",
         );
       } else if (typeof data.prompt === "string" && data.prompt.trim()) {
         setDescription(data.prompt.trim());
         if (data.changed === false) {
           setImproveError(
-            "That already reads well — tweak it or generate when ready.",
+            "That already reads well. Tweak it or generate when ready.",
           );
         }
       }
     } catch {
       setImproveError(
-        "Couldn't reach the writing helper — check your connection.",
+        "Couldn't reach the writing helper. Check your connection.",
       );
     } finally {
       setImproving(false);
@@ -634,7 +634,7 @@ export default function RenderStage({
                   </p>
                   <p className="mt-2 max-w-sm text-sm text-ink/50">
                     Upload a photo of your room, then just describe the look you
-                    want — no need to pick a style. We'll generate exactly how
+                    want. No need to pick a style. We'll generate exactly how
                     your wedding could look.
                   </p>
                 </div>
@@ -931,7 +931,7 @@ export default function RenderStage({
             /* ── TWEAK: a small change to the render that's showing ───────── */
             <>
               <p className="mb-4 text-xs leading-relaxed text-ink/50">
-                Keep this design and change only what you describe — the room,
+                Keep this design and change only what you describe. The room,
                 angle, lighting and everything you don't mention stay exactly
                 the same.
               </p>
@@ -969,7 +969,7 @@ export default function RenderStage({
           ) : (
             <>
               <p className="mb-4 text-xs leading-relaxed text-ink/50">
-                Just describe the look you want in your own words — colours,
+                Just describe the look you want in your own words: colours,
                 flowers, lighting, layout, anything. You don't have to pick a
                 style; your description leads the design.
               </p>
@@ -1051,7 +1051,7 @@ export default function RenderStage({
                     aria-pressed={draftStyleId === ""}
                     className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${draftStyleId === "" ? "border-clay bg-clay/10 font-medium text-ink" : "border-sand text-ink/60 hover:border-clay/50"}`}
                   >
-                    No style — just my description
+                    Just my description
                   </button>
                   {STYLES.map((s) => {
                     const selected = s.id === draftStyleId;

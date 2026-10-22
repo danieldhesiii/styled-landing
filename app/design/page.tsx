@@ -597,7 +597,7 @@ export default function DesignPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs text-ink/50">
-                    Budget — {formatGBP(brief.budget)}
+                    Budget: {formatGBP(brief.budget)}
                   </label>
                   <input
                     type="range"
