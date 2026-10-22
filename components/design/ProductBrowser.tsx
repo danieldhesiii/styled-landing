@@ -20,7 +20,11 @@ interface Props {
   onAdd: (item: CatalogueItem) => void;
   onRemove: (id: string) => void;
   onQty?: (id: string, quantity: number) => void;
-  onVisualise?: () => void;
+  savedItemIds: string[];
+  savedOnly?: boolean;
+  savesLoaded: boolean;
+  savingItems: Set<string>;
+  onToggleSave: (id: string) => void;
 }
 export default function ProductBrowser({
   basket,
@@ -32,7 +36,11 @@ export default function ProductBrowser({
   onAdd,
   onRemove,
   onQty,
-  onVisualise,
+  savedItemIds,
+  savedOnly = false,
+  savesLoaded,
+  savingItems,
+  onToggleSave,
 }: Props) {
   const { items: catalogue } = useCatalogue();
   const [category, setCategory] = useState<Category | "">(""),
@@ -45,6 +53,15 @@ export default function ProductBrowser({
     [byVendor, setByVendor] = useState(false),
     [filtersOpen, setFiltersOpen] = useState(false),
     [query, setQuery] = useState("");
+  useEffect(() => {
+    setCategory("");
+    setSupplier("");
+    setStyle("");
+    setMin("");
+    setMax("");
+    setQuery("");
+    setView("browse");
+  }, [savedOnly]);
   const first = useRef(true);
   useEffect(() => {
     if (first.current) {
@@ -98,6 +115,7 @@ export default function ProductBrowser({
       (!query ||
         `${i.name} ${i.supplier}`.toLowerCase().includes(query.toLowerCase())),
   );
+  if (savedOnly) items = items.filter((item) => savedItemIds.includes(item.id));
   if (view === "look") {
     const ids = new Set(
       lookItemIds?.length ? lookItemIds : basket.map((b) => b.itemId),
@@ -117,26 +135,32 @@ export default function ProductBrowser({
     <div className="p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-serif text-3xl">
-          {view === "look" ? "Shop this look" : "Browse the catalogue"}
+          {savedOnly
+            ? "Saved items"
+            : view === "look"
+              ? "Shop this look"
+              : "Browse the catalogue"}
         </h2>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setView("browse")}
-            aria-pressed={view === "browse"}
-            className="rounded-full border border-sand px-4 py-2 text-sm"
-          >
-            All pieces
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("look")}
-            aria-pressed={view === "look"}
-            className="rounded-full border border-sand px-4 py-2 text-sm"
-          >
-            This look
-          </button>
-        </div>
+        {!savedOnly && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setView("browse")}
+              aria-pressed={view === "browse"}
+              className="rounded-full border border-sand px-4 py-2 text-sm"
+            >
+              All pieces
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("look")}
+              aria-pressed={view === "look"}
+              className="rounded-full border border-sand px-4 py-2 text-sm"
+            >
+              This look
+            </button>
+          </div>
+        )}
       </div>
       <div className="mt-5 flex gap-2 overflow-x-auto pb-3">
         <button
@@ -416,9 +440,13 @@ export default function ProductBrowser({
           </p>
           {!items.length && (
             <p className="py-12 text-center text-ink/60">
-              {view === "look"
-                ? "Add pieces or generate a look to see them here."
-                : "No pieces match your filters."}
+              {savedOnly && !savesLoaded
+                ? "Loading your saved pieces…"
+                : savedOnly && !savedItemIds.length
+                  ? "Save pieces you love using the heart on any product. They’ll appear here, ready to add to your basket."
+                  : view === "look"
+                    ? "Add pieces or generate a look to see them here."
+                    : "No pieces match your filters."}
             </p>
           )}
           <div
@@ -518,18 +546,20 @@ export default function ProductBrowser({
                           Add to basket
                         </button>
                       )}
-                      {onVisualise && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onAdd(item);
-                            onVisualise();
-                          }}
-                          className="mt-3 w-full text-xs underline"
-                        >
-                          See how it looks
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => onToggleSave(item.id)}
+                        disabled={!savesLoaded || savingItems.has(item.id)}
+                        aria-pressed={savedItemIds.includes(item.id)}
+                        aria-label={`${savedItemIds.includes(item.id) ? "Unsave" : "Save"} ${item.name}`}
+                        className={`mt-3 w-full rounded-full border px-4 py-2 text-sm disabled:opacity-50 ${savedItemIds.includes(item.id) ? "border-clay bg-blush text-ink" : "border-sand text-ink/60"}`}
+                      >
+                        {savingItems.has(item.id)
+                          ? "Saving…"
+                          : savedItemIds.includes(item.id)
+                            ? "♥ Saved"
+                            : "♡ Save item"}
+                      </button>
                     </div>
                   </div>
                 </article>

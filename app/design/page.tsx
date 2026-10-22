@@ -8,7 +8,7 @@ import type { BasketLine, CatalogueItem, SampleVenue } from "@/lib/types";
 import { getStyle, getVenue } from "@/lib/styles";
 import { suggestedQty, formatGBP } from "@/lib/quote";
 import { type Brief, type UploadedPhoto } from "@/components/design/BriefStep";
-import ResponsivePanel from "@/components/ui/ResponsivePanel";
+import { useSavedItems } from "@/components/design/useSavedItems";
 import RenderStage, { type RenderRef } from "@/components/design/RenderStage";
 import ProductBrowser from "@/components/design/ProductBrowser";
 import BasketPanel from "@/components/design/BasketPanel";
@@ -25,7 +25,17 @@ export default function DesignPage() {
   const { getItem } = useCatalogue();
   const [partnerVenue, setPartnerVenue] = useState<SampleVenue | null>(null);
   const [partnerError, setPartnerError] = useState("");
-  const [visualiserOpen, setVisualiserOpen] = useState(false);
+  const [studioTab, setStudioTab] = useState<
+    "catalogue" | "saved" | "visualiser"
+  >("catalogue");
+  const savedItems = useSavedItems();
+  function switchStudioTab(tab: "catalogue" | "saved" | "visualiser") {
+    setStudioTab(tab);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", tab);
+    url.searchParams.delete("render");
+    window.history.replaceState(null, "", url);
+  }
   const [mobileBasketOpen, setMobileBasketOpen] = useState(false);
   const basketDialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -57,7 +67,7 @@ export default function DesignPage() {
   const productBrowserRef = useRef<HTMLDivElement>(null);
   const visualiserRef = useRef<HTMLDivElement>(null);
   function openVisualiser() {
-    setVisualiserOpen(true);
+    switchStudioTab("visualiser");
     setTimeout(
       () =>
         visualiserRef.current?.scrollIntoView({
@@ -170,7 +180,9 @@ export default function DesignPage() {
         venueId: `listing:${slug}`,
         uploadedImages: [],
       }));
-    if (params.get("render") === "true") setVisualiserOpen(true);
+    const tab = params.get("tab");
+    if (tab === "saved" || tab === "visualiser") setStudioTab(tab);
+    else if (params.get("render") === "true") setStudioTab("visualiser");
     setRestored(true);
   }, []);
 
@@ -467,14 +479,27 @@ export default function DesignPage() {
               >
                 <button
                   type="button"
-                  onClick={() =>
-                    productBrowserRef.current?.scrollIntoView({
-                      behavior: "smooth",
-                    })
-                  }
-                  className="rounded-full bg-ink px-4 py-2 text-sm text-cream"
+                  onClick={() => switchStudioTab("catalogue")}
+                  aria-current={studioTab === "catalogue" ? "page" : undefined}
+                  className={`shrink-0 rounded-full border px-4 py-2 text-sm ${studioTab === "catalogue" ? "border-ink bg-ink text-cream" : "border-sand"}`}
                 >
                   Browse catalogue
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchStudioTab("saved")}
+                  aria-current={studioTab === "saved" ? "page" : undefined}
+                  className={`shrink-0 rounded-full border px-4 py-2 text-sm ${studioTab === "saved" ? "border-ink bg-ink text-cream" : "border-sand"}`}
+                >
+                  Saved items ({savedItems.ids.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={openVisualiser}
+                  aria-current={studioTab === "visualiser" ? "page" : undefined}
+                  className={`shrink-0 rounded-full border px-4 py-2 text-sm ${studioTab === "visualiser" ? "border-ink bg-ink text-cream" : "border-sand"}`}
+                >
+                  AI visualiser
                 </button>
                 <button
                   type="button"
@@ -576,8 +601,24 @@ export default function DesignPage() {
                 {/* Marketplace catalogue */}
                 <div
                   ref={productBrowserRef}
+                  hidden={studioTab === "visualiser"}
                   className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm"
                 >
+                  {savedItems.error && (
+                    <div
+                      role="alert"
+                      className="m-4 rounded-lg border border-clay p-4 text-sm"
+                    >
+                      {savedItems.error}
+                      <button
+                        type="button"
+                        onClick={() => void savedItems.refresh()}
+                        className="ml-3 underline"
+                      >
+                        Try again
+                      </button>
+                    </div>
+                  )}
                   <ProductBrowser
                     styleId={brief.styleId}
                     basket={basket}
@@ -589,77 +630,76 @@ export default function DesignPage() {
                     onAdd={addItem}
                     onRemove={removeItem}
                     onQty={setQty}
-                    onVisualise={openVisualiser}
+                    savedItemIds={savedItems.ids}
+                    savedOnly={studioTab === "saved"}
+                    savesLoaded={savedItems.loaded}
+                    savingItems={savedItems.busy}
+                    onToggleSave={(id) => void savedItems.toggle(id)}
                   />
                 </div>
                 <div
                   ref={visualiserRef}
+                  hidden={studioTab !== "visualiser"}
                   className="scroll-mt-24 overflow-hidden rounded-2xl border border-sand bg-cream"
                 >
-                  <button
-                    type="button"
-                    onClick={() => setVisualiserOpen(!visualiserOpen)}
-                    aria-expanded={visualiserOpen}
-                    aria-controls="studio-visualiser"
-                    className="flex w-full items-center justify-between gap-4 p-6 text-left"
-                  >
-                    <span>
-                      <span className="block font-serif text-2xl">
-                        Visualise your look
-                      </span>
-                      <span className="mt-1 block text-sm text-ink/60">
-                        Explore an illustrative preview of your pieces in a
-                        venue.
-                      </span>
-                    </span>
-                    <span>{visualiserOpen ? "Close −" : "Open +"}</span>
-                  </button>
-                  <ResponsivePanel
-                    open={visualiserOpen}
-                    onClose={() => setVisualiserOpen(false)}
-                    title="Visualise your look"
-                  >
-                    <div id="studio-visualiser">
-                      {partnerError && (
-                        <p role="alert" className="p-4 text-sm">
-                          {partnerError}
-                        </p>
-                      )}{" "}
-                      <RenderStage
-                        venue={headerVenue}
-                        uploadedImages={brief.uploadedImages}
-                        style={style}
-                        styleName={styleName}
-                        renderUrl={currentRender?.url ?? null}
-                        renderId={renderId}
-                        versions={versions}
-                        itemIds={basket.map((l) => l.itemId)}
-                        weddingDate={brief.weddingDate}
-                        onWeddingDate={(d) => patchBrief({ weddingDate: d })}
-                        guestCount={brief.guestCount}
-                        onRender={showRender}
-                        onDeleteVersion={deleteVersion}
-                        onStyle={(id) => patchBrief({ styleId: id })}
-                        onVenue={(id) => patchBrief({ venueId: id })}
-                        onAddAngle={(photo) =>
-                          setBrief((b) => ({
-                            ...b,
-                            uploadedImages: [...b.uploadedImages, photo],
-                          }))
-                        }
-                        onRemoveAngle={removeAngle}
-                        onShopLook={() => {
-                          setShopLookSignal((n) => n + 1);
-                          productBrowserRef.current?.scrollIntoView({
-                            behavior: "smooth",
-                            block: "start",
-                          });
-                        }}
-                        isSaved={isCurrentSaved}
-                        onToggleSave={toggleSaveCurrent}
-                      />
+                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-sand p-6">
+                    <div>
+                      <h1 className="font-serif text-3xl">AI visualiser</h1>
+                      <p className="mt-2 text-sm text-ink/60">
+                        Create an illustrative preview with your venue and
+                        chosen pieces. Your basket and saved items stay with
+                        you.
+                      </p>
                     </div>
-                  </ResponsivePanel>
+                    <button
+                      type="button"
+                      onClick={() => switchStudioTab("catalogue")}
+                      className="rounded-full border border-sand px-4 py-2 text-sm"
+                    >
+                      Back to catalogue
+                    </button>
+                  </div>
+                  <div id="studio-visualiser">
+                    {partnerError && (
+                      <p role="alert" className="p-4 text-sm">
+                        {partnerError}
+                      </p>
+                    )}{" "}
+                    <RenderStage
+                      venue={headerVenue}
+                      uploadedImages={brief.uploadedImages}
+                      style={style}
+                      styleName={styleName}
+                      renderUrl={currentRender?.url ?? null}
+                      renderId={renderId}
+                      versions={versions}
+                      itemIds={basket.map((l) => l.itemId)}
+                      weddingDate={brief.weddingDate}
+                      onWeddingDate={(d) => patchBrief({ weddingDate: d })}
+                      guestCount={brief.guestCount}
+                      onRender={showRender}
+                      onDeleteVersion={deleteVersion}
+                      onStyle={(id) => patchBrief({ styleId: id })}
+                      onVenue={(id) => patchBrief({ venueId: id })}
+                      onAddAngle={(photo) =>
+                        setBrief((b) => ({
+                          ...b,
+                          uploadedImages: [...b.uploadedImages, photo],
+                        }))
+                      }
+                      onRemoveAngle={removeAngle}
+                      onShopLook={() => {
+                        switchStudioTab("catalogue");
+                        setShopLookSignal((n) => n + 1);
+                        productBrowserRef.current?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        });
+                      }}
+                      isSaved={isCurrentSaved}
+                      onToggleSave={toggleSaveCurrent}
+                    />
+                  </div>
                 </div>
               </div>
 
