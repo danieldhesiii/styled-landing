@@ -1,5 +1,6 @@
 "use client";
 
+import HelpButton from "@/components/help/HelpButton";
 import { useMemo } from "react";
 import type { BasketLine } from "@/lib/types";
 import { buildQuote, formatGBP, DEPOSIT_RATE } from "@/lib/quote";
@@ -43,6 +44,13 @@ export default function BasketPanel({
             {guestCount} guests · {tables} tables
           </span>
         </div>
+        <div className="mt-2">
+          <HelpButton
+            topic="basket"
+            label="How the basket works"
+            className="text-xs text-ink/60 underline"
+          />
+        </div>
         {budget != null && (
           <div className="mt-3">
             <div className="flex items-center justify-between text-xs">
@@ -56,7 +64,9 @@ export default function BasketPanel({
             <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-sand">
               <div
                 className={`h-full rounded-full ${overBudget ? "bg-clay" : "bg-sage"}`}
-                style={{ width: `${Math.min(100, budget ? (quote.subtotal / budget) * 100 : 0)}%` }}
+                style={{
+                  width: `${Math.min(100, budget ? (quote.subtotal / budget) * 100 : 0)}%`,
+                }}
               />
             </div>
           </div>
@@ -79,67 +89,87 @@ export default function BasketPanel({
               <div key={group.supplier}>
                 <div className="flex items-baseline justify-between">
                   <div>
-                    <p className="text-sm font-medium text-ink">{group.supplier}</p>
+                    <p className="text-sm font-medium text-ink">
+                      {group.supplier}
+                    </p>
                     <p className="text-[11px] text-ink/40">{group.area}</p>
                   </div>
-                  <span className="font-serif text-sm text-ink">{formatGBP(group.total)}</span>
+                  <span className="font-serif text-sm text-ink">
+                    {formatGBP(group.total)}
+                  </span>
                 </div>
                 <div className="mt-2 space-y-2">
                   {group.lines.map((line) => (
                     <div key={line.item.id}>
-                    <div className="flex items-center gap-2 rounded-xl border border-sand bg-cream/50 px-3 py-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-medium text-ink">{line.item.name}</p>
-                        <p className="text-[11px] text-ink/40">
-                          {formatGBP(line.item.unitPrice)} {line.item.unit}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => onQty(line.item.id, Math.max(1, line.quantity - 1))}
-                          className="h-6 w-6 rounded-full border border-sand text-ink/60 hover:border-clay hover:text-clay"
-                          aria-label="Decrease quantity"
-                        >
-                          −
-                        </button>
-                        <span className="w-7 text-center text-xs tabular-nums text-ink">
-                          {line.quantity}
+                      <div className="flex items-center gap-2 rounded-xl border border-sand bg-cream/50 px-3 py-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-medium text-ink">
+                            {line.item.name}
+                          </p>
+                          <p className="text-[11px] text-ink/40">
+                            {formatGBP(line.item.unitPrice)} {line.item.unit}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onQty(
+                                line.item.id,
+                                Math.max(1, line.quantity - 1),
+                              )
+                            }
+                            className="h-6 w-6 rounded-full border border-sand text-ink/60 hover:border-clay hover:text-clay"
+                            aria-label="Decrease quantity"
+                          >
+                            −
+                          </button>
+                          <span className="w-7 text-center text-xs tabular-nums text-ink">
+                            {line.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onQty(line.item.id, line.quantity + 1)
+                            }
+                            className="h-6 w-6 rounded-full border border-sand text-ink/60 hover:border-clay hover:text-clay"
+                            aria-label="Increase quantity"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <span className="w-14 text-right text-xs font-medium text-ink tabular-nums">
+                          {formatGBP(line.lineTotal)}
                         </span>
                         <button
                           type="button"
-                          onClick={() => onQty(line.item.id, line.quantity + 1)}
-                          className="h-6 w-6 rounded-full border border-sand text-ink/60 hover:border-clay hover:text-clay"
-                          aria-label="Increase quantity"
+                          onClick={() => onRemove(line.item.id)}
+                          className="text-ink/30 hover:text-clay"
+                          aria-label="Remove"
                         >
-                          +
+                          ×
                         </button>
                       </div>
-                      <span className="w-14 text-right text-xs font-medium text-ink tabular-nums">
-                        {formatGBP(line.lineTotal)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => onRemove(line.item.id)}
-                        className="text-ink/30 hover:text-clay"
-                        aria-label="Remove"
-                      >
-                        ×
-                      </button>
-                    </div>
-                    {(() => {
-                      const a = availability.lines[line.item.id];
-                      if (!a || a.status === "available" || a.status === "made_to_order") return null;
-                      const { label } = availabilityLabel(a);
-                      return (
-                        <p
-                          className={`-mt-1 pl-3 text-[11px] ${a.status === "unavailable" ? "text-red-700" : "text-clay"}`}
-                        >
-                          {label}
-                          {a.status === "unavailable" ? ". Lower the quantity, remove it, or change your date." : ""}
-                        </p>
-                      );
-                    })()}
+                      {(() => {
+                        const a = availability.lines[line.item.id];
+                        if (
+                          !a ||
+                          a.status === "available" ||
+                          a.status === "made_to_order"
+                        )
+                          return null;
+                        const { label } = availabilityLabel(a);
+                        return (
+                          <p
+                            className={`-mt-1 pl-3 text-[11px] ${a.status === "unavailable" ? "text-red-700" : "text-clay"}`}
+                          >
+                            {label}
+                            {a.status === "unavailable"
+                              ? ". Lower the quantity, remove it, or change your date."
+                              : ""}
+                          </p>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>
@@ -153,7 +183,9 @@ export default function BasketPanel({
       <div className="border-t border-sand px-5 py-4">
         <div className="flex items-baseline justify-between">
           <span className="text-sm text-ink/60">Estimated total</span>
-          <span className="font-serif text-2xl text-ink">{formatGBP(quote.subtotal)}</span>
+          <span className="font-serif text-2xl text-ink">
+            {formatGBP(quote.subtotal)}
+          </span>
         </div>
         <div className="mt-1 flex items-baseline justify-between">
           <span className="text-xs text-ink/40">

@@ -14,6 +14,7 @@ import VenueExplorer from "@/components/venues/VenueExplorer";
 import ProductBrowser from "@/components/design/ProductBrowser";
 import BasketPanel from "@/components/design/BasketPanel";
 import CheckoutStep from "@/components/design/CheckoutStep";
+import { helpTopicForPage } from "@/lib/help";
 import HowItWorks from "@/components/design/HowItWorks";
 import SavedLooks, { type SavedLook } from "@/components/design/SavedLooks";
 import AccountMenu from "@/components/auth/AccountMenu";
@@ -458,7 +459,6 @@ export default function DesignPage() {
               type="button"
               onClick={() => {
                 setShowHowTo(true);
-                setShowSettings(false);
               }}
               className="flex items-center gap-1.5 rounded-full border border-sand px-4 py-1.5 text-xs text-ink/50 hover:border-clay/50 hover:text-ink transition-colors"
             >
@@ -830,7 +830,9 @@ export default function DesignPage() {
       )}
       <dialog
         ref={basketDialog}
-        onClose={() => setMobileBasketOpen(false)}
+        onClose={(event) => {
+          if (event.target === event.currentTarget) setMobileBasketOpen(false);
+        }}
         aria-label="Your basket"
         className="fixed inset-x-0 bottom-0 top-auto m-0 max-h-[90dvh] w-full max-w-none overflow-auto rounded-t-3xl bg-cream p-4 backdrop:bg-ink/50"
       >
@@ -858,7 +860,15 @@ export default function DesignPage() {
       </dialog>
 
       {/* How it works drawer */}
-      {showHowTo && <HowItWorks onClose={() => setShowHowTo(false)} />}
+      {showHowTo && (
+        <HowItWorks
+          initialTopic={helpTopicForPage(
+            "/design",
+            step === "checkout" ? "checkout" : studioTab,
+          )}
+          onClose={() => setShowHowTo(false)}
+        />
+      )}
 
       {/* Saved looks drawer */}
       {showSaved && (

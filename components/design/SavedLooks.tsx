@@ -1,5 +1,6 @@
 "use client";
 
+import HelpButton from "@/components/help/HelpButton";
 import { useEffect, useState } from "react";
 
 export interface SavedLook {
@@ -18,7 +19,12 @@ interface Props {
   onUnsave: (id: string) => void;
 }
 
-export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) {
+export default function SavedLooks({
+  looks,
+  onClose,
+  onLoad,
+  onUnsave,
+}: Props) {
   // Signed URLs expire, so fetch a fresh one per saved render on open — for both
   // the styled render ("after") and the original venue photo ("before").
   const [urls, setUrls] = useState<Record<string, string | null>>({});
@@ -46,7 +52,10 @@ export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) 
         looks.map(async (l) => {
           try {
             const data = await (await fetch(`/api/renders/${l.id}`)).json();
-            next[l.id] = data?.status === "succeeded" && data.imageUrl ? data.imageUrl : null;
+            next[l.id] =
+              data?.status === "succeeded" && data.imageUrl
+                ? data.imageUrl
+                : null;
             // Prefer the freshly-signed original; fall back to anything stored.
             const original = data?.originalUrl ?? l.originalUrl;
             if (original) nextOriginals[l.id] = original;
@@ -55,7 +64,7 @@ export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) 
             next[l.id] = null;
             if (l.originalUrl) nextOriginals[l.id] = l.originalUrl;
           }
-        })
+        }),
       );
       if (!cancelled) {
         setUrls(next);
@@ -71,18 +80,32 @@ export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) 
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm" onClick={onClose} aria-hidden />
+      <div
+        className="fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden
+      />
 
       <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col bg-cream shadow-2xl">
         <div className="flex items-center justify-between border-b border-sand px-6 py-4">
           <div>
             <h2 className="font-serif text-2xl text-ink">Saved looks</h2>
             <p className="mt-0.5 text-xs text-ink/50">
-              {looks.length === 0 ? "Nothing saved yet" : `${looks.length} saved`}
+              {looks.length === 0
+                ? "Nothing saved yet"
+                : `${looks.length} saved`}
             </p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-sand text-ink/40 hover:border-clay hover:text-ink transition-colors">
+          <HelpButton
+            topic="saved_looks"
+            className="ml-auto mr-3 rounded-full border border-sand px-3 py-2 text-xs"
+          />
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-sand text-ink/40 hover:border-clay hover:text-ink transition-colors"
+          >
             ×
           </button>
         </div>
@@ -94,8 +117,9 @@ export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) 
                 ♥
               </div>
               <p className="max-w-xs text-sm text-ink/50">
-                When you generate a look you love, tap <span className="text-clay">♥ Save</span> on the
-                image and it'll be kept here so you can come back to it.
+                When you generate a look you love, tap{" "}
+                <span className="text-clay">♥ Save</span> on the image and
+                it'll be kept here so you can come back to it.
               </p>
             </div>
           ) : (
@@ -105,10 +129,17 @@ export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) 
                 const original = originalUrls[l.id];
                 const showingBefore = !!comparing[l.id] && !!original;
                 return (
-                  <div key={l.id} className="overflow-hidden rounded-xl border border-sand bg-white shadow-sm">
-                    <button type="button" onClick={() => url && onLoad(l, url, itemIdsById[l.id])} disabled={!url}
+                  <div
+                    key={l.id}
+                    className="overflow-hidden rounded-xl border border-sand bg-white shadow-sm"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => url && onLoad(l, url, itemIdsById[l.id])}
+                      disabled={!url}
                       className="relative block aspect-[4/3] w-full bg-sand/40 disabled:cursor-not-allowed"
-                      title="Open this look in the studio">
+                      title="Open this look in the studio"
+                    >
                       {url ? (
                         <>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -150,14 +181,23 @@ export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) 
                     </button>
                     <div className="flex items-center justify-between gap-2 px-2.5 py-2">
                       <div className="min-w-0">
-                        <p className="truncate text-xs font-medium text-ink">{l.styleName}</p>
+                        <p className="truncate text-xs font-medium text-ink">
+                          {l.styleName}
+                        </p>
                         <p className="text-[10px] text-ink/40">
-                          {new Date(l.savedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                          {new Date(l.savedAt).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                          })}
                         </p>
                       </div>
-                      <button type="button" onClick={() => onUnsave(l.id)} aria-label="Remove from saved"
+                      <button
+                        type="button"
+                        onClick={() => onUnsave(l.id)}
+                        aria-label="Remove from saved"
                         title="Remove from saved"
-                        className="shrink-0 text-ink/30 hover:text-clay transition-colors">
+                        className="shrink-0 text-ink/30 hover:text-clay transition-colors"
+                      >
                         ×
                       </button>
                     </div>
@@ -169,8 +209,11 @@ export default function SavedLooks({ looks, onClose, onLoad, onUnsave }: Props) 
         </div>
 
         <div className="border-t border-sand px-6 py-4">
-          <button type="button" onClick={onClose}
-            className="w-full rounded-full bg-ink py-3 text-sm font-medium text-cream hover:bg-ink/90 transition-colors">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded-full bg-ink py-3 text-sm font-medium text-cream hover:bg-ink/90 transition-colors"
+          >
             Done
           </button>
         </div>

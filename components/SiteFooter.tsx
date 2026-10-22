@@ -1,4 +1,5 @@
 import Link from "next/link";
+import HelpButton from "@/components/help/HelpButton";
 
 export default function SiteFooter() {
   return (
@@ -22,9 +23,7 @@ export default function SiteFooter() {
             <span className="text-xs uppercase tracking-wide text-ink/40">
               Product
             </span>
-            <a href="/#how" className="text-ink/70 hover:text-ink">
-              How it works
-            </a>
+            <HelpButton className="text-left text-ink/70 hover:text-ink" />
             <a href="/#features" className="text-ink/70 hover:text-ink">
               Features
             </a>

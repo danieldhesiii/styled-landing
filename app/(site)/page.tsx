@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import HelpButton from "@/components/help/HelpButton";
 import CtaEmailForm from "@/components/CtaEmailForm";
 import VisualizerPreview from "@/components/VisualizerPreview";
 
@@ -12,18 +13,18 @@ import VisualizerPreview from "@/components/VisualizerPreview";
 const HOW_IT_WORKS = [
   {
     n: "01",
-    title: "Upload your venue",
-    body: "Send us a photo of your venue, inside or out. That becomes the canvas for your entire design.",
+    title: "Find your pieces",
+    body: "Browse the catalogue, filter by supplier or style, and save favourites to your own shortlist. Add pieces to your basket when you’re ready.",
   },
   {
     n: "02",
-    title: "Design your day",
-    body: "Pick your florals, furniture, linens and lighting from our catalogue. We generate a detailed preview showing exactly how it will all look in your space.",
+    title: "Explore your setting",
+    body: "Choose a venue or use your own photograph. The separate AI visualiser lets you explore an illustrative preview whenever you want to.",
   },
   {
     n: "03",
-    title: "Order and deliver",
-    body: "Every item in your preview is a real product from a real vendor. Add it all to one order — we confirm each supplier for your date, you secure it with a single deposit, and we coordinate delivery straight to your venue.",
+    title: "Review your plans",
+    body: "Check your date, quantities and quote before submitting a reservation request. Track progress while Styled coordinates supplier confirmation.",
   },
 ];
 
@@ -70,9 +71,30 @@ const FAQS = [
 ];
 
 const PRODUCTS = [
-  { name: "Flowers that set the mood", category: "Florals", image: "/img/shop/shop_florals.webp", alt: "Blush and ivory rose centrepiece with eucalyptus on a wedding reception table", detail: "Start with a centrepiece, then coordinate flowers across your reception." },
-  { name: "Every place, beautifully set", category: "Table settings", image: "/img/shop/shop_tableware.webp", alt: "Ivory plate, blush linen napkin, gold cutlery and glassware arranged for a wedding reception", detail: "Bring linens, napkins and tableware together in one cohesive look." },
-  { name: "The finishing touch", category: "Furniture", image: "/img/shop/shop_chairs.webp", alt: "Gold wedding reception chairs with ivory cushions beside a dressed dining table", detail: "Choose chairs and furniture that complement your venue and flowers." },
+  {
+    name: "Flowers that set the mood",
+    category: "Florals",
+    image: "/img/shop/shop_florals.webp",
+    alt: "Blush and ivory rose centrepiece with eucalyptus on a wedding reception table",
+    detail:
+      "Start with a centrepiece, then coordinate flowers across your reception.",
+  },
+  {
+    name: "Every place, beautifully set",
+    category: "Table settings",
+    image: "/img/shop/shop_tableware.webp",
+    alt: "Ivory plate, blush linen napkin, gold cutlery and glassware arranged for a wedding reception",
+    detail:
+      "Bring linens, napkins and tableware together in one cohesive look.",
+  },
+  {
+    name: "The finishing touch",
+    category: "Furniture",
+    image: "/img/shop/shop_chairs.webp",
+    alt: "Gold wedding reception chairs with ivory cushions beside a dressed dining table",
+    detail:
+      "Choose chairs and furniture that complement your venue and flowers.",
+  },
 ];
 
 export default function Page() {
@@ -113,9 +135,15 @@ export default function Page() {
       <section className="rounded-2xl border border-sand bg-sand/40 px-6 py-5">
         <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3 text-sm text-ink/60">
           <span>Available across the UK</span>
-          <span className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" aria-hidden />
+          <span
+            className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block"
+            aria-hidden
+          />
           <span>Delivered to your venue</span>
-          <span className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block" aria-hidden />
+          <span
+            className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block"
+            aria-hidden
+          />
           <span>One checkout for every item</span>
         </div>
       </section>
@@ -123,10 +151,10 @@ export default function Page() {
       {/* ------------------------------------------------- How it works */}
       <section id="how" className="py-20">
         <h2 className="font-serif text-4xl text-ink sm:text-5xl">
-          From empty venue to your dream wedding.
+          Build your wedding, one piece at a time.
         </h2>
         <p className="mt-3 max-w-lg text-ink/60">
-          Upload, design and shop. It really is that simple.
+          Browse at your pace, save favourites and visualise when you want to.
         </p>
         <div className="mt-12 grid gap-10 sm:grid-cols-3">
           {HOW_IT_WORKS.map((s) => (
@@ -137,6 +165,12 @@ export default function Page() {
             </div>
           ))}
         </div>
+        <div className="mt-8">
+          <HelpButton
+            label="Explore the website guides"
+            className="rounded-full border border-ink px-5 py-3 text-sm"
+          />
+        </div>
       </section>
 
       {/* ------------------------------------------------- Style demo */}
@@ -146,8 +180,8 @@ export default function Page() {
             Try every style before you commit.
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-ink/60">
-            One barn, three wedding reception styles. Explore how flowers,
-            table settings and lighting can transform the same space.
+            One barn, three wedding reception styles. Explore how flowers, table
+            settings and lighting can transform the same space.
           </p>
         </div>
         <StyleDemoPreview />
@@ -159,8 +193,8 @@ export default function Page() {
           Design, shop, deliver.
         </h2>
         <p className="mt-3 max-w-lg text-ink/60">
-          No spreadsheets, no chasing five different suppliers, no guessing how it
-          will look.
+          No spreadsheets, no chasing five different suppliers, no guessing how
+          it will look.
         </p>
         <div className="mt-10 grid gap-4 sm:grid-cols-2">
           {FEATURES.map((f) => (
@@ -168,7 +202,9 @@ export default function Page() {
               key={f.title}
               className="rounded-2xl border border-sand bg-white px-7 py-8 shadow-sm"
             >
-              <span className="font-serif text-xs tracking-[0.2em] text-clay/70 uppercase">{f.n}</span>
+              <span className="font-serif text-xs tracking-[0.2em] text-clay/70 uppercase">
+                {f.n}
+              </span>
               <h3 className="mt-3 font-serif text-2xl text-ink">{f.title}</h3>
               <div className="mt-2 h-px w-8 bg-clay/40" />
               <p className="mt-3 text-ink/60">{f.body}</p>
@@ -186,7 +222,8 @@ export default function Page() {
             </h2>
             <p className="mt-3 max-w-lg text-ink/60">
               Find the pieces that bring your vision together. Explore flowers,
-              table settings and furniture, then build your selection in the design studio.
+              table settings and furniture, then build your selection in the
+              design studio.
             </p>
           </div>
           <MarketplacePreview />
@@ -243,25 +280,50 @@ export default function Page() {
 
 function StyleDemoPreview() {
   const renders = [
-    { src: "/img/venues/oak_barn.png", label: "Original venue", detail: "The barn before styling" },
-    { src: "/img/renders/barn_garden_romance.webp", label: "Garden Romance", detail: "Blush roses and gold details" },
-    { src: "/img/renders/barn_classic_elegance.webp", label: "Classic Elegance", detail: "Ivory florals and candlelight" },
-    { src: "/img/renders/barn_wildflower.webp", label: "Wildflower", detail: "Meadow flowers and natural wood" },
+    {
+      src: "/img/venues/oak_barn.png",
+      label: "Original venue",
+      detail: "The barn before styling",
+    },
+    {
+      src: "/img/renders/barn_garden_romance.webp",
+      label: "Garden Romance",
+      detail: "Blush roses and gold details",
+    },
+    {
+      src: "/img/renders/barn_classic_elegance.webp",
+      label: "Classic Elegance",
+      detail: "Ivory florals and candlelight",
+    },
+    {
+      src: "/img/renders/barn_wildflower.webp",
+      label: "Wildflower",
+      detail: "Meadow flowers and natural wood",
+    },
   ];
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {renders.map((r) => (
-        <figure key={r.label} className="overflow-hidden rounded-2xl border border-sand bg-white">
+        <figure
+          key={r.label}
+          className="overflow-hidden rounded-2xl border border-sand bg-white"
+        >
           <Image
             src={r.src}
-            alt={r.label === "Original venue" ? "Empty oak barn with timber beams, white walls and a wooden floor" : `Oak barn wedding reception in ${r.label} style, with guest dining tables and a raised wedding-party top table at the back`}
+            alt={
+              r.label === "Original venue"
+                ? "Empty oak barn with timber beams, white walls and a wooden floor"
+                : `Oak barn wedding reception in ${r.label} style, with guest dining tables and a raised wedding-party top table at the back`
+            }
             width={1536}
             height={1024}
             className="aspect-[3/2] w-full object-contain"
           />
           <figcaption className="px-4 py-4">
             <p className="font-serif text-xl text-ink">{r.label}</p>
-            <p className="mt-1 text-xs leading-relaxed text-ink/60">{r.detail}</p>
+            <p className="mt-1 text-xs leading-relaxed text-ink/60">
+              {r.detail}
+            </p>
           </figcaption>
         </figure>
       ))}
@@ -272,25 +334,42 @@ function StyleDemoPreview() {
 function MarketplacePreview() {
   return (
     <div>
-      <p className="mb-4 text-xs font-medium tracking-wide text-clay">One coordinated look: Garden Romance</p>
+      <p className="mb-4 text-xs font-medium tracking-wide text-clay">
+        One coordinated look: Garden Romance
+      </p>
       <div className="grid gap-5 md:grid-cols-3">
         {PRODUCTS.map((p) => (
-          <article key={p.name} className="overflow-hidden rounded-2xl border border-sand bg-white">
-            <Image src={p.image} alt={p.alt} width={1536} height={1024} className="aspect-[4/3] w-full object-cover" />
+          <article
+            key={p.name}
+            className="overflow-hidden rounded-2xl border border-sand bg-white"
+          >
+            <Image
+              src={p.image}
+              alt={p.alt}
+              width={1536}
+              height={1024}
+              className="aspect-[4/3] w-full object-cover"
+            />
             <div className="p-5">
               <p className="text-xs font-medium text-clay">{p.category}</p>
               <h3 className="mt-2 font-serif text-2xl text-ink">{p.name}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink/70">{p.detail}</p>
+              <p className="mt-2 text-sm leading-relaxed text-ink/70">
+                {p.detail}
+              </p>
             </div>
           </article>
         ))}
       </div>
       <div className="mt-6 flex flex-col gap-4 border-t border-sand pt-6 sm:flex-row sm:items-center sm:justify-between">
         <p className="max-w-lg text-sm leading-relaxed text-ink/60">
-          Explore a category, choose your pieces and adjust quantities for your guest count.
-          These images show styling inspiration, rather than confirmed supplier stock.
+          Explore a category, choose your pieces and adjust quantities for your
+          guest count. These images show styling inspiration, rather than
+          confirmed supplier stock.
         </p>
-        <Link href="/design" className="shrink-0 self-start rounded-full bg-ink px-6 py-3 text-sm text-cream transition-colors hover:bg-ink/90">
+        <Link
+          href="/design"
+          className="shrink-0 self-start rounded-full bg-ink px-6 py-3 text-sm text-cream transition-colors hover:bg-ink/90"
+        >
           Explore the design studio
         </Link>
       </div>
