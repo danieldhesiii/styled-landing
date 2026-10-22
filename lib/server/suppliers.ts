@@ -1,4 +1,8 @@
-import { loadCatalogue, type ServerCatalogueItem } from "@/lib/server/catalogue";
+import { createAnonClient } from "@/lib/supabase/anon";
+import {
+  loadCatalogue,
+  type ServerCatalogueItem,
+} from "@/lib/server/catalogue";
 
 // Public supplier profiles, derived from the live catalogue. Because they come
 // from loadCatalogue (the signed-out view), only active products from active
@@ -15,9 +19,12 @@ export interface PublicSupplier {
 
 export interface PublicSupplierProfile extends PublicSupplier {
   products: ServerCatalogueItem[];
+  bio: string | null;
 }
 
-function group(items: ServerCatalogueItem[]): Map<string, ServerCatalogueItem[]> {
+function group(
+  items: ServerCatalogueItem[],
+): Map<string, ServerCatalogueItem[]> {
   const by = new Map<string, ServerCatalogueItem[]>();
   for (const item of items) {
     const list = by.get(item.supplierId) ?? [];
@@ -45,11 +52,20 @@ export async function loadPublicSuppliers(): Promise<PublicSupplier[]> {
 }
 
 // One supplier's public profile, or null if they're off / have no live products.
-export async function loadPublicSupplier(id: string): Promise<PublicSupplierProfile | null> {
+export async function loadPublicSupplier(
+  id: string,
+): Promise<PublicSupplierProfile | null> {
   const items = await loadCatalogue();
   const mine = items.filter((i) => i.supplierId === id);
   if (mine.length === 0) return null;
+  const { data: profile, error } = await createAnonClient()
+    .from("suppliers")
+    .select("bio")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error("Could not load supplier profile.");
   return {
+    bio: profile?.bio ?? null,
     id,
     name: mine[0].supplier,
     area: mine[0].supplierArea,

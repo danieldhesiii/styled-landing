@@ -9,27 +9,59 @@ export default function SiteFooter() {
             Styled<span className="text-clay">.</span>
           </Link>
           <p className="mt-2 text-sm text-ink/50">
-            See your wedding before the day. Shop every piece, delivered to your venue.
+            See your wedding before the day. Shop every piece, delivered to your
+            venue.
           </p>
         </div>
 
-        <nav aria-label="Footer" className="flex flex-wrap gap-x-10 gap-y-6 text-sm">
+        <nav
+          aria-label="Footer"
+          className="flex flex-wrap gap-x-10 gap-y-6 text-sm"
+        >
           <div className="flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-wide text-ink/40">Product</span>
-            <a href="/#how" className="text-ink/70 hover:text-ink">How it works</a>
-            <a href="/#features" className="text-ink/70 hover:text-ink">Features</a>
-            <a href="/#faq" className="text-ink/70 hover:text-ink">FAQ</a>
+            <span className="text-xs uppercase tracking-wide text-ink/40">
+              Product
+            </span>
+            <a href="/#how" className="text-ink/70 hover:text-ink">
+              How it works
+            </a>
+            <a href="/#features" className="text-ink/70 hover:text-ink">
+              Features
+            </a>
+            <a href="/#faq" className="text-ink/70 hover:text-ink">
+              FAQ
+            </a>
           </div>
           <div className="flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-wide text-ink/40">Get started</span>
-            <a href="/design" className="text-ink/70 hover:text-ink">Design your wedding</a>
-            <a href="/order" className="text-ink/70 hover:text-ink">Track your order</a>
+            <span className="text-xs uppercase tracking-wide text-ink/40">
+              Get started
+            </span>
+            <a href="/venues" className="text-ink/70 hover:text-ink">
+              Explore venues
+            </a>
+            <a href="/venues/partner" className="text-ink/70 hover:text-ink">
+              Venue partnerships
+            </a>
+            <a href="/design" className="text-ink/70 hover:text-ink">
+              Design your wedding
+            </a>
+            <a href="/order" className="text-ink/70 hover:text-ink">
+              Track your order
+            </a>
           </div>
           <div className="flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-wide text-ink/40">Suppliers</span>
-            <a href="/suppliers" className="text-ink/70 hover:text-ink">Meet our suppliers</a>
-            <a href="/vendors" className="text-ink/70 hover:text-ink">List your business</a>
-            <a href="/portal/login" className="text-ink/70 hover:text-ink">Supplier login</a>
+            <span className="text-xs uppercase tracking-wide text-ink/40">
+              Suppliers
+            </span>
+            <a href="/suppliers" className="text-ink/70 hover:text-ink">
+              Meet our suppliers
+            </a>
+            <a href="/suppliers/join" className="text-ink/70 hover:text-ink">
+              List your business
+            </a>
+            <a href="/portal/login" className="text-ink/70 hover:text-ink">
+              Supplier login
+            </a>
           </div>
         </nav>
       </div>

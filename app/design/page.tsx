@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 import { createClient } from "@/lib/supabase/client";
-import type { BasketLine, CatalogueItem } from "@/lib/types";
+import type { BasketLine, CatalogueItem, SampleVenue } from "@/lib/types";
 import { getStyle, getVenue } from "@/lib/styles";
 import { suggestedQty, formatGBP } from "@/lib/quote";
 import { type Brief, type UploadedPhoto } from "@/components/design/BriefStep";
+import ResponsivePanel from "@/components/ui/ResponsivePanel";
 import RenderStage, { type RenderRef } from "@/components/design/RenderStage";
 import ProductBrowser from "@/components/design/ProductBrowser";
 import BasketPanel from "@/components/design/BasketPanel";
@@ -20,6 +22,16 @@ import { useShopAvailability } from "@/components/availability/useAvailability";
 type Step = "studio" | "checkout";
 
 export default function DesignPage() {
+  const { getItem } = useCatalogue();
+  const [partnerVenue, setPartnerVenue] = useState<SampleVenue | null>(null);
+  const [partnerError, setPartnerError] = useState("");
+  const [visualiserOpen, setVisualiserOpen] = useState(false);
+  const [mobileBasketOpen, setMobileBasketOpen] = useState(false);
+  const basketDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (mobileBasketOpen) basketDialog.current?.showModal();
+    else basketDialog.current?.close();
+  }, [mobileBasketOpen]);
   const [step, setStep] = useState<Step>("studio");
   const [showHowTo, setShowHowTo] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -43,6 +55,18 @@ export default function DesignPage() {
   const [shopLookSignal, setShopLookSignal] = useState(0);
   const [restored, setRestored] = useState(false);
   const productBrowserRef = useRef<HTMLDivElement>(null);
+  const visualiserRef = useRef<HTMLDivElement>(null);
+  function openVisualiser() {
+    setVisualiserOpen(true);
+    setTimeout(
+      () =>
+        visualiserRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        }),
+      0,
+    );
+  }
   const currentRender = versions.find((v) => v.id === renderId) ?? null;
 
   function showRender(render: RenderRef | null) {
@@ -51,7 +75,9 @@ export default function DesignPage() {
       setRenderId(null);
       return;
     }
-    setVersions((vs) => (vs.some((v) => v.id === render.id) ? vs : [...vs, render]));
+    setVersions((vs) =>
+      vs.some((v) => v.id === render.id) ? vs : [...vs, render],
+    );
     setRenderId(render.id);
   }
 
@@ -60,7 +86,8 @@ export default function DesignPage() {
   function deleteVersion(id: string) {
     setVersions((vs) => {
       const next = vs.filter((v) => v.id !== id);
-      if (renderId === id) setRenderId(next.length ? next[next.length - 1].id : null);
+      if (renderId === id)
+        setRenderId(next.length ? next[next.length - 1].id : null);
       return next;
     });
   }
@@ -82,20 +109,39 @@ export default function DesignPage() {
           // entries in the current {id, url} shape (expired URLs are dropped anyway).
           const restoredBrief = { ...saved.brief };
           if (Array.isArray(restoredBrief.uploadedImages)) {
-            restoredBrief.uploadedImages = (restoredBrief.uploadedImages as unknown[]).filter(
+            restoredBrief.uploadedImages = (
+              restoredBrief.uploadedImages as unknown[]
+            ).filter(
               (p): p is UploadedPhoto =>
-                !!p && typeof p === "object" && typeof (p as UploadedPhoto).id === "string" && typeof (p as UploadedPhoto).url === "string"
+                !!p &&
+                typeof p === "object" &&
+                typeof (p as UploadedPhoto).id === "string" &&
+                typeof (p as UploadedPhoto).url === "string",
             );
           }
           setBrief((b) => ({ ...b, ...restoredBrief }));
         }
         if (Array.isArray(saved.basket)) setBasket(saved.basket);
-        if (saved.renderId) {
+        if (
+          saved.renderId &&
+          !new URLSearchParams(window.location.search).has("venue") &&
+          !new URLSearchParams(window.location.search).has("style")
+        ) {
           fetch(`/api/renders/${saved.renderId}`)
             .then((r) => r.json())
             .then((data) => {
-              if (data.status === "succeeded" && data.imageUrl && saved.renderId) {
-                setVersions([{ id: saved.renderId, url: data.imageUrl, itemIds: data.itemIds }]);
+              if (
+                data.status === "succeeded" &&
+                data.imageUrl &&
+                saved.renderId
+              ) {
+                setVersions([
+                  {
+                    id: saved.renderId,
+                    url: data.imageUrl,
+                    itemIds: data.itemIds,
+                  },
+                ]);
                 setRenderId(saved.renderId);
               }
             })
@@ -105,6 +151,26 @@ export default function DesignPage() {
     } catch {
       // Corrupt saved state — start fresh.
     }
+    const params = new URLSearchParams(window.location.search);
+    const styleParam = params.get("style");
+    if (
+      styleParam &&
+      [
+        "garden_romance",
+        "classic_elegance",
+        "modern_minimal",
+        "rustic_barn",
+      ].includes(styleParam)
+    )
+      setBrief((b) => ({ ...b, styleId: styleParam }));
+    const slug = params.get("venue");
+    if (slug && /^[a-z0-9-]+$/.test(slug))
+      setBrief((b) => ({
+        ...b,
+        venueId: `listing:${slug}`,
+        uploadedImages: [],
+      }));
+    if (params.get("render") === "true") setVisualiserOpen(true);
     setRestored(true);
   }, []);
 
@@ -113,7 +179,10 @@ export default function DesignPage() {
   useEffect(() => {
     if (!restored) return;
     try {
-      localStorage.setItem("styled:design", JSON.stringify({ brief, basket, renderId }));
+      localStorage.setItem(
+        "styled:design",
+        JSON.stringify({ brief, basket, renderId }),
+      );
     } catch {
       // Storage full or unavailable — non-fatal.
     }
@@ -137,7 +206,7 @@ export default function DesignPage() {
           styleName: (r.style_name as string) ?? "Your design",
           originalUrl: (r.original_url as string) ?? undefined,
           savedAt: Date.parse(r.created_at as string) || Date.now(),
-        }))
+        })),
       );
     }
   }, [supabase]);
@@ -146,7 +215,9 @@ export default function DesignPage() {
   // kept in localStorage into the account the first time.
   useEffect(() => {
     const sync = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
       try {
         const raw = localStorage.getItem("styled:savedLooks");
@@ -161,7 +232,7 @@ export default function DesignPage() {
                 style_name: l.styleName,
                 original_url: l.originalUrl ?? null,
               })),
-              { onConflict: "owner_id,render_id", ignoreDuplicates: true }
+              { onConflict: "owner_id,render_id", ignoreDuplicates: true },
             );
           }
           localStorage.removeItem("styled:savedLooks");
@@ -176,7 +247,8 @@ export default function DesignPage() {
     return () => sub.subscription.unsubscribe();
   }, [supabase, refreshSavedLooks]);
 
-  const isCurrentSaved = renderId !== null && savedLooks.some((l) => l.id === renderId);
+  const isCurrentSaved =
+    renderId !== null && savedLooks.some((l) => l.id === renderId);
 
   async function toggleSaveCurrent() {
     if (!renderId) return;
@@ -185,7 +257,13 @@ export default function DesignPage() {
       await supabase.from("saved_looks").delete().eq("render_id", renderId);
     } else {
       setSavedLooks((looks) => [
-        { id: renderId, styleId: brief.styleId, styleName, originalUrl: originalImage ?? undefined, savedAt: Date.now() },
+        {
+          id: renderId,
+          styleId: brief.styleId,
+          styleName,
+          originalUrl: originalImage ?? undefined,
+          savedAt: Date.now(),
+        },
         ...looks,
       ]);
       await supabase.from("saved_looks").insert({
@@ -207,12 +285,70 @@ export default function DesignPage() {
     setBrief((b) => ({ ...b, styleId: look.styleId }));
     showRender({ id: look.id, url, itemIds });
     setShowSaved(false);
+    openVisualiser();
   }
 
-  // Availability per supplier for the couple's wedding date.
-  const shopAvailability = useShopAvailability(brief.weddingDate, brief.guestCount);
+  useEffect(() => {
+    if (!brief.venueId.startsWith("listing:")) {
+      setPartnerVenue(null);
+      setPartnerError("");
+      return;
+    }
+    const controller = new AbortController();
+    setPartnerError("");
+    setPartnerVenue(null);
+    fetch(`/api/venue-context/${encodeURIComponent(brief.venueId.slice(8))}`, {
+      signal: controller.signal,
+    })
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) throw Error(d.error);
+        setPartnerVenue(d.venue);
+      })
+      .catch((e) => {
+        if (e.name !== "AbortError")
+          setPartnerError(
+            "This partner venue could not be loaded. Choose a sample venue or upload a photo.",
+          );
+      });
+    return () => controller.abort();
+  }, [brief.venueId]);
+  const addedFromLink = useRef(false);
+  useEffect(() => {
+    if (!restored || addedFromLink.current) return;
+    const id = new URLSearchParams(window.location.search).get("add");
+    if (!id) return;
+    const item = getItem(id);
+    if (item) {
+      addedFromLink.current = true;
+      setBasket((lines) =>
+        lines.some((l) => l.itemId === id)
+          ? lines
+          : [
+              ...lines,
+              { itemId: id, quantity: suggestedQty(item, brief.guestCount) },
+            ],
+      );
+    }
+  }, [restored, getItem, brief.guestCount]);
 
-  const venue = getVenue(brief.venueId);
+  // Availability per supplier for the couple's wedding date.
+  const shopAvailability = useShopAvailability(
+    brief.weddingDate,
+    brief.guestCount,
+  );
+
+  const venue =
+    partnerVenue ??
+    (brief.venueId.startsWith("listing:")
+      ? {
+          id: brief.venueId,
+          name: "Partner venue",
+          area: "",
+          kind: "Partner venue",
+          gradient: "",
+        }
+      : getVenue(brief.venueId));
   const style = getStyle(brief.styleId);
   // "none" is a description-led look with no preset; show a neutral name for it.
   const styleName = brief.styleId === "none" ? "Your design" : style.name;
@@ -234,25 +370,32 @@ export default function DesignPage() {
   function addItem(item: CatalogueItem) {
     setBasket((b) => {
       if (b.some((l) => l.itemId === item.id)) return b;
-      return [...b, { itemId: item.id, quantity: suggestedQty(item, brief.guestCount) }];
+      return [
+        ...b,
+        { itemId: item.id, quantity: suggestedQty(item, brief.guestCount) },
+      ];
     });
   }
   function removeItem(itemId: string) {
     setBasket((b) => b.filter((l) => l.itemId !== itemId));
   }
   function setQty(itemId: string, quantity: number) {
-    setBasket((b) => b.map((l) => (l.itemId === itemId ? { ...l, quantity } : l)));
+    setBasket((b) =>
+      b.map((l) => (l.itemId === itemId ? { ...l, quantity } : l)),
+    );
   }
 
   const headerVenue = useMemo(
     () => ({ ...venue, image: brief.uploadedImages[0]?.url ?? venue.image }),
-    [venue, brief.uploadedImages]
+    [venue, brief.uploadedImages],
   );
 
   // Remove an uploaded venue photo: drop it from the design and delete the stored
   // file/record, so it's no longer used for the render either.
   async function removeAngle(id: string) {
-    patchBrief({ uploadedImages: brief.uploadedImages.filter((p) => p.id !== id) });
+    patchBrief({
+      uploadedImages: brief.uploadedImages.filter((p) => p.id !== id),
+    });
     try {
       await fetch(`/api/venues/photos/${id}`, { method: "DELETE" });
     } catch {
@@ -272,8 +415,11 @@ export default function DesignPage() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => { setShowSaved(true); setShowSettings(false); }}
-              className="flex items-center gap-1.5 rounded-full border border-sand px-4 py-1.5 text-xs text-ink/50 hover:border-clay/50 hover:text-ink transition-colors"
+              onClick={() => {
+                setShowSaved(true);
+                setShowSettings(false);
+              }}
+              className="hidden sm:flex items-center gap-1.5 rounded-full border border-sand px-4 py-1.5 text-xs text-ink/50 hover:border-clay/50 hover:text-ink transition-colors"
             >
               <span className="text-[11px] text-clay">♥</span> Saved looks
               {savedLooks.length > 0 && (
@@ -284,7 +430,10 @@ export default function DesignPage() {
             </button>
             <button
               type="button"
-              onClick={() => { setShowHowTo(true); setShowSettings(false); }}
+              onClick={() => {
+                setShowHowTo(true);
+                setShowSettings(false);
+              }}
               className="flex items-center gap-1.5 rounded-full border border-sand px-4 py-1.5 text-xs text-ink/50 hover:border-clay/50 hover:text-ink transition-colors"
             >
               <span className="text-[11px]">?</span> How it works
@@ -298,60 +447,90 @@ export default function DesignPage() {
                 ← Back to design
               </button>
             )}
-            <AccountMenu onOpenOrders={() => { setShowOrders(true); setShowSettings(false); }} />
+            <AccountMenu
+              onOpenOrders={() => {
+                setShowOrders(true);
+                setShowSettings(false);
+              }}
+            />
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-5">
+      <main className="mx-auto max-w-7xl px-5 pb-28 lg:pb-0">
         {step === "studio" && (
           <div className="py-6">
-            {/* Settings bar — guests, budget, date */}
-            <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-sand bg-white px-5 py-3 shadow-sm">
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-ink/40">Guests</span>
-                <span className="font-medium text-ink">{brief.guestCount}</span>
-              </div>
-              <span className="h-4 w-px bg-sand" />
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-ink/40">Budget</span>
-                <span className="font-medium text-ink">{formatGBP(brief.budget)}</span>
-              </div>
-              {brief.weddingDate && (
-                <>
-                  <span className="h-4 w-px bg-sand" />
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-ink/40">Date</span>
-                    <span className="font-medium text-ink">
-                      {new Date(brief.weddingDate).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })}
-                    </span>
-                  </div>
-                </>
-              )}
-              <button
-                type="button"
-                onClick={() => setShowSettings((s) => !s)}
-                className="ml-auto rounded-full border border-sand px-4 py-1.5 text-xs text-ink/50 hover:border-clay/50 hover:text-ink transition-colors"
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+              <nav
+                aria-label="Marketplace"
+                className="flex max-w-full gap-2 overflow-x-auto whitespace-nowrap"
               >
-                {showSettings ? "Done" : "Edit"}
-              </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    productBrowserRef.current?.scrollIntoView({
+                      behavior: "smooth",
+                    })
+                  }
+                  className="rounded-full bg-ink px-4 py-2 text-sm text-cream"
+                >
+                  Browse catalogue
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowSaved(true)}
+                  className="rounded-full border border-sand px-4 py-2 text-sm"
+                >
+                  Saved looks ({savedLooks.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowOrders(true)}
+                  className="rounded-full border border-sand px-4 py-2 text-sm"
+                >
+                  My orders
+                </button>
+              </nav>
+              <div className="flex flex-wrap items-center gap-3 text-xs text-ink/60">
+                <span>
+                  {brief.guestCount} guests · {formatGBP(brief.budget)} budget
+                  {brief.weddingDate
+                    ? ` · ${new Date(brief.weddingDate + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
+                    : ""}
+                </span>
+                <button
+                  type="button"
+                  aria-expanded={showSettings}
+                  onClick={() => setShowSettings((v) => !v)}
+                  className="rounded-full border border-sand px-3 py-2"
+                >
+                  {showSettings ? "Done" : "Edit details"}
+                </button>
+                <button
+                  type="button"
+                  onClick={openVisualiser}
+                  className="hidden rounded-full border border-clay px-4 py-2 text-ink md:block"
+                >
+                  Visualise your look →
+                </button>
+              </div>
             </div>
 
             {/* Inline settings editor */}
             {showSettings && (
               <div className="mb-5 grid gap-5 rounded-2xl border border-sand bg-white px-6 py-5 shadow-sm sm:grid-cols-3">
                 <div>
-                  <label className="mb-1 block text-xs text-ink/50">Guests</label>
+                  <label className="mb-1 block text-xs text-ink/50">
+                    Guests
+                  </label>
                   <input
                     type="number"
                     min={10}
                     max={500}
                     value={brief.guestCount}
-                    onChange={(e) => patchBrief({ guestCount: Number(e.target.value) })}
+                    onChange={(e) =>
+                      patchBrief({ guestCount: Number(e.target.value) })
+                    }
                     className="w-full rounded-xl border border-sand bg-cream/50 px-4 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-clay/30"
                   />
                 </div>
@@ -365,7 +544,9 @@ export default function DesignPage() {
                     max={30000}
                     step={500}
                     value={brief.budget}
-                    onChange={(e) => patchBrief({ budget: Number(e.target.value) })}
+                    onChange={(e) =>
+                      patchBrief({ budget: Number(e.target.value) })
+                    }
                     className="mt-2 w-full accent-clay"
                   />
                   <div className="mt-1 flex justify-between text-[11px] text-ink/35">
@@ -374,11 +555,15 @@ export default function DesignPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs text-ink/50">Wedding date</label>
+                  <label className="mb-1 block text-xs text-ink/50">
+                    Wedding date
+                  </label>
                   <input
                     type="date"
                     value={brief.weddingDate}
-                    onChange={(e) => patchBrief({ weddingDate: e.target.value })}
+                    onChange={(e) =>
+                      patchBrief({ weddingDate: e.target.value })
+                    }
                     className="w-full rounded-xl border border-sand bg-cream/50 px-4 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-clay/30"
                   />
                 </div>
@@ -386,38 +571,13 @@ export default function DesignPage() {
             )}
 
             <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
-              {/* Left column — scrollable: render → products */}
+              {/* Catalogue first, optional visualiser below. */}
               <div className="min-w-0 space-y-5">
-                <RenderStage
-                  venue={headerVenue}
-                  uploadedImages={brief.uploadedImages}
-                  style={style}
-                  styleName={styleName}
-                  renderUrl={currentRender?.url ?? null}
-                  renderId={renderId}
-                  versions={versions}
-                  itemIds={basket.map((l) => l.itemId)}
-                  weddingDate={brief.weddingDate}
-                  onWeddingDate={(d) => patchBrief({ weddingDate: d })}
-                  guestCount={brief.guestCount}
-                  onRender={showRender}
-                  onDeleteVersion={deleteVersion}
-                  onStyle={(id) => patchBrief({ styleId: id })}
-                  onVenue={(id) => patchBrief({ venueId: id })}
-                  onAddAngle={(photo) =>
-                    setBrief((b) => ({ ...b, uploadedImages: [...b.uploadedImages, photo] }))
-                  }
-                  onRemoveAngle={removeAngle}
-                  onShopLook={() => {
-                    setShopLookSignal((n) => n + 1);
-                    productBrowserRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }}
-                  isSaved={isCurrentSaved}
-                  onToggleSave={toggleSaveCurrent}
-                />
-
-                {/* Products — always visible below the render */}
-                <div ref={productBrowserRef} className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
+                {/* Marketplace catalogue */}
+                <div
+                  ref={productBrowserRef}
+                  className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm"
+                >
                   <ProductBrowser
                     styleId={brief.styleId}
                     basket={basket}
@@ -428,12 +588,83 @@ export default function DesignPage() {
                     onWeddingDate={(d) => patchBrief({ weddingDate: d })}
                     onAdd={addItem}
                     onRemove={removeItem}
+                    onQty={setQty}
+                    onVisualise={openVisualiser}
                   />
+                </div>
+                <div
+                  ref={visualiserRef}
+                  className="scroll-mt-24 overflow-hidden rounded-2xl border border-sand bg-cream"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setVisualiserOpen(!visualiserOpen)}
+                    aria-expanded={visualiserOpen}
+                    aria-controls="studio-visualiser"
+                    className="flex w-full items-center justify-between gap-4 p-6 text-left"
+                  >
+                    <span>
+                      <span className="block font-serif text-2xl">
+                        Visualise your look
+                      </span>
+                      <span className="mt-1 block text-sm text-ink/60">
+                        Explore an illustrative preview of your pieces in a
+                        venue.
+                      </span>
+                    </span>
+                    <span>{visualiserOpen ? "Close −" : "Open +"}</span>
+                  </button>
+                  <ResponsivePanel
+                    open={visualiserOpen}
+                    onClose={() => setVisualiserOpen(false)}
+                    title="Visualise your look"
+                  >
+                    <div id="studio-visualiser">
+                      {partnerError && (
+                        <p role="alert" className="p-4 text-sm">
+                          {partnerError}
+                        </p>
+                      )}{" "}
+                      <RenderStage
+                        venue={headerVenue}
+                        uploadedImages={brief.uploadedImages}
+                        style={style}
+                        styleName={styleName}
+                        renderUrl={currentRender?.url ?? null}
+                        renderId={renderId}
+                        versions={versions}
+                        itemIds={basket.map((l) => l.itemId)}
+                        weddingDate={brief.weddingDate}
+                        onWeddingDate={(d) => patchBrief({ weddingDate: d })}
+                        guestCount={brief.guestCount}
+                        onRender={showRender}
+                        onDeleteVersion={deleteVersion}
+                        onStyle={(id) => patchBrief({ styleId: id })}
+                        onVenue={(id) => patchBrief({ venueId: id })}
+                        onAddAngle={(photo) =>
+                          setBrief((b) => ({
+                            ...b,
+                            uploadedImages: [...b.uploadedImages, photo],
+                          }))
+                        }
+                        onRemoveAngle={removeAngle}
+                        onShopLook={() => {
+                          setShopLookSignal((n) => n + 1);
+                          productBrowserRef.current?.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                          });
+                        }}
+                        isSaved={isCurrentSaved}
+                        onToggleSave={toggleSaveCurrent}
+                      />
+                    </div>
+                  </ResponsivePanel>
                 </div>
               </div>
 
               {/* Right column — sticky basket */}
-              <div className="lg:sticky lg:top-20">
+              <div className="hidden lg:sticky lg:top-20 lg:block">
                 <div className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm lg:h-[calc(100vh-6rem)]">
                   <BasketPanel
                     basket={basket}
@@ -463,6 +694,62 @@ export default function DesignPage() {
           />
         )}
       </main>
+
+      {step === "studio" && (
+        <div className="fixed inset-x-0 bottom-0 z-30 flex gap-3 border-t border-sand bg-cream p-4 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileBasketOpen(true)}
+            className="flex-1 rounded-full bg-ink px-4 py-3 text-sm text-cream"
+          >
+            {basket.length} items ·{" "}
+            {formatGBP(
+              basket.reduce(
+                (total, line) =>
+                  total +
+                  (getItem(line.itemId)?.unitPrice || 0) * line.quantity,
+                0,
+              ),
+            )}{" "}
+            · View basket
+          </button>
+          <button
+            type="button"
+            onClick={openVisualiser}
+            className="rounded-full border border-ink px-4 py-3 text-sm"
+          >
+            Visualise
+          </button>
+        </div>
+      )}
+      <dialog
+        ref={basketDialog}
+        onClose={() => setMobileBasketOpen(false)}
+        aria-label="Your basket"
+        className="fixed inset-x-0 bottom-0 top-auto m-0 max-h-[90dvh] w-full max-w-none overflow-auto rounded-t-3xl bg-cream p-4 backdrop:bg-ink/50"
+      >
+        <button
+          type="button"
+          onClick={() => setMobileBasketOpen(false)}
+          className="mb-3 rounded-full border border-sand px-4 py-2 text-sm"
+        >
+          Close basket ×
+        </button>
+        {mobileBasketOpen && (
+          <BasketPanel
+            basket={basket}
+            guestCount={brief.guestCount}
+            budget={brief.budget}
+            weddingDate={brief.weddingDate}
+            onQty={setQty}
+            onRemove={removeItem}
+            onCheckout={() => {
+              setMobileBasketOpen(false);
+              setStep("checkout");
+            }}
+          />
+        )}
+      </dialog>
 
       {/* How it works drawer */}
       {showHowTo && <HowItWorks onClose={() => setShowHowTo(false)} />}

@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { env } from "@/lib/server/env";
+import { loadPublicVenues } from "@/lib/server/venues";
 import { loadPublicSuppliers } from "@/lib/server/suppliers";
 
 // Public pages plus a profile for every live supplier, so couples and search
@@ -11,7 +12,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     { url: `${base}/`, changeFrequency: "weekly", priority: 1 },
     { url: `${base}/suppliers`, changeFrequency: "weekly", priority: 0.8 },
-    { url: `${base}/vendors`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${base}/venues`, changeFrequency: "weekly", priority: 0.8 },
+    {
+      url: `${base}/venues/partner`,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
+      url: `${base}/suppliers/join`,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
   ];
 
   let supplierPages: MetadataRoute.Sitemap = [];
@@ -26,5 +37,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // If the catalogue can't be read, still return the static pages.
   }
 
-  return [...staticPages, ...supplierPages];
+  let venuePages: MetadataRoute.Sitemap = [];
+  try {
+    const venues = await loadPublicVenues();
+    venuePages = venues.map((v) => ({
+      url: `${base}/venues/${v.slug}`,
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    }));
+  } catch {
+    /* Static links remain available during an outage. */
+  }
+  return [...staticPages, ...supplierPages, ...venuePages];
 }

@@ -5,7 +5,7 @@ import { useState } from "react";
 
 const NAV_LINKS = [
   { href: "/#how", label: "How it works" },
-  { href: "/#features", label: "Features" },
+  { href: "/venues", label: "Venues" },
   { href: "/suppliers", label: "Suppliers" },
   { href: "/order", label: "Track order" },
 ];
@@ -21,9 +21,16 @@ export default function SiteHeader() {
         </Link>
 
         {/* Desktop nav */}
-        <nav aria-label="Primary" className="hidden items-center gap-6 text-sm md:flex">
+        <nav
+          aria-label="Primary"
+          className="hidden items-center gap-6 text-sm md:flex"
+        >
           {NAV_LINKS.map((l) => (
-            <a key={l.href} href={l.href} className="text-ink/70 hover:text-ink">
+            <a
+              key={l.href}
+              href={l.href}
+              className="text-ink/70 hover:text-ink"
+            >
               {l.label}
             </a>
           ))}
@@ -44,11 +51,27 @@ export default function SiteHeader() {
           aria-label={open ? "Close menu" : "Open menu"}
           className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-sand text-ink md:hidden"
         >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 18 18"
+            fill="none"
+            aria-hidden="true"
+          >
             {open ? (
-              <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              <path
+                d="M4 4l10 10M14 4L4 14"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
             ) : (
-              <path d="M2 5h14M2 9h14M2 13h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              <path
+                d="M2 5h14M2 9h14M2 13h14"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
             )}
           </svg>
         </button>

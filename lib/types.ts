@@ -43,6 +43,8 @@ export interface CatalogueItem {
   category: Category;
   slot?: Slot; // present when the item appears in the render
   supplier: string;
+  supplierId?: string;
+  supplierLogo?: string;
   supplierArea: string;
   unitPrice: number; // GBP per unit
   unit: string; // e.g. "each", "per table", "package"
@@ -101,7 +103,12 @@ export interface Quote {
   subtotal: number;
   commission: number; // what the platform earns (internal, not shown to couples)
   deposit: number; // what the couple pays now to secure the date
-  bySupplier: { supplier: string; area: string; total: number; lines: QuoteLine[] }[];
+  bySupplier: {
+    supplier: string;
+    area: string;
+    total: number;
+    lines: QuoteLine[];
+  }[];
 }
 
 export interface Order {
