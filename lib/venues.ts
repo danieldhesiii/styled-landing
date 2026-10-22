@@ -30,3 +30,21 @@ export interface VenuePackage {
 }
 
 export type VenueEnquiryStatus = "new" | "contacted" | "booked" | "declined";
+
+export function filterVenueListings(
+  venues: VenueListing[],
+  filters: { county: string; setting: string; guests: number },
+) {
+  return venues.filter(
+    (venue) =>
+      (!filters.county || venue.county === filters.county) &&
+      (!filters.setting ||
+        venue.indoor_outdoor === filters.setting ||
+        venue.indoor_outdoor === "both") &&
+      (!(filters.guests > 0) ||
+        ((venue.capacity_min === null ||
+          venue.capacity_min <= filters.guests) &&
+          (venue.capacity_max === null ||
+            venue.capacity_max >= filters.guests))),
+  );
+}

@@ -1,7 +1,10 @@
 import Link from "next/link";
+import { filterVenueListings } from "@/lib/venues";
 import { loadPublicVenues } from "@/lib/server/venues";
-import { safeImageUrl } from "@/lib/venue-input";
-import { formatGBP } from "@/lib/quote";
+import {
+  VenueCards,
+  VenueOperatorCallout,
+} from "@/components/venues/VenueCollection";
 export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Wedding venues · Styled",
@@ -24,16 +27,11 @@ export default async function VenuesPage({
     console.error("[venues]", error);
   }
   const counties = [...new Set((venues ?? []).map((v) => v.county))].sort();
-  const visible = (venues ?? []).filter(
-    (v) =>
-      (!county || v.county === county) &&
-      (!setting ||
-        v.indoor_outdoor === setting ||
-        v.indoor_outdoor === "both") &&
-      (!(guests > 0) ||
-        ((v.capacity_max === null || v.capacity_max >= guests) &&
-          (v.capacity_min === null || v.capacity_min <= guests))),
-  );
+  const visible = filterVenueListings(venues ?? [], {
+    county,
+    setting,
+    guests,
+  });
   return (
     <div className="py-12 sm:py-20">
       <p className="text-xs uppercase tracking-widest text-clay">
@@ -101,55 +99,9 @@ export default async function VenuesPage({
             : "Our venue collection is being prepared. Check back soon."}
         </p>
       ) : (
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {visible.map((v) => {
-            const image = safeImageUrl(v.hero_image);
-            return (
-              <Link
-                key={v.id}
-                href={`/venues/${v.slug}`}
-                className="group border-b border-sand pb-6"
-              >
-                {image ? (
-                  <img
-                    src={image}
-                    alt={v.name}
-                    className="aspect-[4/3] w-full rounded-xl object-cover"
-                  />
-                ) : (
-                  <div className="flex aspect-[4/3] items-center justify-center rounded-xl bg-sand font-serif text-3xl text-ink/50">
-                    {v.name}
-                  </div>
-                )}
-                <h2 className="mt-4 font-serif text-3xl group-hover:text-clay">
-                  {v.name}
-                </h2>
-                <p className="mt-1 text-sm text-ink/60">
-                  {v.location}
-                  {v.capacity_max ? ` · Up to ${v.capacity_max} guests` : ""}
-                </p>
-                {v.package_from_pence !== null && (
-                  <p className="mt-3 text-sm">
-                    Styling from {formatGBP(v.package_from_pence / 100)}
-                  </p>
-                )}
-              </Link>
-            );
-          })}
-        </div>
+        <VenueCards venues={visible} />
       )}
-      <section className="mt-16 border-t border-sand pt-10">
-        <h2 className="font-serif text-3xl">Have a venue to share?</h2>
-        <p className="mt-2 text-ink/60">
-          Tell us about your space and explore partnering with Styled.
-        </p>
-        <Link
-          href="/venues/partner"
-          className="mt-5 inline-block rounded-full bg-ink px-6 py-3 text-sm text-cream"
-        >
-          Partner with us
-        </Link>
-      </section>
+      <VenueOperatorCallout />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { suggestedQty, formatGBP } from "@/lib/quote";
 import { type Brief, type UploadedPhoto } from "@/components/design/BriefStep";
 import { useSavedItems } from "@/components/design/useSavedItems";
 import RenderStage, { type RenderRef } from "@/components/design/RenderStage";
+import VenueExplorer from "@/components/venues/VenueExplorer";
 import ProductBrowser from "@/components/design/ProductBrowser";
 import BasketPanel from "@/components/design/BasketPanel";
 import CheckoutStep from "@/components/design/CheckoutStep";
@@ -26,10 +27,12 @@ export default function DesignPage() {
   const [partnerVenue, setPartnerVenue] = useState<SampleVenue | null>(null);
   const [partnerError, setPartnerError] = useState("");
   const [studioTab, setStudioTab] = useState<
-    "catalogue" | "saved" | "visualiser"
+    "catalogue" | "venues" | "saved" | "visualiser"
   >("catalogue");
   const savedItems = useSavedItems();
-  function switchStudioTab(tab: "catalogue" | "saved" | "visualiser") {
+  function switchStudioTab(
+    tab: "catalogue" | "venues" | "saved" | "visualiser",
+  ) {
     setStudioTab(tab);
     const url = new URL(window.location.href);
     url.searchParams.set("tab", tab);
@@ -181,7 +184,8 @@ export default function DesignPage() {
         uploadedImages: [],
       }));
     const tab = params.get("tab");
-    if (tab === "saved" || tab === "visualiser") setStudioTab(tab);
+    if (tab === "saved" || tab === "visualiser" || tab === "venues")
+      setStudioTab(tab);
     else if (params.get("render") === "true") setStudioTab("visualiser");
     setRestored(true);
   }, []);
@@ -308,7 +312,9 @@ export default function DesignPage() {
     }
     const controller = new AbortController();
     setPartnerError("");
-    setPartnerVenue(null);
+    setPartnerVenue((previous) =>
+      previous?.id === brief.venueId ? previous : null,
+    );
     fetch(`/api/venue-context/${encodeURIComponent(brief.venueId.slice(8))}`, {
       signal: controller.signal,
     })
@@ -368,6 +374,14 @@ export default function DesignPage() {
   const originalImage = brief.uploadedImages[0]?.url ?? venue.image ?? null;
 
   const patchBrief = (patch: Partial<Brief>) => {
+    if (patch.venueId !== undefined) {
+      const url = new URL(window.location.href);
+      if (patch.venueId.startsWith("listing:"))
+        url.searchParams.set("venue", patch.venueId.slice(8));
+      else url.searchParams.delete("venue");
+      window.history.replaceState(null, "", url);
+    }
+
     // A render is only valid for the venue, photos and style it was made from.
     if (
       patch.venueId !== undefined ||
@@ -487,6 +501,14 @@ export default function DesignPage() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => switchStudioTab("venues")}
+                  aria-current={studioTab === "venues" ? "page" : undefined}
+                  className={`shrink-0 rounded-full border px-4 py-2 text-sm ${studioTab === "venues" ? "border-ink bg-ink text-cream" : "border-sand"}`}
+                >
+                  Venues
+                </button>
+                <button
+                  type="button"
                   onClick={() => switchStudioTab("saved")}
                   aria-current={studioTab === "saved" ? "page" : undefined}
                   className={`shrink-0 rounded-full border px-4 py-2 text-sm ${studioTab === "saved" ? "border-ink bg-ink text-cream" : "border-sand"}`}
@@ -517,6 +539,20 @@ export default function DesignPage() {
                 </button>
               </nav>
               <div className="flex flex-wrap items-center gap-3 text-xs text-ink/60">
+                <button
+                  type="button"
+                  onClick={() => switchStudioTab("venues")}
+                  className="max-w-[220px] truncate rounded-full border border-sand px-3 py-2"
+                  aria-label={
+                    brief.venueId.startsWith("listing:")
+                      ? `Change venue: ${venue.name}`
+                      : "Choose a venue"
+                  }
+                >
+                  {brief.venueId.startsWith("listing:")
+                    ? `Venue: ${venue.name}`
+                    : "Choose a venue"}
+                </button>
                 <span>
                   {brief.guestCount} guests · {formatGBP(brief.budget)} budget
                   {brief.weddingDate
@@ -595,7 +631,37 @@ export default function DesignPage() {
               </div>
             )}
 
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+            <div hidden={studioTab !== "venues"}>
+              <VenueExplorer
+                active={studioTab === "venues"}
+                guestCount={brief.guestCount}
+                selectedSlug={
+                  brief.venueId.startsWith("listing:")
+                    ? brief.venueId.slice(8)
+                    : undefined
+                }
+                onVisualise={openVisualiser}
+                onSelect={(selected) => {
+                  patchBrief({
+                    venueId: `listing:${selected.slug}`,
+                    uploadedImages: [],
+                  });
+                  setPartnerVenue({
+                    id: `listing:${selected.slug}`,
+                    name: selected.name,
+                    area: selected.location,
+                    kind: "Partner venue",
+                    gradient: "",
+                    image: selected.hero_image || undefined,
+                  });
+                  switchStudioTab("catalogue");
+                }}
+              />
+            </div>
+            <div
+              hidden={studioTab === "venues"}
+              className={`${studioTab === "venues" ? "hidden" : "grid"} gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start`}
+            >
               {/* Catalogue first, optional visualiser below. */}
               <div className="min-w-0 space-y-5">
                 {/* Marketplace catalogue */}
