@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 import type { WeddingBoard } from "@/lib/wedding";
 
 export type BoardTarget = {
@@ -19,6 +20,7 @@ export default function BoardPicker({
   onAddToBoard,
   target,
 }: BoardPickerProps & { target: BoardTarget }) {
+  const { getItem } = useCatalogue();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
@@ -53,6 +55,11 @@ export default function BoardPicker({
               const pinned = board.pins.some(
                 (pin) => pin.kind === target.kind && pin.ref === target.ref,
               );
+              const covers = board.pins
+                .filter((pin) => pin.kind === "product" && pin.ref)
+                .map((pin) => getItem(pin.ref!)?.image)
+                .filter((url): url is string => !!url)
+                .slice(0, 3);
               return (
                 <button
                   key={board.id}
@@ -60,7 +67,7 @@ export default function BoardPicker({
                   disabled={
                     boardsBusy || pending || pinned || board.pins.length >= 100
                   }
-                  className="min-h-11 rounded-lg border border-sand px-3 text-left text-sm disabled:opacity-50"
+                  className="flex min-h-14 items-center gap-3 rounded-lg border border-sand p-3 text-left text-sm disabled:opacity-50"
                   onClick={async () => {
                     setPending(true);
                     setMessage("");
@@ -77,7 +84,28 @@ export default function BoardPicker({
                     }
                   }}
                 >
-                  {board.name}
+                  <span className="flex shrink-0 -space-x-2" aria-hidden="true">
+                    {covers.length ? (
+                      covers.map((url, i) => (
+                        <img
+                          key={i}
+                          src={url}
+                          alt=""
+                          className="h-10 w-10 rounded-lg border border-white object-cover"
+                        />
+                      ))
+                    ) : (
+                      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-sand">
+                        ▧
+                      </span>
+                    )}
+                  </span>
+                  <span>
+                    {board.name}
+                    <span className="block text-xs text-ink/60">
+                      {board.pins.length} ideas
+                    </span>
+                  </span>
                   {pinned
                     ? " · Already added"
                     : board.pins.length >= 100

@@ -173,6 +173,18 @@ export default function Boards({
       setUploading(false);
     }
   }
+  if (!loaded)
+    return (
+      <section
+        aria-label="Wedding boards"
+        className="rounded-2xl border border-sand bg-white p-5 sm:p-8"
+      >
+        <h1 className="font-serif text-4xl">Boards</h1>
+        <p role="status" className="mt-5 text-sm">
+          Loading your saved boards before you edit…
+        </p>
+      </section>
+    );
   return (
     <section
       aria-label="Wedding boards"
@@ -185,9 +197,8 @@ export default function Boards({
           </p>
           <h1 className="mt-3 font-serif text-4xl sm:text-5xl">Boards</h1>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink/60">
-            Bring together real catalogue pieces, private inspiration and saved
-            looks. Your boards stay private, and saving here does not reserve
-            stock.
+            Private ideas for your ceremony, reception and style. Saving ideas
+            does not reserve stock.
           </p>
         </>
       )}
@@ -215,14 +226,6 @@ export default function Boards({
           ▧ Saved looks →
         </button>
       </nav>
-      <BoardImports
-        disabled={disabled || !board}
-        onUpload={() => file.current?.click()}
-        onLink={async (url) => {
-          if (!(await pin("note", undefined, `Pinterest: ${url}`)))
-            throw Error("Could not save link");
-        }}
-      />
       <input
         ref={file}
         type="file"
@@ -281,6 +284,20 @@ export default function Boards({
           </button>
         ))}
       </div>
+      <details className="mb-5 border-y border-sand py-3">
+        <summary className="cursor-pointer text-sm">
+          <span aria-hidden="true">▧</span> Import photos · Google Photos ·
+          Pinterest
+        </summary>
+        <BoardImports
+          disabled={disabled || !board}
+          onUpload={() => file.current?.click()}
+          onLink={async (url) => {
+            if (!(await pin("note", undefined, `Pinterest: ${url}`)))
+              throw Error("Could not save link");
+          }}
+        />
+      </details>
       {error && (
         <p role="alert" className="mb-4 text-sm text-clay">
           {error}
@@ -314,9 +331,8 @@ export default function Boards({
               Use board in visualiser →
             </button>
             <p className="max-w-xl text-xs leading-relaxed text-ink/60">
-              Prepares up to 3 inspiration photos, 12 catalogue pieces and your
-              notes for a new look. No image is generated until you choose
-              Generate. Open saved AI looks individually below.
+              Prepare these ideas for a new look. Nothing generates until you
+              choose Generate.
             </p>
           </div>
           <details className="border-y border-sand py-4">

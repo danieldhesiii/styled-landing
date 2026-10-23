@@ -101,11 +101,18 @@ export async function POST(req: Request) {
         .limit(1);
       if (blockError) throw blockError;
       if (blocked?.length)
-        return fail(409, "That date is unavailable. Please choose another date.");
+        return fail(
+          409,
+          "That date is unavailable. Please choose another date.",
+        );
     }
     const { data: request, error } = await admin
       .from("venue_enquiries")
-      .insert({ ...result.value, owner_user_id: auth.user.id })
+      .insert({
+        ...result.value,
+        owner_user_id: auth.user.id,
+        next_actor: "venue",
+      })
       .select("id")
       .single();
     if (error) throw error;

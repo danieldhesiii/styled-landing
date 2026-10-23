@@ -113,7 +113,10 @@ function DesignStudio() {
     styleId: "garden_romance",
     guestCount: 80,
     weddingDate: "",
-    budget: 6000,
+    budget: 0,
+    budgetUnknown: true,
+    guestCountEstimated: true,
+    planSetupComplete: false,
   });
   const [boards, setBoards] = useState<WeddingBoard[]>([]);
   const [workspacePhotos, setWorkspacePhotos] = useState<
@@ -275,6 +278,9 @@ function DesignStudio() {
           setBrief((b) => ({
             ...b,
             ...details,
+            budgetUnknown: details.budgetUnknown,
+            guestCountEstimated: details.guestCountEstimated,
+            planSetupComplete: details.planSetupComplete,
             ...draft,
             uploadedImages: selectedPhotoIds
               .filter((id) => data.photos[id])

@@ -211,3 +211,7 @@ No new payment processor, AI image pipeline or complex supplier inventory integr
 ## Additional source-review caveat
 
 The older guest/login dialog and standalone login implement different account-transfer behaviour, while customer workspace restoration runs on mount. This should be reconciled if guest studio access or in-place account switching is supported. The current middleware protects /design for real accounts, so this review does not claim ordinary new customer sign-in currently reproduces a guest-work transfer failure.
+
+## Implementation follow-up
+
+The improvements from this audit were implemented in the subsequent pass. See [implementation and verification notes](./usability-improvements-2026-10-23.md) for delivered changes, checks and remaining external-service boundaries. The findings above describe the reviewed snapshot, not the revised site's current behaviour.
