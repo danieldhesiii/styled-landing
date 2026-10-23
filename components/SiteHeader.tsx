@@ -5,9 +5,10 @@ import HelpButton from "@/components/help/HelpButton";
 import { useState } from "react";
 
 const NAV_LINKS = [
-  { href: "/venues", label: "Venues" },
+  { href: "/venues", label: "Find venues" },
   { href: "/suppliers", label: "Suppliers" },
-  { href: "/order", label: "Track order" },
+  { href: "/design?tab=orders", label: "My bookings" },
+  { href: "/business", label: "For businesses" },
 ];
 
 export default function SiteHeader() {
@@ -23,7 +24,7 @@ export default function SiteHeader() {
         {/* Desktop nav */}
         <nav
           aria-label="Primary"
-          className="hidden items-center gap-6 text-sm md:flex"
+          className="hidden items-center gap-6 text-sm lg:flex"
         >
           <HelpButton className="text-ink/70 hover:text-ink" />
           {NAV_LINKS.map((l) => (
@@ -36,10 +37,10 @@ export default function SiteHeader() {
             </a>
           ))}
           <a
-            href="/design"
+            href="/design?tab=wedding"
             className="rounded-full bg-ink px-4 py-2 text-cream hover:bg-ink/90"
           >
-            Get started
+            Plan your wedding
           </a>
         </nav>
 
@@ -50,7 +51,7 @@ export default function SiteHeader() {
           aria-expanded={open}
           aria-controls="mobile-menu"
           aria-label={open ? "Close menu" : "Open menu"}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-sand text-ink md:hidden"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-sand text-ink lg:hidden"
         >
           <svg
             width="18"
@@ -82,7 +83,7 @@ export default function SiteHeader() {
         <nav
           id="mobile-menu"
           aria-label="Mobile"
-          className="border-t border-sand bg-cream/95 px-5 py-4 md:hidden"
+          className="border-t border-sand bg-cream/95 px-5 py-4 lg:hidden"
         >
           <div className="mx-auto flex max-w-6xl flex-col gap-1">
             <HelpButton className="rounded-xl px-3 py-3 text-left text-ink/80 hover:bg-sand/60" />
@@ -97,11 +98,11 @@ export default function SiteHeader() {
               </a>
             ))}
             <a
-              href="/design"
+              href="/design?tab=wedding"
               onClick={() => setOpen(false)}
               className="mt-1 rounded-full bg-ink px-4 py-3 text-center text-cream hover:bg-ink/90"
             >
-              Get started
+              Plan your wedding
             </a>
           </div>
         </nav>

@@ -67,8 +67,11 @@ export default async function VenuePage({
         <Link href="/venues" className="text-sm text-clay">
           ← All venues
         </Link>
-        <Link href="/venues/requests" className="text-sm underline">
-          My venue requests
+        <Link
+          href="/design?tab=orders&bookings=venues"
+          className="text-sm underline"
+        >
+          My bookings
         </Link>
       </div>
       {venue.is_demo && (
@@ -237,6 +240,12 @@ export default async function VenuePage({
                 after confirmation; no payment is taken here.
               </p>
               <Link
+                href={`/design?venue=${encodeURIComponent(venue.slug)}&tab=wedding`}
+                className="mt-5 block text-sm underline"
+              >
+                Save this venue to your wedding plan →
+              </Link>
+              <Link
                 href={`/design?venue=${encodeURIComponent(venue.slug)}&tab=catalogue`}
                 className="mt-5 block text-sm underline"
               >
@@ -356,10 +365,10 @@ export default async function VenuePage({
               from the venue team.
             </p>
             <Link
-              href="/venues/partner"
+              href="/venues"
               className="mt-5 inline-block text-sm underline"
             >
-              List your venue →
+              Back to venue search →
             </Link>
           </>
         ) : (
@@ -368,7 +377,7 @@ export default async function VenuePage({
             <p className="mb-8 mt-4 max-w-2xl text-sm leading-relaxed text-ink/60">
               Request your wedding date or arrange a viewing. The venue will
               check your plans and can suggest alternatives. Track the response
-              in My venue requests.
+              in My bookings.
             </p>
             <VenueEnquiryForm
               slug={venue.slug}

@@ -21,7 +21,7 @@ import { helpTopicForPage } from "@/lib/help";
 import HowItWorks from "@/components/design/HowItWorks";
 import SavedLooks, { type SavedLook } from "@/components/design/SavedLooks";
 import AccountMenu from "@/components/auth/AccountMenu";
-import MyOrders from "@/components/order/MyOrders";
+import MyBookings from "@/components/order/MyBookings";
 import LookProducts from "@/components/design/LookProducts";
 import { useShopAvailability } from "@/components/availability/useAvailability";
 
@@ -45,7 +45,10 @@ export default function DesignPage() {
   const { getItem } = useCatalogue();
   const [partnerVenue, setPartnerVenue] = useState<SampleVenue | null>(null);
   const [partnerError, setPartnerError] = useState("");
-  const [studioTab, setStudioTab] = useState<StudioTab>("catalogue");
+  const [studioTab, setStudioTab] = useState<StudioTab>("wedding");
+  const [bookingSection, setBookingSection] = useState<"suppliers" | "venues">(
+    "suppliers",
+  );
   const savedItems = useSavedItems();
   const [discovery, setDiscovery] = useState<DiscoveryResults | null>(null),
     [searchRadius, setSearchRadius] = useState(50);
@@ -56,6 +59,14 @@ export default function DesignPage() {
     const url = new URL(window.location.href);
     url.searchParams.set("tab", tab);
     url.searchParams.delete("render");
+    if (tab !== "orders") url.searchParams.delete("bookings");
+    window.history.replaceState(null, "", url);
+  }
+  function openBookings(section: "suppliers" | "venues" = "suppliers") {
+    setBookingSection(section);
+    switchStudioTab("orders");
+    const url = new URL(window.location.href);
+    url.searchParams.set("bookings", section);
     window.history.replaceState(null, "", url);
   }
   const [mobileBasketOpen, setMobileBasketOpen] = useState(false);
@@ -139,6 +150,25 @@ export default function DesignPage() {
   // when the couple navigates away and comes back. The render's signed URL is
   // re-fetched fresh by id, since signed URLs expire.
   useEffect(() => {
+    const entryParams = new URLSearchParams(window.location.search);
+    const incomingTab = entryParams.get("tab");
+    if (
+      [
+        "catalogue",
+        "venues",
+        "boards",
+        "saved",
+        "looks",
+        "visualiser",
+        "wedding",
+        "orders",
+      ].includes(incomingTab || "")
+    )
+      setStudioTab(incomingTab as StudioTab);
+    else if (entryParams.get("render") === "true") setStudioTab("visualiser");
+    setBookingSection(
+      entryParams.get("bookings") === "venues" ? "venues" : "suppliers",
+    );
     let cancelled = false;
     void (async () => {
       const {
@@ -243,7 +273,7 @@ export default function DesignPage() {
           );
       }
       if (cancelled) return;
-      const params = new URLSearchParams(window.location.search);
+      const params = entryParams;
       const styleParam = params.get("style");
       if (
         styleParam &&
@@ -260,20 +290,15 @@ export default function DesignPage() {
         setBrief((b) => ({
           ...b,
           venueId: `listing:${slug}`,
+          venueChoice: "have",
+          venueName: "",
           uploadedImages: [],
         }));
-      const tab = params.get("tab");
-      if (
-        tab === "saved" ||
-        tab === "visualiser" ||
-        tab === "venues" ||
-        tab === "wedding" ||
-        tab === "boards" ||
-        tab === "looks" ||
-        tab === "orders"
-      )
-        setStudioTab(tab);
-      else if (params.get("render") === "true") setStudioTab("visualiser");
+      if (slug) {
+        const consumed = new URL(window.location.href);
+        consumed.searchParams.delete("venue");
+        window.history.replaceState(null, "", consumed);
+      }
       setRestored(true);
     })();
     return () => {
@@ -418,6 +443,11 @@ export default function DesignPage() {
         const d = await r.json();
         if (!r.ok) throw Error(d.error);
         setPartnerVenue(d.venue);
+        setBrief((b) =>
+          b.venueId === d.venue.id
+            ? { ...b, venueName: d.venue.name, venueChoice: "have" }
+            : b,
+        );
       })
       .catch((e) => {
         if (e.name !== "AbortError")
@@ -618,7 +648,7 @@ export default function DesignPage() {
             )}
             <AccountMenu
               onOpenOrders={() => {
-                switchStudioTab("orders");
+                openBookings();
               }}
             />
           </div>
@@ -658,10 +688,10 @@ export default function DesignPage() {
                         month: "short",
                         year: "numeric",
                       })
-                    : "Set your wedding details"}
+                    : "Set up your wedding plan"}
                   <span className="ml-2">· {brief.guestCount} guests</span>
                   <span className="ml-2 underline underline-offset-4">
-                    Wedding details →
+                    Wedding plan →
                   </span>
                 </button>
               </div>
@@ -739,7 +769,11 @@ export default function DesignPage() {
               />
             )}
             {studioTab === "orders" && (
-              <MyOrders onBrowse={() => switchStudioTab("catalogue")} />
+              <MyBookings
+                section={bookingSection}
+                onSection={openBookings}
+                onBrowse={() => switchStudioTab("catalogue")}
+              />
             )}
             <div hidden={studioTab !== "wedding"}>
               <MyWedding
@@ -755,8 +789,11 @@ export default function DesignPage() {
                     : workspaceFingerprint(workspaceData(brief, boards)) ===
                         savedWorkspace
                       ? "Saved to your account"
-                      : "You have unsaved wedding details"
+                      : "You have unsaved changes to your wedding plan"
                 }
+                onBrowse={() => switchStudioTab("catalogue")}
+                onBoards={() => switchStudioTab("boards")}
+                onBookings={(section) => openBookings(section || "suppliers")}
                 onFindVenue={() => switchStudioTab("venues")}
                 onVisualise={openVisualiser}
               />
@@ -797,7 +834,7 @@ export default function DesignPage() {
                 }}
               />
             </div>
-            <div hidden={studioTab !== "catalogue" && studioTab !== "venues"}>
+            <div hidden={studioTab !== "catalogue"}>
               <LocationFilter
                 venueSlug={
                   brief.venueId.startsWith("listing:")
@@ -812,36 +849,40 @@ export default function DesignPage() {
               />
             </div>
             <div hidden={studioTab !== "venues"}>
-              <VenueExplorer
-                matches={discovery?.venues}
-                searchRadius={searchRadius}
-                active={studioTab === "venues"}
-                guestCount={brief.guestCount}
-                selectedSlug={
-                  brief.venueId.startsWith("listing:")
-                    ? brief.venueId.slice(8)
-                    : undefined
-                }
-                onVisualise={() => switchStudioTab("wedding")}
-                onSelect={(selected) => {
-                  patchBrief({
-                    venueId: `listing:${selected.slug}`,
-                    venueChoice: "have",
-                    venueName: selected.name,
-                    venuePostcode: "",
-                    uploadedImages: [],
-                  });
-                  setPartnerVenue({
-                    id: `listing:${selected.slug}`,
-                    name: selected.name,
-                    area: selected.location,
-                    kind: "Partner venue",
-                    gradient: "",
-                    image: selected.hero_image || undefined,
-                  });
-                  switchStudioTab("catalogue");
-                }}
-              />
+              {restored && (
+                <VenueExplorer
+                  matches={discovery?.venues}
+                  searchRadius={searchRadius}
+                  active={studioTab === "venues"}
+                  guestCount={brief.guestCount}
+                  weddingDate={brief.weddingDate}
+                  postcode={brief.venuePostcode}
+                  selectedSlug={
+                    brief.venueId.startsWith("listing:")
+                      ? brief.venueId.slice(8)
+                      : undefined
+                  }
+                  onVisualise={() => switchStudioTab("wedding")}
+                  onSelect={(selected) => {
+                    patchBrief({
+                      venueId: `listing:${selected.slug}`,
+                      venueChoice: "have",
+                      venueName: selected.name,
+                      venuePostcode: "",
+                      uploadedImages: [],
+                    });
+                    setPartnerVenue({
+                      id: `listing:${selected.slug}`,
+                      name: selected.name,
+                      area: selected.location,
+                      kind: "Partner venue",
+                      gradient: "",
+                      image: selected.hero_image || undefined,
+                    });
+                    switchStudioTab("wedding");
+                  }}
+                />
+              )}
             </div>
             <div
               hidden={

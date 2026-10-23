@@ -13,7 +13,11 @@ type Request = {
   alternative_dates: string[];
   venue_listings: { name: string; slug: string } | null;
 };
-export default function MyVenueRequests() {
+export default function MyVenueRequests({
+  embedded = false,
+}: {
+  embedded?: boolean;
+}) {
   const [requests, setRequests] = useState<Request[] | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(""),
@@ -44,17 +48,29 @@ export default function MyVenueRequests() {
     }
   }
   return (
-    <section className="py-12 sm:py-16">
-      <Link href="/venues" className="text-sm text-clay">
-        ← Explore venues
-      </Link>
-      <h1 className="mt-6 font-serif text-4xl sm:text-5xl">
-        Your venue requests
-      </h1>
+    <section
+      className={
+        embedded
+          ? "rounded-2xl border border-sand bg-white p-5 sm:p-8"
+          : "py-12 sm:py-16"
+      }
+    >
+      {!embedded && (
+        <Link href="/venues" className="text-sm text-clay">
+          ← Explore venues
+        </Link>
+      )}
+      {embedded ? (
+        <h2 className="font-serif text-3xl">Venue requests</h2>
+      ) : (
+        <h1 className="mt-6 font-serif text-4xl sm:text-5xl">
+          Your venue requests
+        </h1>
+      )}
       <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink/60">
-        Follow booking and viewing requests here. Supplier basket orders are
-        separate. A request does not reserve a date, and no payment is collected
-        on this page.
+        Follow venue bookings and viewings here. Supplier orders are in the
+        other tab. A request does not reserve a date, and no payment is
+        collected on this page.
       </p>
       {error && (
         <p

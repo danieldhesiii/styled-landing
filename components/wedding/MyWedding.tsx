@@ -13,6 +13,9 @@ export default function MyWedding({
   status,
   onFindVenue,
   onVisualise,
+  onBrowse,
+  onBoards,
+  onBookings,
 }: {
   brief: WeddingBrief;
   photos: Record<string, string>;
@@ -23,6 +26,9 @@ export default function MyWedding({
   status: string;
   onFindVenue: () => void;
   onVisualise: () => void;
+  onBrowse: () => void;
+  onBoards: () => void;
+  onBookings: (section?: "venues") => void;
 }) {
   const [uploading, setUploading] = useState(false),
     [error, setError] = useState("");
@@ -47,87 +53,58 @@ export default function MyWedding({
   return (
     <section className="rounded-2xl border border-sand bg-white p-5 sm:p-8">
       <p className="text-xs uppercase tracking-widest text-clay">
-        A place for your plans
+        Your private planning space
       </p>
-      <h1 className="mt-3 font-serif text-4xl sm:text-5xl">Wedding details</h1>
+      <h1 className="mt-3 font-serif text-4xl sm:text-5xl">Wedding plan</h1>
       <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink/60">
-        Keep your dates, guest count, budget and chosen venue in one private
-        space. Use Venues to discover places to book, then save your plans here.
+        Set the details that guide your shopping: dates for availability, guests
+        for quantities and a budget for your supplier basket. Keep your chosen
+        venue and photos here too. Update the plan as your day takes shape.
       </p>
-      <div className="mt-8 grid gap-10 lg:grid-cols-2">
-        <div className="space-y-8">
-          <fieldset>
-            <legend className="font-serif text-2xl">
-              Where are you in your plans?
-            </legend>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {(
-                [
-                  ["have", "I have a venue"],
-                  ["looking", "I’m looking for a venue"],
-                  ["exploring", "I’m just exploring"],
-                ] as const
-              ).map(([v, label]) => (
-                <button
-                  key={v}
-                  type="button"
-                  aria-pressed={(brief.venueChoice || "exploring") === v}
-                  onClick={() => onChange({ venueChoice: v })}
-                  className={`rounded-full border px-4 py-2 text-sm ${(brief.venueChoice || "exploring") === v ? "border-ink bg-ink text-cream" : "border-sand"}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-          {brief.venueChoice === "have" && (
-            <label className="block text-sm">
-              Venue name
-              <input
-                maxLength={160}
-                value={brief.venueName || ""}
-                onChange={(e) =>
-                  onChange({
-                    venueName: e.target.value,
-                    venueId: "manor_orangery",
-                  })
-                }
-                placeholder="The place you’ve chosen"
-                className={field}
-              />
-            </label>
-          )}
-          <label className="block text-sm">
-            {brief.venueChoice === "have"
-              ? "Venue postcode"
-              : "Wedding search postcode"}
-            <input
-              maxLength={10}
-              autoComplete="postal-code"
-              value={brief.venuePostcode || ""}
-              onChange={(e) =>
-                onChange({ venuePostcode: e.target.value.toUpperCase() })
-              }
-              placeholder="e.g. SW1A 1AA"
-              className={field}
-            />
-            <span className="mt-2 block text-xs text-ink/50">
-              Use the wedding location so recommendations are relevant to your
-              day.
-            </span>
-          </label>
-          {brief.venueChoice === "looking" && (
-            <button
-              type="button"
-              onClick={onFindVenue}
-              className="rounded-full border border-sand px-5 py-2 text-sm"
-            >
-              Explore venues →
-            </button>
-          )}
-          <div className="grid gap-4 sm:grid-cols-2">
+      <dl className="mt-7 grid grid-cols-2 gap-x-5 gap-y-6 border-y border-sand py-6 lg:grid-cols-4">
+        {[
+          [
+            "Wedding date",
+            brief.weddingDate
+              ? new Date(brief.weddingDate + "T12:00:00").toLocaleDateString(
+                  "en-GB",
+                  { day: "numeric", month: "short", year: "numeric" },
+                )
+              : "Not set yet",
+          ],
+          ["Wedding guests", String(brief.guestCount)],
+          [
+            "Supplier basket budget",
+            new Intl.NumberFormat("en-GB", {
+              style: "currency",
+              currency: "GBP",
+              maximumFractionDigits: 0,
+            }).format(brief.budget),
+          ],
+          [
+            "Planned venue",
+            brief.venueChoice === "have" && brief.venueName
+              ? brief.venueName
+              : "Still exploring",
+          ],
+        ].map(([label, value]) => (
+          <div key={label} className="min-w-0">
+            <dt className="text-xs text-ink/60">{label}</dt>
+            <dd className="mt-2 break-words font-serif text-xl">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <section id="plan-day" className="mt-8 scroll-mt-24">
+        <h2 className="font-serif text-3xl">1. Your day & budget</h2>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink/60">
+          Your wedding and delivery dates carry into the catalogue. Guest
+          numbers help estimate quantities. The budget tracks your supplier
+          basket; venue hire is agreed separately.
+        </p>
+        <div className="mt-6 grid gap-8 lg:grid-cols-2">
+          <div className="grid content-start gap-5 sm:grid-cols-2">
             <label className="text-sm">
-              Guests
+              Wedding guests
               <input
                 type="number"
                 min={1}
@@ -140,7 +117,7 @@ export default function MyWedding({
               />
             </label>
             <label className="text-sm">
-              Budget (£)
+              Supplier basket budget (£)
               <input
                 type="number"
                 min={0}
@@ -149,15 +126,122 @@ export default function MyWedding({
                 onChange={(e) => onChange({ budget: Number(e.target.value) })}
                 className={field}
               />
+              <span className="mt-2 block text-xs text-ink/50">
+                For products and styling, excluding venue hire.
+              </span>
             </label>
           </div>
+          <DeliveryDates {...brief} onChange={onChange} id="planning" />
         </div>
-        <DeliveryDates {...brief} onChange={onChange} id="planning" />
-      </div>
+      </section>
+      <section
+        id="plan-venue"
+        className="mt-10 scroll-mt-24 border-t border-sand pt-7"
+      >
+        <h2 className="font-serif text-3xl">2. Your venue choice</h2>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink/60">
+          Venues is the directory where you discover places and request a
+          viewing or booking. This part of your plan records the place you are
+          planning around, including a venue booked outside Styled.
+        </p>
+        <fieldset className="mt-5">
+          <legend className="text-sm font-medium">
+            Where are you with your venue?
+          </legend>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(
+              [
+                ["have", "I have chosen a venue"],
+                ["looking", "I’m looking for a venue"],
+                ["exploring", "I’m just exploring"],
+              ] as const
+            ).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={(brief.venueChoice || "exploring") === v}
+                onClick={() => onChange({ venueChoice: v })}
+                className={`rounded-full border px-4 py-2 text-sm ${(brief.venueChoice || "exploring") === v ? "border-ink bg-ink text-cream" : "border-sand"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <div className="mt-6 grid gap-6 sm:grid-cols-2">
+          {brief.venueChoice === "have" && (
+            <label className="text-sm">
+              Your chosen venue name
+              <input
+                maxLength={160}
+                value={brief.venueName || ""}
+                onChange={(e) =>
+                  onChange({
+                    venueName: e.target.value,
+                    venueId: "manor_orangery",
+                  })
+                }
+                placeholder="The place you’ve chosen"
+                className={field}
+              />
+              <span className="mt-2 block text-xs text-ink/50">
+                Saved privately to your wedding plan. This does not publish a
+                venue listing or confirm a booking.
+              </span>
+            </label>
+          )}
+          <label className="text-sm">
+            {brief.venueChoice === "have"
+              ? "Venue postcode"
+              : "Preferred wedding area postcode"}
+            <input
+              maxLength={10}
+              autoComplete="postal-code"
+              value={brief.venuePostcode || ""}
+              onChange={(e) =>
+                onChange({ venuePostcode: e.target.value.toUpperCase() })
+              }
+              placeholder="e.g. SW1A 1AA"
+              className={field}
+            />
+            <span className="mt-2 block text-xs text-ink/50">
+              Helps find nearby venues and suppliers. You can add this before
+              choosing a venue.
+            </span>
+          </label>
+        </div>
+        <div className="mt-5 flex flex-wrap gap-5 text-sm">
+          <button type="button" onClick={onFindVenue} className="underline">
+            {brief.venueChoice === "have"
+              ? "Explore other venues →"
+              : "Find a venue in the directory →"}
+          </button>
+          {brief.venueId.startsWith("listing:") && (
+            <a
+              href={`/venues/${encodeURIComponent(brief.venueId.slice(8))}`}
+              className="underline"
+            >
+              View your planned venue / request a date →
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={() => onBookings("venues")}
+            className="underline"
+          >
+            Check venue requests in My bookings →
+          </button>
+        </div>
+        <p className="mt-4 rounded-xl bg-cream p-4 text-xs leading-relaxed text-ink/60">
+          A planned venue is a personal choice, not a reservation. Follow the
+          actual booking status under My bookings, then Venue requests. For
+          bookings made elsewhere, confirm dates directly with your venue.
+        </p>
+      </section>
       <section className="mt-10 border-t border-sand pt-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="font-serif text-3xl">Your venue photographs</h2>
+            <h2 className="font-serif text-3xl">3. Your venue photographs</h2>
             <p className="mt-2 text-sm text-ink/60">
               Save different rooms and angles. The first photo is the starting
               image for your visualiser. These stay private.
@@ -266,6 +350,46 @@ export default function MyWedding({
           </div>
         </details>
       )}
+      <section className="mt-10 border-t border-sand pt-7">
+        <h2 className="font-serif text-3xl">Continue planning</h2>
+        <p className="mt-3 text-sm text-ink/60">
+          Save changes below to keep them across devices. You can explore the
+          rest of Styled without completing every detail.
+        </p>
+        <div className="mt-5 grid gap-4 sm:grid-cols-3">
+          {[
+            [
+              "Find pieces",
+              "Shop with your dates, guest count and budget.",
+              onBrowse,
+            ],
+            [
+              "Collect ideas",
+              "Keep inspiration, products and looks on your boards.",
+              onBoards,
+            ],
+            [
+              "Track bookings",
+              "Follow supplier orders and venue requests.",
+              () => onBookings(),
+            ],
+          ].map(([title, description, action]) => (
+            <button
+              type="button"
+              key={String(title)}
+              onClick={action as () => void}
+              className="border-b border-sand py-4 text-left"
+            >
+              <span className="block font-serif text-2xl">
+                {String(title)} ↗
+              </span>
+              <span className="mt-2 block text-sm leading-relaxed text-ink/60">
+                {String(description)}
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
       <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-sand pt-6">
         <button
           type="button"
@@ -273,7 +397,7 @@ export default function MyWedding({
           onClick={onSave}
           className="rounded-full bg-ink px-6 py-3 text-sm text-cream disabled:opacity-50"
         >
-          {saving ? "Saving…" : "Save wedding details"}
+          {saving ? "Saving…" : "Save wedding plan"}
         </button>
         <button
           type="button"

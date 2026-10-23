@@ -109,14 +109,14 @@ export function VenueCards({
                   onClick={() => onSelect(venue)}
                   className={`rounded-full px-4 py-2 text-sm ${selected ? "border border-clay bg-blush" : "bg-ink text-cream"}`}
                 >
-                  {selected ? "Continue with this venue" : "Choose this venue"}
+                  {selected ? "View wedding plan" : "Save to wedding plan"}
                 </button>
               ) : (
                 <Link
-                  href={`/design?venue=${encodeURIComponent(venue.slug)}&tab=catalogue`}
+                  href={`/design?venue=${encodeURIComponent(venue.slug)}&tab=wedding`}
                   className="rounded-full bg-ink px-4 py-2 text-sm text-cream"
                 >
-                  Style this venue
+                  Save to wedding plan
                 </Link>
               )}
             </div>

@@ -78,7 +78,10 @@ export default function VenueEnquiryForm({
     return (
       <p role="status" className="rounded-xl bg-blush p-6">
         Thank you. Your request is with the venue. The date is not reserved yet.{" "}
-        <Link href="/venues/requests" className="ml-2 underline">
+        <Link
+          href="/design?tab=orders&bookings=venues"
+          className="ml-2 underline"
+        >
           View my venue requests →
         </Link>
       </p>

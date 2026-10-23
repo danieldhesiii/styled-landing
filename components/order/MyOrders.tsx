@@ -31,7 +31,7 @@ export default function MyOrders({ onBrowse }: { onBrowse: () => void }) {
           <p className="text-xs uppercase tracking-widest text-clay">
             Submitted to Styled
           </p>
-          <h1 className="mt-3 font-serif text-4xl">My orders</h1>
+          <h2 className="mt-3 font-serif text-3xl">Supplier orders</h2>
         </div>
         <HelpButton topic="orders" />
       </div>

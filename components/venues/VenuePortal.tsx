@@ -292,10 +292,11 @@ export default function VenuePortal() {
           </div>
           <nav
             aria-label="Venue management"
-            className="mb-8 grid grid-cols-3 gap-2 border-b border-sand pb-3"
+            className="mb-8 grid grid-cols-2 gap-2 border-b border-sand pb-3 sm:grid-cols-4"
           >
             {[
-              ["listing", "Listing"],
+              ["listing", "Listing details"],
+              ["media", "Photos & tours"],
               [
                 "requests",
                 `Requests (${requests.filter((r) => r.status === "new").length})`,
@@ -313,7 +314,7 @@ export default function VenuePortal() {
               </button>
             ))}
           </nav>
-          <section hidden={tab !== "listing"}>
+          <section hidden={tab !== "listing" && tab !== "media"}>
             <div className="mb-6 max-w-3xl text-sm leading-relaxed text-ink/60">
               <p>
                 Save your draft before switching venues. Draft changes stay
@@ -330,57 +331,64 @@ export default function VenuePortal() {
               id="venue-profile"
               key={`${venue.id}-${draft?.updated_at || "live"}`}
               onSubmit={profile}
+              onInvalidCapture={() => {
+                if (tab === "media") setTab("listing");
+              }}
               className="grid gap-5 rounded-2xl border border-sand bg-white p-5 sm:grid-cols-2 sm:p-8"
             >
-              {(
-                [
-                  ["name", "Venue name"],
-                  ["location", "Town / location"],
-                  ["county", "County"],
-                  ["capacity_min", "Minimum wedding guests"],
-                  ["capacity_max", "Maximum seated wedding guests"],
-                ] as const
-              ).map(([k, l]) => (
-                <label key={k} className="text-sm">
-                  {l}
-                  <input
-                    name={k}
-                    required={["name", "location", "county"].includes(k)}
-                    type={k.startsWith("capacity") ? "number" : "text"}
-                    min="1"
-                    maxLength={200}
-                    defaultValue={value[k] ?? ""}
+              <div className={tab === "listing" ? "contents" : "hidden"}>
+                {(
+                  [
+                    ["name", "Venue name"],
+                    ["location", "Town / location"],
+                    ["county", "County"],
+                    ["capacity_min", "Minimum wedding guests"],
+                    ["capacity_max", "Maximum seated wedding guests"],
+                  ] as const
+                ).map(([k, l]) => (
+                  <label key={k} className="text-sm">
+                    {l}
+                    <input
+                      name={k}
+                      required={["name", "location", "county"].includes(k)}
+                      type={k.startsWith("capacity") ? "number" : "text"}
+                      min="1"
+                      maxLength={200}
+                      defaultValue={value[k] ?? ""}
+                      className={field}
+                    />
+                  </label>
+                ))}
+                <label className="text-sm">
+                  Setting
+                  <select
+                    name="indoor_outdoor"
+                    defaultValue={value.indoor_outdoor || ""}
+                    className={field}
+                  >
+                    <option value="">Not specified</option>
+                    <option value="indoor">Indoor</option>
+                    <option value="outdoor">Outdoor</option>
+                    <option value="both">Both</option>
+                  </select>
+                </label>
+                <label className="text-sm sm:col-span-2">
+                  About your venue
+                  <textarea
+                    name="description"
+                    rows={5}
+                    maxLength={10000}
+                    defaultValue={value.description || ""}
                     className={field}
                   />
                 </label>
-              ))}
-              <label className="text-sm">
-                Setting
-                <select
-                  name="indoor_outdoor"
-                  defaultValue={value.indoor_outdoor || ""}
-                  className={field}
-                >
-                  <option value="">Not specified</option>
-                  <option value="indoor">Indoor</option>
-                  <option value="outdoor">Outdoor</option>
-                  <option value="both">Both</option>
-                </select>
-              </label>
-              <label className="text-sm sm:col-span-2">
-                About your venue
-                <textarea
-                  name="description"
-                  rows={5}
-                  maxLength={10000}
-                  defaultValue={value.description || ""}
-                  className={field}
-                />
-              </label>
-              <VenueDetailsFields details={value.details} pricesInPounds />
-              <fieldset className="grid gap-5 border-t border-sand pt-6 sm:col-span-2 sm:grid-cols-2">
+                <VenueDetailsFields details={value.details} pricesInPounds />
+              </div>
+              <fieldset
+                className={`${tab === "media" ? "grid" : "hidden"} gap-5 border-t border-sand pt-6 sm:col-span-2 sm:grid-cols-2`}
+              >
                 <legend className="mb-4 font-serif text-2xl">
-                  Photography & walkthroughs
+                  Photos, video & 3D walkthroughs
                 </legend>
                 <p className="text-sm text-ink/60 sm:col-span-2">
                   Use venue photography you have permission to publish. Uploads
@@ -490,14 +498,16 @@ export default function VenuePortal() {
                 </button>
               </div>
             </form>
-            <VenueTour
-              management
-              name={value.name}
-              url={venueEmbed(value.matterport_url, "tour")}
-            />
-            <p className="mt-3 text-xs text-ink/60">
-              This preview uses your last saved tour link.
-            </p>
+            <div hidden={tab !== "media"}>
+              <VenueTour
+                management
+                name={value.name}
+                url={venueEmbed(value.matterport_url, "tour")}
+              />
+              <p className="mt-3 text-xs text-ink/60">
+                This preview uses your last saved tour link.
+              </p>
+            </div>
           </section>
           <section hidden={tab !== "requests"}>
             <h2 className="font-serif text-3xl">Booking & viewing requests</h2>

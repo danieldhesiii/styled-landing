@@ -62,3 +62,11 @@ Catalogue and Venues are separate studio destinations. Wedding details stores th
 Three code-only fictional venue previews appear in a separate section of venue discovery. They are never published database records, included in search/date checks or accepted as studio partner venues. Their pages have no booking form or real map and are marked noindex. Preview images and capacities are illustrative. Remove the DemoVenues component from discovery when previews are no longer needed.
 
 Venue detail pages retain visible blank video and 3D walkthrough spaces until a venue provides media. The section navigation links directly to each space. Captured Matterport/Kuula tours use the existing lazy dialog; video links use the existing validated embed providers. No tour is automatically generated from photos.
+
+## Customer and business journeys
+
+The Wedding plan is the customer's private planning home: dates drive supplier checks, guests drive quantity suggestions, and budget applies to the supplier basket, excluding venue hire. Venues is discovery and requesting, not the private plan. Saving a planned venue does not confirm or reserve it. External venue names and photos remain private.
+
+Public /venues and the studio share VenueSearch, with the same filters and separate demo previews. The old /venues/requests URL redirects into My bookings, Venue requests. Supplier orders and venue requests remain separate underlying workflows but share a single customer hub; the basket is unsubmitted products.
+
+Business entry is /business. The venue workspace /venue-portal has its own layout, account controls and Listing details, Photos & tours, Requests and Calendar sections. Customer studio discovery does not contain listing promotions. Supplier tools retain their separate /portal layout. The customer account menu shows existing business memberships only, via a session-scoped read-only endpoint; that endpoint grants no access.

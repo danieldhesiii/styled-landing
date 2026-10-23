@@ -11,13 +11,19 @@ export type StudioTab =
   | "orders";
 const destinations = [
   {
+    id: "wedding",
+    label: "Wedding plan",
+    path: "M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z",
+  },
+
+  {
     id: "catalogue",
     label: "Catalogue",
     path: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
   },
   {
     id: "venues",
-    label: "Venues",
+    label: "Find venues",
     path: "M3 21h18 M5 21V9l7-6 7 6v12 M9 21v-7h6v7 M9 10h6",
   },
   {
@@ -36,13 +42,8 @@ const destinations = [
     path: "M4 4h16v16H4z M4 16l5-5 4 4 3-3 4 4 M8 8h.01",
   },
   {
-    id: "wedding",
-    label: "Wedding details",
-    path: "M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z",
-  },
-  {
     id: "orders",
-    label: "My orders",
+    label: "My bookings",
     path: "M5 3h14v18l-3-2-4 2-4-2-3 2z M9 7h6 M9 11h6",
   },
 ] as const;

@@ -47,7 +47,7 @@ export default function VendorNav({
         >
           Styled<span className="text-clay">.</span>
           <span className="ml-2 rounded-full bg-clay px-2 py-0.5 align-middle font-sans text-[10px] font-medium uppercase tracking-wider text-cream">
-            Supplier
+            Supplier workspace
           </span>
         </Link>
         <nav
@@ -69,10 +69,16 @@ export default function VendorNav({
             </Link>
           ))}
         </nav>
-        <div className="ml-auto flex items-center gap-3 text-xs text-ink/50">
+        <div className="ml-auto flex w-full min-w-0 flex-wrap items-center gap-3 text-xs text-ink/50 lg:w-auto">
           <span className="hidden text-ink/70 sm:inline">{supplier}</span>
           <span className="hidden text-ink/30 sm:inline">·</span>
           <span className="hidden sm:inline">{email}</span>
+          <Link href="/suppliers" className="underline">
+            View customer site ↗
+          </Link>
+          <Link href="/business" className="underline">
+            Workspaces
+          </Link>
           <HelpButton
             topic="suppliers"
             className="shrink-0 rounded-full border border-sand px-3 py-1.5 text-ink/70"

@@ -41,13 +41,13 @@ const FEATURES = [
   },
   {
     n: "III",
-    title: "Curated vendor network",
+    title: "Curated supplier network",
     body: "A hand-picked selection of UK florists, furniture hire, décor specialists and lighting designers, all vetted and ready to deliver.",
   },
   {
     n: "IV",
     title: "One order, door to door",
-    body: "Secure everything with a single deposit. We confirm each vendor, coordinate the details and arrange delivery to your venue on your timeline.",
+    body: "Secure everything with a single deposit. We confirm each supplier, coordinate the details and arrange delivery to your venue on your timeline.",
   },
 ];
 
@@ -62,7 +62,7 @@ const FAQS = [
   },
   {
     q: "What happens once I place an order?",
-    a: "Your order starts as a request. Styled confirms stock and availability with each vendor for your date, then you secure the whole order with a single deposit. We arrange delivery to your venue on the dates you set. You deal with us, not five different suppliers.",
+    a: "Your order starts as a request. Styled confirms stock and availability with each supplier for your date, then you secure the whole order with a single deposit. We arrange delivery to your venue on the dates you set. You deal with us, not five different suppliers.",
   },
   {
     q: "Where do you deliver?",

@@ -20,6 +20,30 @@ export default function AccountMenu({
   const [menuOpen, setMenuOpen] = useState(false);
   // Staff accounts also get a shortcut into the /admin dashboard.
   const [isStaff, setIsStaff] = useState(false);
+  const [workspaces, setWorkspaces] = useState({
+    venue: false,
+    supplier: false,
+  });
+  useEffect(() => {
+    setWorkspaces({ venue: false, supplier: false });
+    if (!email) return;
+    let active = true;
+    fetch("/api/workspaces", { cache: "no-store" })
+      .then(async (r) => {
+        if (r.ok) {
+          const d = await r.json();
+          if (active)
+            setWorkspaces({
+              venue: d.venue === true,
+              supplier: d.supplier === true,
+            });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [email]);
 
   useEffect(() => {
     if (!email) {
@@ -104,23 +128,40 @@ export default function AccountMenu({
                 </span>
               </a>
             )}
-            <a
-              href="/venues/requests"
-              className="block px-4 py-2 text-sm text-ink/70 hover:bg-cream"
-            >
-              My venue requests
-            </a>
-            {onOpenOrders && (
+            {onOpenOrders ? (
               <button
                 type="button"
                 onClick={() => {
                   setMenuOpen(false);
                   onOpenOrders();
                 }}
-                className="block w-full px-4 py-2 text-left text-sm text-ink/70 hover:bg-cream hover:text-ink transition-colors"
+                className="block w-full px-4 py-2 text-left text-sm text-ink/70 hover:bg-cream"
               >
-                My orders
+                My bookings
               </button>
+            ) : (
+              <a
+                href="/design?tab=orders"
+                className="block px-4 py-2 text-sm text-ink/70 hover:bg-cream"
+              >
+                My bookings
+              </a>
+            )}
+            {workspaces.venue && (
+              <a
+                href="/venue-portal"
+                className="block border-t border-sand px-4 py-2 text-sm text-ink/70 hover:bg-cream"
+              >
+                Switch to venue workspace ↗
+              </a>
+            )}
+            {workspaces.supplier && (
+              <a
+                href="/portal"
+                className="block px-4 py-2 text-sm text-ink/70 hover:bg-cream"
+              >
+                Switch to supplier workspace ↗
+              </a>
             )}
             <button
               type="button"

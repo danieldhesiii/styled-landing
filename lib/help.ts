@@ -21,10 +21,10 @@ type Guide = {
 };
 export const HELP_GUIDES: Record<HelpTopic, Guide> = {
   wedding: {
-    label: "Wedding details",
-    title: "Keep your plans together",
+    label: "Wedding plan",
+    title: "Your wedding plan guides your shopping",
     intro:
-      "Save your own venue, photographs, dates and budget in your private account.",
+      "The plan holds your dates, guests, supplier basket budget and chosen venue. Venues is a separate directory for discovering places and sending booking requests.",
     steps: [
       {
         title: "Choose your starting point",
@@ -36,7 +36,7 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
       },
       {
         title: "Keep your photographs",
-        body: "Upload your venue rooms and angles. Set the first image as the visualiser starting point, then save wedding details to continue on another device.",
+        body: "Upload your venue rooms and angles. Set the first image as the visualiser starting point, then save wedding plan to continue on another device.",
       },
     ],
     note: "Your own venue and photos stay private. Delivery times, fees and collection are confirmed separately; selecting dates is not a confirmed booking.",
@@ -60,7 +60,7 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
         body: "Use Add to basket on real catalogue pieces. Inspiration images and generated looks are illustrative and cannot be ordered as photographs.",
       },
     ],
-    note: "Boards stay private. Adding a piece to a board does not reserve stock, change your basket or start image generation. Save wedding details before navigating away if you have edited them.",
+    note: "Boards stay private. Adding a piece to a board does not reserve stock, change your basket or start image generation. Save wedding plan before navigating away if you have edited them.",
   },
   catalogue: {
     label: "Catalogue",
@@ -69,8 +69,8 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
       "Start with the products. You can shop and save without using image generation.",
     steps: [
       {
-        title: "Set your wedding details",
-        body: "Use Wedding details for your venue, guest count and budget. Set a wedding day and, if different, an earlier delivery day. Stock is checked across that interval. A venue choice is optional.",
+        title: "Set your wedding plan",
+        body: "Use Wedding plan for your venue, guest count and budget. Set a wedding day and, if different, an earlier delivery day. Stock is checked across that interval. A venue choice is optional.",
       },
       {
         title: "Browse your way",
@@ -88,7 +88,7 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
     note: "Prices, date availability and supplier confirmation are checked again as your plans move forward.",
   },
   venues: {
-    label: "Venues",
+    label: "Find venues",
     title: "Choose a setting for your plans",
     intro:
       "Explore venues in their own section, then continue shopping for the pieces that suit your space.",
@@ -103,14 +103,14 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
       },
       {
         title: "Choose a venue for your design",
-        body: "Choose this venue returns you to the catalogue with that venue selected. Your basket stays with you, and choosing a venue does not start image generation.",
+        body: "Save to wedding plan records a venue as your personal planning choice and opens your Wedding plan. It does not send a request or confirm a booking. Use the venue detail page to request a date, and My bookings to track the response.",
       },
       {
         title: "Use your own space",
-        body: "If you already have a venue, use your own photograph in the AI visualiser. You can change your selected venue from the wedding details bar.",
+        body: "If you already have a venue, use your own photograph in the AI visualiser. You can change your selected venue from the wedding plan bar.",
       },
     ],
-    note: "Sign in to send a booking or viewing request, then follow the response in My venue requests. Venue teams can suggest alternative dates or confirm a booking manually. Venue hire, contracts and payment are separate from supplier basket orders. Venue owners can create a private listing in the venue workspace and submit it for review.",
+    note: "Sign in to send a booking or viewing request, then follow the response in My bookings, then Venue requests. Venue teams can suggest alternative dates or confirm a booking manually. Venue hire, contracts and payment are separate from supplier basket orders. Venue businesses have a separate workspace, accessible from For businesses on the public website.",
   },
   saved_items: {
     label: "Saved items",
@@ -206,20 +206,20 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
       },
       {
         title: "Keep the confirmation",
-        body: "After a successful request, keep your reference and follow its progress in My orders or Track order. Styled reviews supplier confirmation manually before a booking is confirmed. Suppliers can reply with alternative dates when needed.",
+        body: "After a successful request, keep your reference and follow its progress in My bookings or Track order. Styled reviews supplier confirmation manually before a booking is confirmed. Suppliers can reply with alternative dates when needed.",
       },
     ],
     note: "In this preview the card-payment step is a placeholder, and no card is charged. The deposit shown in your quote is not a completed payment.",
   },
   orders: {
-    label: "Orders",
+    label: "My bookings",
     title: "Follow your order request",
     intro:
-      "Use My orders in the studio or Track order on the public website to follow your request.",
+      "Open My bookings for Supplier orders and Venue requests. The basket holds products that have not been submitted.",
     steps: [
       {
         title: "Find your request",
-        body: "Open My orders for requests associated with your account or current session. You can also use Track order with the reference and email used when ordering.",
+        body: "Open My bookings for requests associated with your account or current session. You can also use Track order with the reference and email used when ordering.",
       },
       {
         title: "Read the current status",

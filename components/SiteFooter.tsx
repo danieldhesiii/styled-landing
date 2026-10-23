@@ -33,21 +33,18 @@ export default function SiteFooter() {
           </div>
           <div className="flex flex-col gap-2">
             <span className="text-xs uppercase tracking-wide text-ink/40">
-              Get started
+              For couples
             </span>
             <a href="/venues" className="text-ink/70 hover:text-ink">
               Explore venues
             </a>
-            <a href="/venues/partner" className="text-ink/70 hover:text-ink">
-              Venue partnerships
+            <a href="/design?tab=orders" className="text-ink/70 hover:text-ink">
+              My bookings
             </a>
-            <a href="/venue-portal" className="text-ink/70 hover:text-ink">
-              Venue team login
-            </a>
-            <a href="/venues/requests" className="text-ink/70 hover:text-ink">
-              My venue requests
-            </a>
-            <a href="/design" className="text-ink/70 hover:text-ink">
+            <a
+              href="/design?tab=wedding"
+              className="text-ink/70 hover:text-ink"
+            >
               Design your wedding
             </a>
             <a href="/order" className="text-ink/70 hover:text-ink">
@@ -56,16 +53,22 @@ export default function SiteFooter() {
           </div>
           <div className="flex flex-col gap-2">
             <span className="text-xs uppercase tracking-wide text-ink/40">
-              Suppliers
+              For businesses
             </span>
-            <a href="/suppliers" className="text-ink/70 hover:text-ink">
-              Meet our suppliers
+            <a href="/business" className="text-ink/70 hover:text-ink">
+              Business workspaces
+            </a>
+            <a href="/venues/partner" className="text-ink/70 hover:text-ink">
+              List your venue
+            </a>
+            <a href="/venue-portal" className="text-ink/70 hover:text-ink">
+              Venue workspace
             </a>
             <a href="/suppliers/join" className="text-ink/70 hover:text-ink">
-              List your business
+              Join as a supplier
             </a>
             <a href="/portal/login" className="text-ink/70 hover:text-ink">
-              Supplier login
+              Supplier workspace
             </a>
           </div>
         </nav>
