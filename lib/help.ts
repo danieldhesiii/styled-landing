@@ -45,15 +45,15 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
     label: "Boards",
     title: "Collect ideas for your wedding",
     intro:
-      "Private boards bring your products, inspiration, saved looks and notes into one place.",
+      "Private boards bring your products, inspiration, saved looks and notes into one place. Google Photos and Pinterest icons explain the available import steps.",
     steps: [
       {
         title: "Create a board",
-        body: "Open Saved, then Boards. Name a board for your ceremony, reception or a style you want to explore.",
+        body: "Open Boards in the main navigation. Name a board for your ceremony, reception or a style you want to explore.",
       },
       {
         title: "Build the idea",
-        body: "Add catalogue pieces, upload your inspiration images, write notes or choose a look already saved in the visualiser. Board changes save to your account.",
+        body: "Add catalogue pieces, upload your inspiration images, write notes or choose a look already saved in the visualiser. Board changes save to your account. Use board in visualiser prepares photos, catalogue pieces and notes without changing your venue or basket. Direct Google Photos and Pinterest account imports still need setup; photo upload and Pinterest link saving work now.",
       },
       {
         title: "Shop when ready",

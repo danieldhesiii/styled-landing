@@ -6,6 +6,8 @@ import type { SavedLook } from "@/components/design/SavedLooks";
 import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
 import { formatGBP } from "@/lib/quote";
+import BoardImports from "./BoardImports";
+import { pinterestLink } from "@/lib/board-inspiration";
 function LookImage({ id }: { id: string }) {
   const [url, setUrl] = useState(""),
     [error, setError] = useState(false);
@@ -50,7 +52,21 @@ export default function Boards({
   savedIds,
   looks,
   onAdd,
+  onOpenSaved,
+  onOpenLooks,
+  onUseBoard,
+  onSaveItem,
+  onOpenLook,
+  savedError,
+  savingItems,
 }: {
+  savedError?: string;
+  savingItems: Set<string>;
+  onOpenSaved: () => void;
+  onOpenLooks: () => void;
+  onUseBoard: (board: WeddingBoard) => void;
+  onSaveItem: (id: string) => void;
+  onOpenLook: (id: string) => Promise<void>;
   embedded?: boolean;
   boards: WeddingBoard[];
   onSave: (next: WeddingBoard[]) => Promise<boolean>;
@@ -84,7 +100,7 @@ export default function Boards({
     ref: string | undefined,
     text = "",
   ) {
-    if (!board) return;
+    if (!board) throw Error("Choose a board first.");
     setError("");
     if (
       await update([
@@ -95,7 +111,11 @@ export default function Boards({
       setNote("");
       setProduct("");
       setLook("");
+    } else {
+      setError("Could not save your board. Please try again.");
+      return false;
     }
+    return true;
   }
   async function upload(f?: File) {
     if (!f || !board) return;
@@ -123,9 +143,7 @@ export default function Boards({
           <p className="text-xs uppercase tracking-widest text-clay">
             Collect what feels like you
           </p>
-          <h1 className="mt-3 font-serif text-4xl sm:text-5xl">
-            Wedding boards
-          </h1>
+          <h1 className="mt-3 font-serif text-4xl sm:text-5xl">Boards</h1>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink/60">
             Bring together real catalogue pieces, private inspiration and saved
             looks. Your boards stay private, and saving here does not reserve
@@ -133,6 +151,48 @@ export default function Boards({
           </p>
         </>
       )}
+      {savedError && (
+        <p role="alert" className="mt-4 text-sm text-clay">
+          {savedError}
+        </p>
+      )}
+      <nav
+        aria-label="Board shortcuts"
+        className="my-5 flex flex-wrap gap-3 text-sm"
+      >
+        <button
+          type="button"
+          onClick={onOpenSaved}
+          className="min-h-10 rounded-full border border-sand px-4"
+        >
+          ♡ Saved items →
+        </button>
+        <button
+          type="button"
+          onClick={onOpenLooks}
+          className="min-h-10 rounded-full border border-sand px-4"
+        >
+          ▧ Saved looks →
+        </button>
+      </nav>
+      <BoardImports
+        disabled={disabled || !board}
+        onUpload={() => file.current?.click()}
+        onLink={async (url) => {
+          if (!(await pin("note", undefined, `Pinterest: ${url}`)))
+            throw Error("Could not save link");
+        }}
+      />
+      <input
+        ref={file}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+        className="hidden"
+        onChange={(e) => {
+          void upload(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
       <details open={!boards.length} className="mb-5">
         <summary className="w-fit cursor-pointer rounded-full border border-sand px-4 py-2 text-sm">
           New board
@@ -197,6 +257,26 @@ export default function Boards({
             <p className="text-xs text-ink/60">
               {board.pins.length} {board.pins.length === 1 ? "idea" : "ideas"}{" "}
               saved
+            </p>
+          </div>
+          <div className="mb-5 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled={
+                disabled ||
+                !board.pins.some(
+                  (p) => p.kind !== "look" && !p.text.startsWith("Pinterest: "),
+                )
+              }
+              onClick={() => onUseBoard(board)}
+              className="min-h-11 rounded-full bg-ink px-5 py-3 text-sm text-cream disabled:opacity-50"
+            >
+              Use board in visualiser →
+            </button>
+            <p className="max-w-xl text-xs leading-relaxed text-ink/60">
+              Prepares up to 3 inspiration photos, 12 catalogue pieces and your
+              notes for a new look. No image is generated until you choose
+              Generate. Open saved AI looks individually below.
             </p>
           </div>
           <details className="border-y border-sand py-4">
@@ -279,16 +359,6 @@ export default function Boards({
                 >
                   {uploading ? "Uploading…" : "Upload inspiration"}
                 </button>
-                <input
-                  ref={file}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
-                  className="hidden"
-                  onChange={(e) => {
-                    void upload(e.target.files?.[0]);
-                    e.target.value = "";
-                  }}
-                />
               </div>
               <form
                 onSubmit={(e) => {
@@ -332,6 +402,10 @@ export default function Boards({
           )}
           <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {board.pins.map((p) => {
+              const sourceLink =
+                p.kind === "note" && p.text.startsWith("Pinterest: ")
+                  ? pinterestLink(p.text.slice(11))
+                  : null;
               const item = p.kind === "product" ? getItem(p.ref || "") : null;
               return (
                 <article
@@ -371,18 +445,58 @@ export default function Boards({
                     <p className="mt-2 font-serif text-xl">
                       {item?.name ||
                         (p.kind === "note"
-                          ? p.text
+                          ? sourceLink
+                            ? "Pinterest board or Pin"
+                            : p.text
                           : p.kind === "product"
                             ? "Piece no longer listed"
                             : p.kind === "photo"
                               ? p.text
                               : "Saved wedding look")}
                     </p>
+                    {sourceLink && (
+                      <a
+                        href={sourceLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-flex min-h-10 items-center text-sm underline"
+                      >
+                        Open Pinterest inspiration ↗
+                      </a>
+                    )}
+                    {p.kind === "look" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setError("");
+                          void onOpenLook(p.ref!).catch((e) =>
+                            setError(e.message),
+                          );
+                        }}
+                        className="mt-3 rounded-full border border-sand px-4 py-2 text-sm"
+                      >
+                        Open in visualiser →
+                      </button>
+                    )}
                     {item && (
                       <>
                         <p className="mt-2 text-sm">
                           {formatGBP(item.unitPrice)} {item.unit}
                         </p>
+                        <button
+                          type="button"
+                          disabled={
+                            disabled ||
+                            savedIds.includes(item.id) ||
+                            savingItems.has(item.id)
+                          }
+                          onClick={() => onSaveItem(item.id)}
+                          className="mt-3 mr-2 rounded-full border border-sand px-4 py-2 text-sm disabled:opacity-60"
+                        >
+                          {savedIds.includes(item.id)
+                            ? "Saved to items ✓"
+                            : "Save to items"}
+                        </button>
                         <button
                           type="button"
                           onClick={() => onAdd(item)}
@@ -407,11 +521,6 @@ export default function Boards({
               );
             })}
           </div>
-          {!board.pins.length && (
-            <p className="mt-5 rounded-xl bg-cream p-6 text-sm text-ink/60">
-              Your first piece or idea will appear here.
-            </p>
-          )}
         </>
       )}
     </section>

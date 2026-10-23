@@ -37,6 +37,8 @@ import {
   type WeddingBoard,
 } from "@/lib/wedding";
 
+import { prepareBoard, type BoardInspiration } from "@/lib/board-inspiration";
+
 type Step = "studio" | "checkout";
 
 export default function DesignPage() {
@@ -64,6 +66,8 @@ export default function DesignPage() {
   }, [mobileBasketOpen]);
   const [step, setStep] = useState<Step>("studio");
   const [showHowTo, setShowHowTo] = useState(false);
+  const [boardInspiration, setBoardInspiration] =
+    useState<BoardInspiration | null>(null);
   const [savedLooks, setSavedLooks] = useState<SavedLook[]>([]);
 
   const [brief, setBrief] = useState<Brief>({
@@ -389,6 +393,7 @@ export default function DesignPage() {
   }
 
   function loadSavedLook(look: SavedLook, url: string, itemIds?: string[]) {
+    setBoardInspiration(null);
     // Set the style without wiping the render (patchBrief would clear it).
     setBrief((b) => ({ ...b, styleId: look.styleId }));
     showRender({ id: look.id, url, itemIds });
@@ -677,9 +682,7 @@ export default function DesignPage() {
                 </button>
               </div>
             )}
-            {(["saved", "looks", "boards"] as StudioTab[]).includes(
-              studioTab,
-            ) && (
+            {(["saved", "looks"] as StudioTab[]).includes(studioTab) && (
               <section aria-labelledby="saved-title" className="mb-6">
                 <p className="text-xs text-clay">Your private collection</p>
                 <h1
@@ -689,7 +692,7 @@ export default function DesignPage() {
                   Saved
                 </h1>
                 <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/60">
-                  Keep favourite pieces, generated looks and inspiration boards
+                  Keep your favourite catalogue pieces and generated looks
                   together.
                 </p>
                 <nav
@@ -700,7 +703,6 @@ export default function DesignPage() {
                     [
                       ["saved", "Items", savedItems.ids.length],
                       ["looks", "Looks", savedLooks.length],
-                      ["boards", "Boards", boards.length],
                     ] as const
                   ).map(([tab, label, count]) => (
                     <button
@@ -777,7 +779,6 @@ export default function DesignPage() {
             </div>
             <div hidden={studioTab !== "boards"}>
               <Boards
-                embedded
                 boards={boards}
                 onSave={saveWorkspace}
                 busy={workspaceSaving}
@@ -789,6 +790,27 @@ export default function DesignPage() {
                 savedIds={savedItems.ids}
                 looks={savedLooks}
                 onAdd={addItem}
+                savedError={savedItems.error || undefined}
+                savingItems={savedItems.busy}
+                onOpenSaved={() => switchStudioTab("saved")}
+                onOpenLooks={() => switchStudioTab("looks")}
+                onSaveItem={(id) => {
+                  if (!savedItems.ids.includes(id)) void savedItems.toggle(id);
+                }}
+                onUseBoard={(board) => {
+                  setBoardInspiration(prepareBoard(board));
+                  setRenderId(null);
+                  openVisualiser();
+                }}
+                onOpenLook={async (id) => {
+                  const look = savedLooks.find((l) => l.id === id);
+                  if (!look) throw Error("This look is no longer saved.");
+                  const response = await fetch(`/api/renders/${id}`);
+                  const data = await response.json();
+                  if (!response.ok || !data.imageUrl)
+                    throw Error("This look is no longer available.");
+                  loadSavedLook(look, data.imageUrl, data.itemIds);
+                }}
               />
             </div>
             <div hidden={studioTab !== "catalogue" && studioTab !== "venues"}>
@@ -915,6 +937,59 @@ export default function DesignPage() {
                       Back to catalogue
                     </button>
                   </div>
+                  {boardInspiration && (
+                    <section
+                      aria-label="Board inspiration ready"
+                      className="border-b border-sand bg-white p-5"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h2 className="font-serif text-2xl">
+                          From {boardInspiration.name}
+                        </h2>
+                        <button
+                          type="button"
+                          onClick={() => setBoardInspiration(null)}
+                          className="min-h-10 rounded-full border border-sand px-4 text-xs"
+                        >
+                          Remove board inspiration
+                        </button>
+                      </div>
+                      <p className="mt-2 text-sm leading-relaxed text-ink/60">
+                        {boardInspiration.photoIds.length} inspiration photos
+                        and {boardInspiration.itemIds.length} catalogue pieces
+                        prepared for a new look. Your venue photo and basket are
+                        unchanged. Choose a venue photo or an example room, then
+                        generate when ready.
+                      </p>
+                      {!!boardInspiration.photoIds.length && (
+                        <div className="mt-3 flex gap-2">
+                          {boardInspiration.photoIds.map(
+                            (id) =>
+                              workspacePhotos[id] && (
+                                <img
+                                  key={id}
+                                  src={workspacePhotos[id]}
+                                  alt="Board inspiration reference"
+                                  className="h-16 w-20 rounded-lg object-cover"
+                                />
+                              ),
+                          )}
+                        </div>
+                      )}
+                      {boardInspiration.notes && (
+                        <p className="mt-3 text-xs text-ink/60">
+                          Board notes: {boardInspiration.notes}
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => switchStudioTab("boards")}
+                        className="mt-3 min-h-10 text-xs underline"
+                      >
+                        Back to boards
+                      </button>
+                    </section>
+                  )}
                   <div id="studio-visualiser">
                     {partnerError && (
                       <p role="alert" className="p-4 text-sm">
@@ -929,7 +1004,13 @@ export default function DesignPage() {
                       renderUrl={currentRender?.url ?? null}
                       renderId={renderId}
                       versions={versions}
-                      itemIds={basket.map((l) => l.itemId)}
+                      itemIds={[
+                        ...new Set([
+                          ...basket.map((l) => l.itemId),
+                          ...(boardInspiration?.itemIds || []),
+                        ]),
+                      ]}
+                      boardInspiration={boardInspiration}
                       deliveryDate={deliveryDay(brief)}
                       weddingDate={brief.weddingDate}
                       onWeddingDate={(d) => patchBrief({ weddingDate: d })}

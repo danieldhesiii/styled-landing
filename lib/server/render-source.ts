@@ -1,3 +1,4 @@
+import { loadSelectedPhotoBuffers } from "./selected-photos";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import { readPublicImage } from "@/lib/server/public-images";
@@ -37,7 +38,29 @@ async function describe(
 export async function loadUploadedPhotos(opts: {
   supabase: SupabaseClient; // runs as the guest, so RLS limits it to their data
   primaryIndex: number;
+  userId: string;
+  photoIds?: string[];
 }): Promise<BaseImages | null> {
+  if (opts.photoIds !== undefined) {
+    if (!opts.photoIds.length) return null;
+    const primary = Math.min(
+      Math.max(0, Math.floor(opts.primaryIndex) || 0),
+      opts.photoIds.length - 1,
+    );
+    const ordered = [
+      opts.photoIds[primary],
+      ...opts.photoIds.filter((_, i) => i !== primary),
+    ].slice(0, env.maxReferencePhotos);
+    const selected = await loadSelectedPhotoBuffers(
+      opts.supabase,
+      opts.userId,
+      ordered,
+    );
+    return describe(selected.buffers, {
+      dbVenueId: selected.rows[0].venue_id,
+      photoIds: ordered,
+    });
+  }
   const { supabase } = opts;
   const { data: venue } = await supabase
     .from("venues")

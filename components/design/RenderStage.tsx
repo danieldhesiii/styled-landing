@@ -17,7 +17,10 @@ export interface RenderRef {
   look?: LookReport;
 }
 
+import type { BoardInspiration } from "@/lib/board-inspiration";
+
 interface Props {
+  boardInspiration?: BoardInspiration | null;
   venue: SampleVenue;
   uploadedImages: { id: string; url: string }[];
   style: StylePreset;
@@ -82,6 +85,7 @@ const STYLE_BLURBS: Record<string, string> = {
 };
 
 export default function RenderStage({
+  boardInspiration,
   venue,
   uploadedImages,
   style,
@@ -253,10 +257,19 @@ export default function RenderStage({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: description.trim(),
+          prompt: [
+            description.trim(),
+            !refining && boardInspiration?.notes
+              ? `Board mood notes: ${boardInspiration.notes}`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(". "),
           styleId: useStyleId,
           venueId: venue.id,
           images: uploadedImages.map((p) => p.url),
+          photoIds: uploadedImages.map((p) => p.id),
+          inspirationPhotoIds: refining ? [] : boardInspiration?.photoIds || [],
           itemIds,
           guestCount,
           weddingDate: weddingDate || undefined,

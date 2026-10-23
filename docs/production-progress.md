@@ -1,3 +1,5 @@
+See [boards-workspace.md](boards-workspace.md) for the independent Boards tab, Saved/visualiser links and provider import guides.
+
 See [studio-navigation.md](studio-navigation.md) for the navigation simplification and planned Google Photos/Pinterest inspiration imports inside Boards.
 
 See [manual-order-review.md](manual-order-review.md) for the latest manual approval, support email, full studio sections and inline visualiser shopping changes.

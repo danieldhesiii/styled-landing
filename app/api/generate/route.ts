@@ -16,6 +16,11 @@ import {
   cleanBrief,
   MAX_ITEMS,
 } from "@/lib/server/render-prompt";
+import {
+  parsePhotoSelection,
+  inspirationInstruction,
+} from "@/lib/board-inspiration";
+import { loadSelectedPhotoBuffers } from "@/lib/server/selected-photos";
 import { sizeFor } from "@/lib/server/image-model";
 import {
   loadParentRender,
@@ -47,6 +52,8 @@ export const maxDuration = 300;
 // catalogue; spend limits are enforced here.
 
 interface GenerateRequest {
+  photoIds?: unknown;
+  inspirationPhotoIds?: unknown;
   prompt?: unknown;
   styleId?: unknown;
   venueId?: unknown;
@@ -78,6 +85,17 @@ export async function POST(req: Request) {
     return fail(400, "Invalid request body.");
   }
 
+  let photoIds: string[] | undefined, inspirationPhotoIds: string[];
+  try {
+    photoIds =
+      body.photoIds === undefined
+        ? undefined
+        : parsePhotoSelection(body.photoIds, 20);
+    inspirationPhotoIds = parsePhotoSelection(body.inspirationPhotoIds);
+  } catch {
+    return fail(400, "Choose valid private photos within the image limit.");
+  }
+
   // "none" means description-led: the couple skipped the preset styles and the
   // design comes entirely from their own description.
   const styleId =
@@ -96,7 +114,10 @@ export async function POST(req: Request) {
     );
   }
   const sampleVenueId = typeof body.venueId === "string" ? body.venueId : "";
-  const useUpload = Array.isArray(body.images) && body.images.length > 0;
+  const useUpload =
+    photoIds !== undefined
+      ? photoIds.length > 0
+      : Array.isArray(body.images) && body.images.length > 0;
   const primaryIndex =
     typeof body.primaryIndex === "number" ? body.primaryIndex : 0;
   const guestCount = Math.min(
@@ -231,7 +252,12 @@ export async function POST(req: Request) {
   } else {
     try {
       const uploaded = useUpload
-        ? await loadUploadedPhotos({ supabase, primaryIndex })
+        ? await loadUploadedPhotos({
+            supabase,
+            primaryIndex,
+            userId: user.id,
+            photoIds,
+          })
         : null;
       // Fall back to the sample venue if the upload can't be found.
       base =
@@ -257,6 +283,17 @@ export async function POST(req: Request) {
       }
     }
 
+    let inspirationImages: Buffer[] = [];
+    try {
+      inspirationImages = (
+        await loadSelectedPhotoBuffers(supabase, user.id, inspirationPhotoIds)
+      ).buffers;
+    } catch {
+      return fail(
+        400,
+        "One of your board inspiration photos is no longer available. Return to Boards and choose it again.",
+      );
+    }
     prompt = buildRenderPrompt({
       style,
       brief,
@@ -268,6 +305,11 @@ export async function POST(req: Request) {
       leftPlain: look.leftPlain.map((c) => categoryMeta(c).label),
     });
 
+    if (inspirationImages.length)
+      prompt += "\n\n" + inspirationInstruction(inspirationImages.length);
+    // Keep source venue ids first so saved looks still know their original room.
+    (base as typeof base & { inspirationImages: Buffer[] }).inspirationImages =
+      inspirationImages;
     // Stash item images so runRenderJob can append them as reference images.
     (base as typeof base & { itemImages: Buffer[] }).itemImages = itemImages;
 
@@ -344,7 +386,12 @@ export async function POST(req: Request) {
       admin,
       renderId,
       userId: user.id,
-      images: [...base.images, ...itemImages],
+      images: [
+        ...base.images,
+        ...itemImages,
+        ...((base as typeof base & { inspirationImages?: Buffer[] })
+          .inspirationImages || []),
+      ],
       prompt,
       size,
     }),
