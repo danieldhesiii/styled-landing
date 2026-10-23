@@ -135,6 +135,10 @@ export default function RenderStage({
   const [setting, setSetting] = useState<SceneId>(DEFAULT_SCENE);
   const [improving, setImproving] = useState(false);
   const [improveError, setImproveError] = useState<string | null>(null);
+  // Which model produced the current render ("gpt-image-1", "gemini-…", etc.).
+  const [renderModel, setRenderModel] = useState<string | null>(null);
+  // Whether the in-flight generation is a quick draft (low quality, gpt-image-1).
+  const [pendingDraft, setPendingDraft] = useState(false);
   const [activeExample, setActiveExample] = useState<
     (typeof EXAMPLE_VENUES)[number] | null
   >(null);
@@ -146,6 +150,13 @@ export default function RenderStage({
   );
   const live = useRef({ styleId: style.id, venueId: venue.id });
   live.current = { styleId: style.id, venueId: venue.id };
+
+  // Clear the model badge whenever the render is cleared (e.g. "Start over").
+  const prevRenderId = useRef(renderId);
+  if (prevRenderId.current !== renderId) {
+    prevRenderId.current = renderId;
+    if (!renderId) setRenderModel(null);
+  }
 
   const uploadedPreview = uploadedImages[primary]?.url ?? null;
   // When an example venue is active and no real upload exists, use the example
@@ -250,6 +261,7 @@ export default function RenderStage({
     if (!refining) onStyle(useStyleId);
     setSending(true);
     setGenError(null);
+    setPendingDraft(!!opts?.draft);
     const sentFor = { styleId: useStyleId, venueId: venue.id };
 
     try {
@@ -295,6 +307,7 @@ export default function RenderStage({
             itemIds: done.itemIds,
             look: done.look,
           });
+          setRenderModel(done.model ?? null);
           setShowShopPrompt(true);
         }
       } else if (data?.imageUrl) {
@@ -324,7 +337,7 @@ export default function RenderStage({
 
   async function waitForRender(
     id: string,
-  ): Promise<{ imageUrl: string; itemIds?: string[]; look?: LookReport }> {
+  ): Promise<{ imageUrl: string; itemIds?: string[]; look?: LookReport; model?: string }> {
     const deadline = Date.now() + 7 * 60 * 1000;
     let failures = 0;
     while (Date.now() < deadline) {
@@ -342,6 +355,7 @@ export default function RenderStage({
           imageUrl: data.imageUrl,
           itemIds: data.itemIds,
           look: data.look ?? undefined,
+          model: data.model ?? undefined,
         };
       if (data?.status === "failed" || data?.ok === false) {
         throw new Error(data?.error ?? "Render failed.");
@@ -403,7 +417,12 @@ export default function RenderStage({
   const generatingOverlay = sending && (
     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-ink/50 backdrop-blur-sm">
       <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-      <p className="text-sm text-white">Generating your look…</p>
+      <p className="text-sm text-white">
+        {pendingDraft ? "Generating quick preview…" : "Generating your look…"}
+      </p>
+      {pendingDraft && (
+        <p className="text-xs text-white/60">Lower quality · faster</p>
+      )}
     </div>
   );
 
@@ -448,6 +467,22 @@ export default function RenderStage({
         <span className="rounded-full border border-white/40 bg-white/15 px-3 py-1 text-[11px] text-white backdrop-blur-sm">
           {styleName}
         </span>
+        {renderModel && (
+          <span
+            title={renderModel}
+            className={`rounded-full border px-2.5 py-1 text-[11px] backdrop-blur-sm ${
+              renderModel.includes("gemini")
+                ? "border-sky-300/50 bg-sky-500/25 text-sky-100"
+                : "border-white/25 bg-white/10 text-white/60"
+            }`}
+          >
+            {renderModel.includes("gemini")
+              ? "✦ Gemini"
+              : renderModel === "gpt-image-1"
+                ? "⚡ GPT"
+                : renderModel.slice(0, 12)}
+          </span>
+        )}
         <button
           type="button"
           onClick={() => onRender(null)}
