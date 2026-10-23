@@ -40,6 +40,7 @@ function LookImage({ id }: { id: string }) {
   );
 }
 export default function Boards({
+  embedded = false,
   boards,
   onSave,
   busy,
@@ -50,6 +51,7 @@ export default function Boards({
   looks,
   onAdd,
 }: {
+  embedded?: boolean;
   boards: WeddingBoard[];
   onSave: (next: WeddingBoard[]) => Promise<boolean>;
   busy: boolean;
@@ -112,17 +114,27 @@ export default function Boards({
     }
   }
   return (
-    <section className="rounded-2xl border border-sand bg-white p-5 sm:p-8">
-      <p className="text-xs uppercase tracking-widest text-clay">
-        Collect what feels like you
-      </p>
-      <h1 className="mt-3 font-serif text-4xl sm:text-5xl">Wedding boards</h1>
-      <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink/60">
-        Bring together real catalogue pieces, private inspiration and saved
-        looks. Your boards stay private, and saving here does not reserve stock.
-      </p>
+    <section
+      aria-label="Wedding boards"
+      className="rounded-2xl border border-sand bg-white p-5 sm:p-8"
+    >
+      {!embedded && (
+        <>
+          <p className="text-xs uppercase tracking-widest text-clay">
+            Collect what feels like you
+          </p>
+          <h1 className="mt-3 font-serif text-4xl sm:text-5xl">
+            Wedding boards
+          </h1>
+          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink/60">
+            Bring together real catalogue pieces, private inspiration and saved
+            looks. Your boards stay private, and saving here does not reserve
+            stock.
+          </p>
+        </>
+      )}
       <form
-        className="mt-7 flex flex-wrap items-end gap-3"
+        className="flex flex-wrap items-end gap-3"
         onSubmit={async (e) => {
           e.preventDefault();
           if (!name.trim()) return;

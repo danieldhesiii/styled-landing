@@ -10,7 +10,11 @@ const CHIP =
 
 // Header control: a Log in / Sign up button for guests, or the signed-in email
 // with a dropdown (My orders, Log out) for couples with an account.
-export default function AccountMenu({ onOpenOrders }: { onOpenOrders?: () => void }) {
+export default function AccountMenu({
+  onOpenOrders,
+}: {
+  onOpenOrders?: () => void;
+}) {
   const { isAnonymous, email, loading } = useUser();
   const [authOpen, setAuthOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -18,12 +22,21 @@ export default function AccountMenu({ onOpenOrders }: { onOpenOrders?: () => voi
   const [isStaff, setIsStaff] = useState(false);
 
   useEffect(() => {
-    if (!email) { setIsStaff(false); return; }
+    if (!email) {
+      setIsStaff(false);
+      return;
+    }
     let active = true;
     fetch("/api/admin/me", { cache: "no-store" })
-      .then((r) => { if (active) setIsStaff(r.ok); })
-      .catch(() => { if (active) setIsStaff(false); });
-    return () => { active = false; };
+      .then((r) => {
+        if (active) setIsStaff(r.ok);
+      })
+      .catch(() => {
+        if (active) setIsStaff(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [email]);
 
   async function logout() {
@@ -38,10 +51,16 @@ export default function AccountMenu({ onOpenOrders }: { onOpenOrders?: () => voi
   if (isAnonymous || !email) {
     return (
       <>
-        <button type="button" onClick={() => setAuthOpen(true)} className={CHIP}>
+        <button
+          type="button"
+          onClick={() => setAuthOpen(true)}
+          className={CHIP}
+        >
           <span className="text-[11px] text-clay">◔</span> Log in / Sign up
         </button>
-        {authOpen && <AuthDialog initialMode="signup" onClose={() => setAuthOpen(false)} />}
+        {authOpen && (
+          <AuthDialog initialMode="signup" onClose={() => setAuthOpen(false)} />
+        )}
       </>
     );
   }
@@ -50,30 +69,48 @@ export default function AccountMenu({ onOpenOrders }: { onOpenOrders?: () => voi
   const initial = email.charAt(0).toUpperCase();
   return (
     <div className="relative">
-      <button type="button" onClick={() => setMenuOpen((o) => !o)} className={CHIP} aria-haspopup="menu" aria-expanded={menuOpen}>
+      <button
+        type="button"
+        onClick={() => setMenuOpen((o) => !o)}
+        className={CHIP}
+        aria-label="Account menu"
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+      >
         <span className="flex h-4 w-4 items-center justify-center rounded-full bg-clay text-[9px] font-medium text-cream">
           {initial}
         </span>
-        <span className="max-w-[12ch] truncate">{email}</span>
+        <span className="hidden max-w-[12ch] truncate sm:inline">{email}</span>
       </button>
       {menuOpen && (
         <>
-          <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} aria-hidden />
+          <div
+            className="fixed inset-0 z-30"
+            onClick={() => setMenuOpen(false)}
+            aria-hidden
+          />
           <div className="absolute right-0 top-full z-40 mt-2 w-52 overflow-hidden rounded-2xl border border-sand bg-white py-1 shadow-xl">
-            <p className="truncate px-4 py-2 text-[11px] text-ink/40">{email}</p>
+            <p className="truncate px-4 py-2 text-[11px] text-ink/40">
+              {email}
+            </p>
             {isStaff && (
               <a
                 href="/admin"
                 className="flex items-center justify-between px-4 py-2 text-left text-sm text-ink/70 hover:bg-cream hover:text-ink transition-colors"
               >
                 Admin dashboard
-                <span className="rounded-full bg-ink px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-cream">Staff</span>
+                <span className="rounded-full bg-ink px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-cream">
+                  Staff
+                </span>
               </a>
             )}
             {onOpenOrders && (
               <button
                 type="button"
-                onClick={() => { setMenuOpen(false); onOpenOrders(); }}
+                onClick={() => {
+                  setMenuOpen(false);
+                  onOpenOrders();
+                }}
                 className="block w-full px-4 py-2 text-left text-sm text-ink/70 hover:bg-cream hover:text-ink transition-colors"
               >
                 My orders

@@ -49,7 +49,7 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
     steps: [
       {
         title: "Create a board",
-        body: "Name a board for your ceremony, reception or a style you want to explore.",
+        body: "Open Saved, then Boards. Name a board for your ceremony, reception or a style you want to explore.",
       },
       {
         title: "Build the idea",
@@ -124,7 +124,7 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
       },
       {
         title: "Return to your shortlist",
-        body: "Open Saved items in the studio navigation. Your favourites are linked to your signed-in account and remain there after a refresh or when you sign in on another device.",
+        body: "Open Saved, then Items. Your favourites are linked to your signed-in account and remain there after a refresh or when you sign in on another device.",
       },
       {
         title: "Build your basket when ready",
@@ -157,7 +157,7 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
       },
       {
         title: "Save and explore the pieces",
-        body: "Save a generated result to Saved looks if you want to return to it. Shop this look scrolls to the associated catalogue pieces directly below the image. Add them to your basket there, or use Browse the full catalogue to explore more. Saved items remains your separate product shortlist.",
+        body: "Save a generated result to Saved looks if you want to return to it. Shop this look scrolls to the associated catalogue pieces directly below the image. Add them to your basket there, or use Browse the full catalogue to explore more. Find your product shortlist under Saved, then Items.",
       },
     ],
     note: "AI previews are illustrative. Check the actual catalogue products, quantities, prices and date availability before making plans.",
@@ -174,7 +174,7 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
       },
       {
         title: "Open your collection",
-        body: "Use Saved looks in the studio. Your signed-in account keeps the looks you have explicitly saved.",
+        body: "Open Saved, then Looks. Your signed-in account keeps the looks you have explicitly saved.",
       },
       {
         title: "Return to a design",

@@ -159,17 +159,30 @@ export default function ProductBrowser({
     items = [...items].sort(
       (a, b) => (b.reviewCount ? b.rating : 0) - (a.reviewCount ? a.rating : 0),
     );
+  const [savedToolsOpen, setSavedToolsOpen] = useState(false);
   const field = "rounded-lg border border-sand bg-cream px-3 py-2 text-sm";
   return (
     <div className="p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-serif text-3xl">
+        <h2
+          className={savedOnly ? "font-serif text-2xl" : "font-serif text-3xl"}
+        >
           {savedOnly
             ? "Saved items"
             : view === "look"
               ? "Shop this look"
               : "Browse the catalogue"}
         </h2>
+        {savedOnly && (
+          <button
+            type="button"
+            onClick={() => setSavedToolsOpen((v) => !v)}
+            aria-expanded={savedToolsOpen}
+            className="min-h-10 rounded-full border border-sand px-4 text-sm"
+          >
+            {savedToolsOpen ? "Hide filters" : "Search and filter"}
+          </button>
+        )}
         {!savedOnly && (
           <div className="flex gap-2">
             <button
@@ -191,231 +204,240 @@ export default function ProductBrowser({
           </div>
         )}
       </div>
-      <div className="mt-5 flex gap-2 overflow-x-auto pb-3">
-        <button
-          type="button"
-          onClick={() => setCategory("")}
-          aria-pressed={!category}
-          className={`shrink-0 rounded-full border px-4 py-2 text-sm ${!category ? "border-ink bg-ink text-cream" : "border-sand"}`}
-        >
-          All categories
-        </button>
-        {CATEGORY_META.map((c) => (
-          <button
-            key={c.category}
-            type="button"
-            aria-pressed={category === c.category}
-            onClick={() => {
-              setCategory(c.category);
-              setView("browse");
-            }}
-            className={`shrink-0 rounded-full border px-4 py-2 text-sm ${category === c.category ? "border-ink bg-ink text-cream" : "border-sand"}`}
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
-      <div className="mt-2 flex flex-wrap gap-3">
-        <label className="sr-only" htmlFor="catalogue-search">
-          Search products
-        </label>
-        <input
-          id="catalogue-search"
-          placeholder="Search pieces or suppliers"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className={`${field} min-w-0 basis-full sm:basis-auto flex-1`}
-        />
-        <button
-          type="button"
-          aria-expanded={filtersOpen}
-          onClick={() => setFiltersOpen(!filtersOpen)}
-          className="rounded-full border border-sand px-4 py-2 text-sm"
-        >
-          Filters
-        </button>
-        <button
-          type="button"
-          aria-pressed={byVendor}
-          onClick={() => setByVendor(!byVendor)}
-          className="rounded-full border border-sand px-4 py-2 text-sm"
-        >
-          Browse by supplier
-        </button>
-      </div>
-      <ResponsivePanel
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        title="Catalogue filters"
-        alwaysDesktop
-      >
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <label className="text-xs text-ink/60">
-            Supplier
-            <select
-              value={supplier}
-              onChange={(e) => setSupplier(e.target.value)}
-              className={`${field} mt-1 w-full`}
-            >
-              <option value="">All suppliers</option>
-              {suppliers.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-xs text-ink/60">
-            Sort
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-              className={`${field} mt-1 w-full`}
-            >
-              <option value="featured">
-                {matches ? "Nearest suppliers" : "Featured"}
-              </option>
-              <option value="price_up">Price: low to high</option>
-              <option value="price_down">Price: high to low</option>
-              <option value="rated">Top rated</option>
-            </select>
-          </label>
-          <label className="text-xs text-ink/60">
-            Style
-            <select
-              value={style}
-              onChange={(e) => setStyle(e.target.value)}
-              className={`${field} mt-1 w-full`}
-            >
-              <option value="">All styles</option>
-              {STYLES.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <div
-          className={`${filtersOpen ? "grid" : "hidden"} mt-3 gap-3 sm:grid-cols-2`}
-        >
-          <label className="text-xs text-ink/60">
-            Minimum unit price (£)
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={min}
-              onChange={(e) => setMin(e.target.value)}
-              className={`${field} mt-1 w-full`}
-            />
-          </label>
-          <label className="text-xs text-ink/60">
-            Maximum unit price (£)
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={max}
-              onChange={(e) => setMax(e.target.value)}
-              className={`${field} mt-1 w-full`}
-            />
-          </label>
-          <div className="sm:col-span-2">
-            <p className="mb-2 text-xs text-ink/60">Adjust unit price range</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <input
-                aria-label="Minimum unit price slider"
-                type="range"
-                min="0"
-                max={maxPrice}
-                step="1"
-                value={min || 0}
-                onChange={(e) =>
-                  setMin(
-                    String(
-                      Math.min(Number(e.target.value), Number(max || maxPrice)),
-                    ),
-                  )
-                }
-                className="w-full accent-clay"
-              />
-              <input
-                aria-label="Maximum unit price slider"
-                type="range"
-                min="0"
-                max={maxPrice}
-                step="1"
-                value={max || maxPrice}
-                onChange={(e) =>
-                  setMax(
-                    String(Math.max(Number(e.target.value), Number(min || 0))),
-                  )
-                }
-                className="w-full accent-clay"
-              />
-            </div>
-          </div>
-        </div>
-      </ResponsivePanel>
-      <div className="mt-3 flex flex-wrap gap-2 text-xs">
-        {category && (
+      <div hidden={savedOnly && !savedToolsOpen}>
+        <div className="mt-5 flex gap-2 overflow-x-auto pb-3">
           <button
             type="button"
             onClick={() => setCategory("")}
-            className="rounded-full bg-sand px-3 py-2"
+            aria-pressed={!category}
+            className={`shrink-0 rounded-full border px-4 py-2 text-sm ${!category ? "border-ink bg-ink text-cream" : "border-sand"}`}
           >
-            Category ×
+            All categories
           </button>
-        )}
-        {supplier && (
+          {CATEGORY_META.map((c) => (
+            <button
+              key={c.category}
+              type="button"
+              aria-pressed={category === c.category}
+              onClick={() => {
+                setCategory(c.category);
+                setView("browse");
+              }}
+              className={`shrink-0 rounded-full border px-4 py-2 text-sm ${category === c.category ? "border-ink bg-ink text-cream" : "border-sand"}`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+        <div className="mt-2 flex flex-wrap gap-3">
+          <label className="sr-only" htmlFor="catalogue-search">
+            Search products
+          </label>
+          <input
+            id="catalogue-search"
+            placeholder="Search pieces or suppliers"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className={`${field} min-w-0 basis-full sm:basis-auto flex-1`}
+          />
           <button
             type="button"
-            onClick={() => setSupplier("")}
-            className="rounded-full bg-sand px-3 py-2"
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen(!filtersOpen)}
+            className="rounded-full border border-sand px-4 py-2 text-sm"
           >
-            Supplier ×
+            Filters
           </button>
-        )}
-        {style && (
           <button
             type="button"
-            onClick={() => setStyle("")}
-            className="rounded-full bg-sand px-3 py-2"
+            aria-pressed={byVendor}
+            onClick={() => setByVendor(!byVendor)}
+            className="rounded-full border border-sand px-4 py-2 text-sm"
           >
-            Style ×
+            Browse by supplier
           </button>
-        )}
-        {(min || max) && (
-          <button
-            type="button"
-            onClick={() => {
-              setMin("");
-              setMax("");
-            }}
-            className="rounded-full bg-sand px-3 py-2"
+        </div>
+        <ResponsivePanel
+          open={filtersOpen}
+          onClose={() => setFiltersOpen(false)}
+          title="Catalogue filters"
+          alwaysDesktop
+        >
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <label className="text-xs text-ink/60">
+              Supplier
+              <select
+                value={supplier}
+                onChange={(e) => setSupplier(e.target.value)}
+                className={`${field} mt-1 w-full`}
+              >
+                <option value="">All suppliers</option>
+                {suppliers.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs text-ink/60">
+              Sort
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className={`${field} mt-1 w-full`}
+              >
+                <option value="featured">
+                  {matches ? "Nearest suppliers" : "Featured"}
+                </option>
+                <option value="price_up">Price: low to high</option>
+                <option value="price_down">Price: high to low</option>
+                <option value="rated">Top rated</option>
+              </select>
+            </label>
+            <label className="text-xs text-ink/60">
+              Style
+              <select
+                value={style}
+                onChange={(e) => setStyle(e.target.value)}
+                className={`${field} mt-1 w-full`}
+              >
+                <option value="">All styles</option>
+                {STYLES.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div
+            className={`${filtersOpen ? "grid" : "hidden"} mt-3 gap-3 sm:grid-cols-2`}
           >
-            Price range ×
-          </button>
-        )}
-      </div>
-      <div className="my-5 border-y border-sand py-5">
-        <DeliveryDates
-          compact
-          weddingDate={weddingDate}
-          deliverySameDay={deliverySameDay}
-          deliveryDate={deliveryDate}
-          onChange={onDates}
-          id="catalogue"
-        />
-        <p role="status" className="mt-3 text-xs text-ink/60">
-          {availability.error ||
-            (availability.loading
-              ? "Checking delivery-to-wedding availability…"
-              : availability.items
-                ? "Availability checked from delivery through your wedding day."
-                : "Choose your dates to check availability.")}
-        </p>
+            <label className="text-xs text-ink/60">
+              Minimum unit price (£)
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={min}
+                onChange={(e) => setMin(e.target.value)}
+                className={`${field} mt-1 w-full`}
+              />
+            </label>
+            <label className="text-xs text-ink/60">
+              Maximum unit price (£)
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={max}
+                onChange={(e) => setMax(e.target.value)}
+                className={`${field} mt-1 w-full`}
+              />
+            </label>
+            <div className="sm:col-span-2">
+              <p className="mb-2 text-xs text-ink/60">
+                Adjust unit price range
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input
+                  aria-label="Minimum unit price slider"
+                  type="range"
+                  min="0"
+                  max={maxPrice}
+                  step="1"
+                  value={min || 0}
+                  onChange={(e) =>
+                    setMin(
+                      String(
+                        Math.min(
+                          Number(e.target.value),
+                          Number(max || maxPrice),
+                        ),
+                      ),
+                    )
+                  }
+                  className="w-full accent-clay"
+                />
+                <input
+                  aria-label="Maximum unit price slider"
+                  type="range"
+                  min="0"
+                  max={maxPrice}
+                  step="1"
+                  value={max || maxPrice}
+                  onChange={(e) =>
+                    setMax(
+                      String(
+                        Math.max(Number(e.target.value), Number(min || 0)),
+                      ),
+                    )
+                  }
+                  className="w-full accent-clay"
+                />
+              </div>
+            </div>
+          </div>
+        </ResponsivePanel>
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          {category && (
+            <button
+              type="button"
+              onClick={() => setCategory("")}
+              className="rounded-full bg-sand px-3 py-2"
+            >
+              Category ×
+            </button>
+          )}
+          {supplier && (
+            <button
+              type="button"
+              onClick={() => setSupplier("")}
+              className="rounded-full bg-sand px-3 py-2"
+            >
+              Supplier ×
+            </button>
+          )}
+          {style && (
+            <button
+              type="button"
+              onClick={() => setStyle("")}
+              className="rounded-full bg-sand px-3 py-2"
+            >
+              Style ×
+            </button>
+          )}
+          {(min || max) && (
+            <button
+              type="button"
+              onClick={() => {
+                setMin("");
+                setMax("");
+              }}
+              className="rounded-full bg-sand px-3 py-2"
+            >
+              Price range ×
+            </button>
+          )}
+        </div>
+        <div className="my-5 border-y border-sand py-5">
+          <DeliveryDates
+            compact
+            weddingDate={weddingDate}
+            deliverySameDay={deliverySameDay}
+            deliveryDate={deliveryDate}
+            onChange={onDates}
+            id="catalogue"
+          />
+          <p role="status" className="mt-3 text-xs text-ink/60">
+            {availability.error ||
+              (availability.loading
+                ? "Checking delivery-to-wedding availability…"
+                : availability.items
+                  ? "Availability checked from delivery through your wedding day."
+                  : "Choose your dates to check availability.")}
+          </p>
+        </div>
       </div>
       <div
         className={

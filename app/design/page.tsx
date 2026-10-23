@@ -6,11 +6,14 @@ import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 import { createClient } from "@/lib/supabase/client";
 import type { BasketLine, CatalogueItem, SampleVenue } from "@/lib/types";
 import { getStyle, getVenue } from "@/lib/styles";
-import { suggestedQty, formatGBP } from "@/lib/quote";
+import { suggestedQty } from "@/lib/quote";
 import { type Brief, type UploadedPhoto } from "@/components/design/BriefStep";
 import { useSavedItems } from "@/components/design/useSavedItems";
 import RenderStage, { type RenderRef } from "@/components/design/RenderStage";
 import VenueExplorer from "@/components/venues/VenueExplorer";
+import StudioNavigation, {
+  type StudioTab,
+} from "@/components/design/StudioNavigation";
 import ProductBrowser from "@/components/design/ProductBrowser";
 import BasketPanel from "@/components/design/BasketPanel";
 import CheckoutStep from "@/components/design/CheckoutStep";
@@ -40,32 +43,14 @@ export default function DesignPage() {
   const { getItem } = useCatalogue();
   const [partnerVenue, setPartnerVenue] = useState<SampleVenue | null>(null);
   const [partnerError, setPartnerError] = useState("");
-  const [studioTab, setStudioTab] = useState<
-    | "catalogue"
-    | "venues"
-    | "saved"
-    | "visualiser"
-    | "wedding"
-    | "boards"
-    | "looks"
-    | "orders"
-  >("catalogue");
+  const [studioTab, setStudioTab] = useState<StudioTab>("catalogue");
   const savedItems = useSavedItems();
   const [discovery, setDiscovery] = useState<DiscoveryResults | null>(null),
     [searchRadius, setSearchRadius] = useState(50);
-  function switchStudioTab(
-    tab:
-      | "catalogue"
-      | "venues"
-      | "saved"
-      | "visualiser"
-      | "wedding"
-      | "boards"
-      | "looks"
-      | "orders",
-  ) {
+  function switchStudioTab(tab: StudioTab) {
     setStudioTab(tab);
     setStep("studio");
+    window.scrollTo(0, 0);
     const url = new URL(window.location.href);
     url.searchParams.set("tab", tab);
     url.searchParams.delete("render");
@@ -79,7 +64,6 @@ export default function DesignPage() {
   }, [mobileBasketOpen]);
   const [step, setStep] = useState<Step>("studio");
   const [showHowTo, setShowHowTo] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [savedLooks, setSavedLooks] = useState<SavedLook[]>([]);
 
   const [brief, setBrief] = useState<Brief>({
@@ -583,30 +567,40 @@ export default function DesignPage() {
           <Link href="/" className="font-serif text-xl tracking-wide text-ink">
             Styled<span className="text-clay">.</span>
           </Link>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                switchStudioTab("looks");
-                setShowSettings(false);
-              }}
-              className="hidden sm:flex items-center gap-1.5 rounded-full border border-sand px-4 py-1.5 text-xs text-ink/50 hover:border-clay/50 hover:text-ink transition-colors"
-            >
-              <span className="text-[11px] text-clay">♥</span> Saved looks
-              {savedLooks.length > 0 && (
-                <span className="ml-0.5 rounded-full bg-clay/15 px-1.5 text-[10px] text-clay">
-                  {savedLooks.length}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {step === "studio" && (
+              <button
+                type="button"
+                onClick={() => setMobileBasketOpen(true)}
+                aria-label={`Open basket, ${basket.reduce((n, line) => n + line.quantity, 0)} items`}
+                className="flex min-h-10 items-center gap-2 rounded-full border border-sand px-3 text-xs text-ink"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <path d="M5 7h14l1 14H4L5 7z M9 7V5a3 3 0 0 1 6 0v2" />
+                </svg>
+                Basket{" "}
+                <span className="tabular-nums">
+                  ({basket.reduce((n, line) => n + line.quantity, 0)})
                 </span>
-              )}
-            </button>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
                 setShowHowTo(true);
               }}
-              className="flex items-center gap-1.5 rounded-full border border-sand px-4 py-1.5 text-xs text-ink/50 hover:border-clay/50 hover:text-ink transition-colors"
+              className="flex items-center gap-1.5 rounded-full border border-sand px-3 py-2 text-xs text-ink/70 hover:border-clay/50 hover:text-ink transition-colors"
             >
-              <span className="text-[11px]">?</span> How it works
+              <span className="text-[11px]">?</span>{" "}
+              <span className="hidden sm:inline">How it works</span>
+              <span className="sm:hidden">Help</span>
             </button>
             {step === "checkout" && (
               <button
@@ -620,177 +614,118 @@ export default function DesignPage() {
             <AccountMenu
               onOpenOrders={() => {
                 switchStudioTab("orders");
-                setShowSettings(false);
               }}
             />
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-5 pb-28 lg:pb-0">
+      {step === "studio" && (
+        <div className="border-b border-sand">
+          <div className="mx-auto max-w-7xl px-5">
+            <StudioNavigation active={studioTab} onSelect={switchStudioTab} />
+          </div>
+        </div>
+      )}
+      <main
+        id="studio-content"
+        className="mx-auto max-w-7xl px-4 pb-24 sm:px-5 md:pb-8"
+      >
         {step === "studio" && (
-          <div className="py-6">
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-              <nav
-                aria-label="Marketplace"
-                className="flex max-w-full gap-2 overflow-x-auto whitespace-nowrap"
-              >
+          <div className="py-6 sm:py-8">
+            {(studioTab === "catalogue" || studioTab === "venues") && (
+              <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+                <nav
+                  aria-label="Browse"
+                  className="inline-flex gap-1 rounded-xl bg-sand/40 p-1"
+                >
+                  {(
+                    [
+                      ["catalogue", "Catalogue"],
+                      ["venues", "Venues"],
+                    ] as const
+                  ).map(([tab, label]) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => switchStudioTab(tab)}
+                      aria-current={studioTab === tab ? "page" : undefined}
+                      className={`min-h-10 rounded-lg px-5 text-sm ${studioTab === tab ? "bg-white font-medium text-ink shadow-sm" : "text-ink/60 hover:text-ink"}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </nav>
                 <button
                   type="button"
                   onClick={() => switchStudioTab("wedding")}
-                  aria-current={studioTab === "wedding" ? "page" : undefined}
-                  className={`shrink-0 rounded-full border px-4 py-2 text-sm ${studioTab === "wedding" ? "border-ink bg-ink text-cream" : "border-sand"}`}
+                  className="text-left text-xs leading-relaxed text-ink/60 hover:text-ink"
                 >
-                  My wedding
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchStudioTab("boards")}
-                  aria-current={studioTab === "boards" ? "page" : undefined}
-                  className={`shrink-0 rounded-full border px-4 py-2 text-sm ${studioTab === "boards" ? "border-ink bg-ink text-cream" : "border-sand"}`}
-                >
-                  Boards ({boards.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchStudioTab("catalogue")}
-                  aria-current={studioTab === "catalogue" ? "page" : undefined}
-                  className={`shrink-0 rounded-full border px-4 py-2 text-sm ${studioTab === "catalogue" ? "border-ink bg-ink text-cream" : "border-sand"}`}
-                >
-                  Browse catalogue
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchStudioTab("venues")}
-                  aria-current={studioTab === "venues" ? "page" : undefined}
-                  className={`shrink-0 rounded-full border px-4 py-2 text-sm ${studioTab === "venues" ? "border-ink bg-ink text-cream" : "border-sand"}`}
-                >
-                  Venues
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchStudioTab("saved")}
-                  aria-current={studioTab === "saved" ? "page" : undefined}
-                  className={`shrink-0 rounded-full border px-4 py-2 text-sm ${studioTab === "saved" ? "border-ink bg-ink text-cream" : "border-sand"}`}
-                >
-                  Saved items ({savedItems.ids.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={openVisualiser}
-                  aria-current={studioTab === "visualiser" ? "page" : undefined}
-                  className={`shrink-0 rounded-full border px-4 py-2 text-sm ${studioTab === "visualiser" ? "border-ink bg-ink text-cream" : "border-sand"}`}
-                >
-                  AI visualiser
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchStudioTab("looks")}
-                  aria-current={studioTab === "looks" ? "page" : undefined}
-                  className={`shrink-0 rounded-full border px-4 py-2 text-sm ${studioTab === "looks" ? "border-ink bg-ink text-cream" : "border-sand"}`}
-                >
-                  Saved looks ({savedLooks.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchStudioTab("orders")}
-                  aria-current={studioTab === "orders" ? "page" : undefined}
-                  className={`shrink-0 rounded-full border px-4 py-2 text-sm ${studioTab === "orders" ? "border-ink bg-ink text-cream" : "border-sand"}`}
-                >
-                  My orders
-                </button>
-              </nav>
-              <div className="flex flex-wrap items-center gap-3 text-xs text-ink/60">
-                <button
-                  type="button"
-                  onClick={() => switchStudioTab("venues")}
-                  className="max-w-[220px] truncate rounded-full border border-sand px-3 py-2"
-                  aria-label={
-                    brief.venueId.startsWith("listing:")
-                      ? `Change venue: ${venue.name}`
-                      : "Choose a venue"
-                  }
-                >
-                  {brief.venueId.startsWith("listing:")
-                    ? `Venue: ${venue.name}`
-                    : "Choose a venue"}
-                </button>
-                <span>
-                  {brief.guestCount} guests · {formatGBP(brief.budget)} budget
                   {brief.weddingDate
-                    ? ` · ${new Date(brief.weddingDate + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
-                    : ""}
-                </span>
-                <button
-                  type="button"
-                  aria-expanded={showSettings}
-                  onClick={() => setShowSettings((v) => !v)}
-                  className="rounded-full border border-sand px-3 py-2"
-                >
-                  {showSettings ? "Done" : "Edit details"}
-                </button>
-                <button
-                  type="button"
-                  onClick={openVisualiser}
-                  className="hidden rounded-full border border-clay px-4 py-2 text-ink md:block"
-                >
-                  Visualise your look →
+                    ? new Date(
+                        brief.weddingDate + "T12:00:00",
+                      ).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : "Set your wedding details"}
+                  <span className="ml-2">· {brief.guestCount} guests</span>
+                  <span className="ml-2 underline underline-offset-4">
+                    My wedding →
+                  </span>
                 </button>
               </div>
-            </div>
-
-            {/* Inline settings editor */}
-            {showSettings && (
-              <div className="mb-5 grid gap-5 rounded-2xl border border-sand bg-white px-6 py-5 shadow-sm sm:grid-cols-3">
-                <div>
-                  <label className="mb-1 block text-xs text-ink/50">
-                    Guests
-                  </label>
-                  <input
-                    type="number"
-                    min={10}
-                    max={500}
-                    value={brief.guestCount}
-                    onChange={(e) =>
-                      patchBrief({ guestCount: Number(e.target.value) })
-                    }
-                    className="w-full rounded-xl border border-sand bg-cream/50 px-4 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-clay/30"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-ink/50">
-                    Budget: {formatGBP(brief.budget)}
-                  </label>
-                  <input
-                    type="range"
-                    min={1000}
-                    max={30000}
-                    step={500}
-                    value={brief.budget}
-                    onChange={(e) =>
-                      patchBrief({ budget: Number(e.target.value) })
-                    }
-                    className="mt-2 w-full accent-clay"
-                  />
-                  <div className="mt-1 flex justify-between text-[11px] text-ink/35">
-                    <span>£1k</span>
-                    <span>£30k</span>
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-ink/50">
-                    Wedding date
-                  </label>
-                  <input
-                    type="date"
-                    value={brief.weddingDate}
-                    onChange={(e) =>
-                      patchBrief({ weddingDate: e.target.value })
-                    }
-                    className="w-full rounded-xl border border-sand bg-cream/50 px-4 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-clay/30"
-                  />
-                </div>
-              </div>
+            )}
+            {(["saved", "looks", "boards"] as StudioTab[]).includes(
+              studioTab,
+            ) && (
+              <section aria-labelledby="saved-title" className="mb-6">
+                <p className="text-xs text-clay">Your private collection</p>
+                <h1
+                  id="saved-title"
+                  className="mt-2 font-serif text-4xl sm:text-5xl"
+                >
+                  Saved
+                </h1>
+                <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/60">
+                  Keep favourite pieces, generated looks and inspiration boards
+                  together.
+                </p>
+                <nav
+                  aria-label="Saved collection"
+                  className="mt-6 flex gap-5 border-b border-sand sm:gap-8"
+                >
+                  {(
+                    [
+                      ["saved", "Items", savedItems.ids.length],
+                      ["looks", "Looks", savedLooks.length],
+                      ["boards", "Boards", boards.length],
+                    ] as const
+                  ).map(([tab, label, count]) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => switchStudioTab(tab)}
+                      aria-current={studioTab === tab ? "page" : undefined}
+                      className={`min-h-12 border-b-2 text-sm ${studioTab === tab ? "border-clay font-medium text-ink" : "border-transparent text-ink/60 hover:text-ink"}`}
+                    >
+                      {label}
+                      <span className="ml-2 text-xs tabular-nums text-ink/50">
+                        {count}
+                      </span>
+                    </button>
+                  ))}
+                </nav>
+                <p className="mt-4 text-xs leading-relaxed text-ink/60">
+                  {studioTab === "saved"
+                    ? "Individual catalogue pieces to shortlist or add to your basket."
+                    : studioTab === "looks"
+                      ? "Your AI previews. Open a look to explore its pieces in the visualiser."
+                      : "Group pieces, looks, photos and notes into your own wedding ideas."}{" "}
+                  Saving does not reserve stock.
+                </p>
+              </section>
             )}
 
             {workspaceError && (
@@ -810,6 +745,7 @@ export default function DesignPage() {
             )}
             {studioTab === "looks" && (
               <SavedLooks
+                embedded
                 looks={savedLooks}
                 onClose={() => switchStudioTab("catalogue")}
                 onLoad={loadSavedLook}
@@ -841,6 +777,7 @@ export default function DesignPage() {
             </div>
             <div hidden={studioTab !== "boards"}>
               <Boards
+                embedded
                 boards={boards}
                 onSave={saveWorkspace}
                 busy={workspaceSaving}
@@ -854,13 +791,7 @@ export default function DesignPage() {
                 onAdd={addItem}
               />
             </div>
-            <div
-              hidden={
-                studioTab !== "catalogue" &&
-                studioTab !== "saved" &&
-                studioTab !== "venues"
-              }
-            >
+            <div hidden={studioTab !== "catalogue" && studioTab !== "venues"}>
               <LocationFilter
                 venueSlug={
                   brief.venueId.startsWith("listing:")
@@ -1082,31 +1013,11 @@ export default function DesignPage() {
       </main>
 
       {step === "studio" && (
-        <div className="fixed inset-x-0 bottom-0 z-30 flex gap-3 border-t border-sand bg-cream p-4 lg:hidden">
-          <button
-            type="button"
-            onClick={() => setMobileBasketOpen(true)}
-            className="flex-1 rounded-full bg-ink px-4 py-3 text-sm text-cream"
-          >
-            {basket.length} items ·{" "}
-            {formatGBP(
-              basket.reduce(
-                (total, line) =>
-                  total +
-                  (getItem(line.itemId)?.unitPrice || 0) * line.quantity,
-                0,
-              ),
-            )}{" "}
-            · View basket
-          </button>
-          <button
-            type="button"
-            onClick={openVisualiser}
-            className="rounded-full border border-ink px-4 py-3 text-sm"
-          >
-            Visualise
-          </button>
-        </div>
+        <StudioNavigation
+          mobile
+          active={studioTab}
+          onSelect={switchStudioTab}
+        />
       )}
       <dialog
         ref={basketDialog}

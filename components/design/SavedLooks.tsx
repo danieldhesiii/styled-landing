@@ -13,6 +13,7 @@ export interface SavedLook {
 }
 
 interface Props {
+  embedded?: boolean;
   looks: SavedLook[];
   onClose: () => void;
   onLoad: (look: SavedLook, url: string, itemIds?: string[]) => void;
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export default function SavedLooks({
+  embedded = false,
   looks,
   onClose,
   onLoad,
@@ -71,24 +73,35 @@ export default function SavedLooks({
   }, [looks]);
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-sand bg-white">
-      <div className="flex items-center justify-between border-b border-sand px-6 py-4">
-        <div>
-          <h1 className="font-serif text-4xl text-ink">Saved looks</h1>
-          <p className="mt-3 max-w-2xl text-sm text-ink/60">
-            Your saved AI previews. Open a look to explore its catalogue pieces
-            in the visualiser. Saving a look does not add anything to your
-            basket.
-          </p>
-          <p className="mt-0.5 text-xs text-ink/50">
-            {looks.length === 0 ? "Nothing saved yet" : `${looks.length} saved`}
-          </p>
+    <section
+      aria-label="Saved looks"
+      className={
+        embedded
+          ? ""
+          : "overflow-hidden rounded-2xl border border-sand bg-white"
+      }
+    >
+      {!embedded && (
+        <div className="flex items-center justify-between border-b border-sand px-6 py-4">
+          <div>
+            <h1 className="font-serif text-4xl text-ink">Saved looks</h1>
+            <p className="mt-3 max-w-2xl text-sm text-ink/60">
+              Your saved AI previews. Open a look to explore its catalogue
+              pieces in the visualiser. Saving a look does not add anything to
+              your basket.
+            </p>
+            <p className="mt-0.5 text-xs text-ink/50">
+              {looks.length === 0
+                ? "Nothing saved yet"
+                : `${looks.length} saved`}
+            </p>
+          </div>
+          <HelpButton
+            topic="saved_looks"
+            className="ml-auto mr-3 rounded-full border border-sand px-3 py-2 text-xs"
+          />
         </div>
-        <HelpButton
-          topic="saved_looks"
-          className="ml-auto mr-3 rounded-full border border-sand px-3 py-2 text-xs"
-        />
-      </div>
+      )}
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
         {looks.length === 0 ? (
@@ -188,15 +201,17 @@ export default function SavedLooks({
         )}
       </div>
 
-      <div className="border-t border-sand px-6 py-4">
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-full rounded-full bg-ink py-3 text-sm font-medium text-cream hover:bg-ink/90 transition-colors"
-        >
-          Browse catalogue
-        </button>
-      </div>
+      {!embedded && (
+        <div className="border-t border-sand px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded-full bg-ink py-3 text-sm font-medium text-cream hover:bg-ink/90 transition-colors"
+          >
+            Browse catalogue
+          </button>
+        </div>
+      )}
     </section>
   );
 }
