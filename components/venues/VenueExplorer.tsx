@@ -15,6 +15,7 @@ export default function VenueExplorer(props: {
   selectedSlug?: string;
   onSelect: (venue: VenueListing) => void;
   onVisualise: () => void;
+  onRequests?: () => void;
 }) {
   return (
     <section
@@ -32,12 +33,22 @@ export default function VenueExplorer(props: {
             your wedding plan.
           </p>
         </div>
-        <Link
-          href="/design?tab=orders&bookings=venues"
-          className="text-sm underline"
-        >
-          Venue requests
-        </Link>
+        {props.onRequests ? (
+          <button
+            type="button"
+            onClick={props.onRequests}
+            className="text-sm underline"
+          >
+            Venue requests
+          </button>
+        ) : (
+          <Link
+            href="/design?tab=orders&bookings=venues"
+            className="text-sm underline"
+          >
+            Venue requests
+          </Link>
+        )}
       </div>
       <VenueSearch {...props} />
     </section>

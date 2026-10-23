@@ -140,9 +140,9 @@ export default function MyWedding({
       >
         <h2 className="font-serif text-3xl">2. Your venue choice</h2>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink/60">
-          Venues is the directory where you discover places and request a
-          viewing or booking. This part of your plan records the place you are
-          planning around, including a venue booked outside Styled.
+          Use Find venues to discover places and request a viewing or booking.
+          This part of your plan records the place you are planning around,
+          including a venue booked outside Styled.
         </p>
         <fieldset className="mt-5">
           <legend className="text-sm font-medium">

@@ -27,7 +27,7 @@ const LINKS = [
   },
   {
     href: "/admin/vendors",
-    label: "Vendors",
+    label: "Applications",
     match: (p: string) => p.startsWith("/admin/vendors"),
   },
   {

@@ -6,10 +6,12 @@ export default function MyBookings({
   section,
   onSection,
   onBrowse,
+  onFindVenue,
 }: {
   section: "suppliers" | "venues";
   onSection: (section: "suppliers" | "venues") => void;
   onBrowse: () => void;
+  onFindVenue: () => void;
 }) {
   return (
     <section>
@@ -46,7 +48,7 @@ export default function MyBookings({
       {section === "suppliers" ? (
         <MyOrders onBrowse={onBrowse} />
       ) : (
-        <MyVenueRequests embedded />
+        <MyVenueRequests embedded onBrowse={onFindVenue} />
       )}
     </section>
   );

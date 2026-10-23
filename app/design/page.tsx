@@ -770,6 +770,7 @@ export default function DesignPage() {
             )}
             {studioTab === "orders" && (
               <MyBookings
+                onFindVenue={() => switchStudioTab("venues")}
                 section={bookingSection}
                 onSection={openBookings}
                 onBrowse={() => switchStudioTab("catalogue")}
@@ -862,7 +863,21 @@ export default function DesignPage() {
                       ? brief.venueId.slice(8)
                       : undefined
                   }
-                  onVisualise={() => switchStudioTab("wedding")}
+                  onRequests={() => openBookings("venues")}
+                  onVisualise={() => {
+                    patchBrief({ venueChoice: "have" });
+                    switchStudioTab("wedding");
+                    setTimeout(
+                      () =>
+                        document
+                          .getElementById("plan-venue")
+                          ?.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                          }),
+                      0,
+                    );
+                  }}
                   onSelect={(selected) => {
                     patchBrief({
                       venueId: `listing:${selected.slug}`,

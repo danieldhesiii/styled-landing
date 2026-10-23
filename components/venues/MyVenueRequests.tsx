@@ -15,8 +15,10 @@ type Request = {
 };
 export default function MyVenueRequests({
   embedded = false,
+  onBrowse,
 }: {
   embedded?: boolean;
+  onBrowse?: () => void;
 }) {
   const [requests, setRequests] = useState<Request[] | null>(null),
     [error, setError] = useState(""),
@@ -103,12 +105,22 @@ export default function MyVenueRequests({
             When you send a venue booking or viewing request, it will appear
             here.
           </p>
-          <Link
-            href="/venues"
-            className="mt-5 inline-block rounded-full bg-ink px-5 py-3 text-sm text-cream"
-          >
-            Browse venues
-          </Link>
+          {onBrowse ? (
+            <button
+              type="button"
+              onClick={onBrowse}
+              className="mt-5 inline-block rounded-full bg-ink px-5 py-3 text-sm text-cream"
+            >
+              Find venues
+            </button>
+          ) : (
+            <Link
+              href="/venues"
+              className="mt-5 inline-block rounded-full bg-ink px-5 py-3 text-sm text-cream"
+            >
+              Find venues
+            </Link>
+          )}
         </div>
       )}
       {requests?.map((r) => (
