@@ -41,6 +41,12 @@ export default function SiteFooter() {
             <a href="/venues/partner" className="text-ink/70 hover:text-ink">
               Venue partnerships
             </a>
+            <a href="/venue-portal" className="text-ink/70 hover:text-ink">
+              Venue team login
+            </a>
+            <a href="/venues/requests" className="text-ink/70 hover:text-ink">
+              My venue requests
+            </a>
             <a href="/design" className="text-ink/70 hover:text-ink">
               Design your wedding
             </a>

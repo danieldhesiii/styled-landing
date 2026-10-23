@@ -17,7 +17,13 @@ export function venueEmbed(
   if (!value) return null;
   try {
     const u = new URL(value);
-    if (u.protocol !== "https:") return null;
+    if (
+      u.protocol !== "https:" ||
+      u.username ||
+      u.password ||
+      (u.port && u.port !== "443")
+    )
+      return null;
     if (
       kind === "tour" &&
       u.hostname === "my.matterport.com" &&
@@ -25,6 +31,15 @@ export function venueEmbed(
       u.searchParams.get("m")
     )
       return u.href;
+    if (
+      kind === "tour" &&
+      ["kuula.co", "www.kuula.co"].includes(u.hostname) &&
+      /^\/share\/(?:[A-Za-z0-9]+\/)?(?:collection\/)?[A-Za-z0-9]+\/?$/.test(
+        u.pathname,
+      )
+    ) {
+      return u.href;
+    }
     if (
       kind === "map" &&
       ["www.google.com", "maps.google.com"].includes(u.hostname) &&
@@ -74,6 +89,10 @@ export function validateVenueEnquiry(
     venueId = str(body.venueId),
     packageId = str(body.packageId);
   const guests = Number(body.guests);
+  const request_kind =
+    body.requestKind === undefined ? "booking" : str(body.requestKind);
+  if (!["booking", "viewing"].includes(request_kind))
+    return { error: "Choose a booking or viewing request." };
   const uuid =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuid.test(venueId) || (packageId && !uuid.test(packageId)))
@@ -95,6 +114,7 @@ export function validateVenueEnquiry(
     return { error: "Please shorten your message or phone number." };
   return {
     value: {
+      request_kind,
       venue_id: venueId,
       package_id: packageId || null,
       name,

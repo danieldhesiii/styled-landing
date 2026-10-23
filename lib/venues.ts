@@ -17,6 +17,7 @@ export interface VenueListing {
   matterport_url: string | null;
   map_embed_url: string | null;
   package_from_pence: number | null;
+  details?: import("./venue-details").VenueDetails;
 }
 
 export interface VenuePackage {
@@ -33,10 +34,28 @@ export type VenueEnquiryStatus = "new" | "contacted" | "booked" | "declined";
 
 export function filterVenueListings(
   venues: VenueListing[],
-  filters: { county: string; setting: string; guests: number },
+  filters: {
+    county: string;
+    setting: string;
+    guests: number;
+    query?: string;
+    type?: string;
+    maxHirePence?: number;
+    features?: string[];
+  },
 ) {
   return venues.filter(
     (venue) =>
+      (!filters.query ||
+        `${venue.name} ${venue.location} ${venue.county}`
+          .toLowerCase()
+          .includes(filters.query.toLowerCase())) &&
+      (!filters.type || venue.details?.venue_type === filters.type) &&
+      (!filters.maxHirePence ||
+        (venue.details?.hire_from_pence != null &&
+          venue.details.hire_from_pence <= filters.maxHirePence)) &&
+      (!filters.features?.length ||
+        filters.features.every((f) => venue.details?.features?.includes(f))) &&
       (!filters.county || venue.county === filters.county) &&
       (!filters.setting ||
         venue.indoor_outdoor === filters.setting ||

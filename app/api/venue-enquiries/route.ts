@@ -1,10 +1,14 @@
-import { NextResponse } from "next/server";
+import { requireVenueAccount } from "@/lib/server/venue-access";
+import { notifyVenueRequest } from "@/lib/server/venue-notify";
+import { NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { clientIpHash } from "@/lib/server/limits";
 import { validateVenueEnquiry } from "@/lib/venue-input";
 const fail = (status: number, error: string) =>
   NextResponse.json({ error }, { status });
 export async function POST(req: Request) {
+  const auth = await requireVenueAccount(req);
+  if (!auth.ok) return auth.response;
   if (!req.headers.get("content-type")?.includes("application/json"))
     return fail(415, "Please send JSON.");
   if (Number(req.headers.get("content-length")) > 20000)
@@ -27,7 +31,10 @@ export async function POST(req: Request) {
       month: "2-digit",
       day: "2-digit",
     }).format(new Date());
-    const result = validateVenueEnquiry(body, today);
+    const result = validateVenueEnquiry(
+      { ...body, email: auth.user.email },
+      today,
+    );
     if (!result.value) return fail(422, result.error!);
     const admin = createAdminClient();
     const { data: allowed, error: limitError } = await admin.rpc(
@@ -82,9 +89,23 @@ export async function POST(req: Request) {
       if (error) throw error;
       if (!p) return fail(422, "Please select a package for this venue.");
     }
-    const { error } = await admin.from("venue_enquiries").insert(result.value);
+    const { data: blocked, error: blockError } = await admin
+      .from("venue_date_blocks")
+      .select("day")
+      .eq("venue_id", venue.id)
+      .eq("day", result.value.preferred_date)
+      .limit(1);
+    if (blockError) throw blockError;
+    if (blocked?.length)
+      return fail(409, "That date is unavailable. Please choose another date.");
+    const { data: request, error } = await admin
+      .from("venue_enquiries")
+      .insert({ ...result.value, owner_user_id: auth.user.id })
+      .select("id")
+      .single();
     if (error) throw error;
-    return NextResponse.json({ ok: true }, { status: 201 });
+    after(() => notifyVenueRequest(request.id, "new"));
+    return NextResponse.json({ ok: true, id: request.id }, { status: 201 });
   } catch (error) {
     console.error("[venue-enquiries]", error);
     return fail(
@@ -92,4 +113,44 @@ export async function POST(req: Request) {
       "We couldn’t send your enquiry. Please try again shortly.",
     );
   }
+}
+
+export async function GET(req: Request) {
+  const auth = await requireVenueAccount(req);
+  if (!auth.ok) return auth.response;
+  const { data, error } = await auth.admin
+    .from("venue_enquiries")
+    .select(
+      "id,venue_id,preferred_date,request_kind,guest_count,status,message,response,alternative_dates,responded_at,created_at,venue_listings(name,slug)",
+    )
+    .eq("owner_user_id", auth.user.id)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) return fail(503, "Could not load your venue requests.");
+  return NextResponse.json(
+    { requests: data },
+    { headers: { "Cache-Control": "no-store" } },
+  );
+}
+export async function DELETE(req: Request) {
+  const auth = await requireVenueAccount(req);
+  if (!auth.ok) return auth.response;
+  const id = new URL(req.url).searchParams.get("id");
+  if (!id || !/^[0-9a-f-]{36}$/i.test(id))
+    return fail(400, "Choose a request.");
+  const { data, error } = await auth.admin
+    .from("venue_enquiries")
+    .update({ status: "cancelled" })
+    .eq("id", id)
+    .eq("owner_user_id", auth.user.id)
+    .in("status", ["new", "contacted"])
+    .select("id")
+    .maybeSingle();
+  if (error) return fail(503, "Could not cancel your request.");
+  if (!data)
+    return fail(
+      409,
+      "Only an unconfirmed request can be cancelled here. Contact support@styleduk.com for help.",
+    );
+  return NextResponse.json({ ok: true });
 }

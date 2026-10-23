@@ -7,5 +7,14 @@ export async function middleware(request: NextRequest) {
 
 // Only routes that use the guest session. The marketing site is untouched.
 export const config = {
-  matcher: ["/design/:path*", "/api/:path*", "/admin/:path*", "/order/:path*", "/portal/:path*"],
+  matcher: [
+    "/design/:path*",
+    "/api/:path*",
+    "/admin/:path*",
+    "/order/:path*",
+    "/portal/:path*",
+    "/venue-portal/:path*",
+    "/venues/requests/:path*",
+    "/venues/:path*",
+  ],
 };

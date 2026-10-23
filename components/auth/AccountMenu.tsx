@@ -104,6 +104,12 @@ export default function AccountMenu({
                 </span>
               </a>
             )}
+            <a
+              href="/venues/requests"
+              className="block px-4 py-2 text-sm text-ink/70 hover:bg-cream"
+            >
+              My venue requests
+            </a>
             {onOpenOrders && (
               <button
                 type="button"

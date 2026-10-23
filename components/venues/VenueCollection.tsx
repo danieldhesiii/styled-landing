@@ -1,3 +1,5 @@
+import VenueShortlist from "./VenueShortlist";
+import { VENUE_TYPES } from "@/lib/venue-details";
 import Link from "next/link";
 import type { VenueListing } from "@/lib/venues";
 import { safeImageUrl } from "@/lib/venue-input";
@@ -11,9 +13,13 @@ export function VenueCards({
   venues,
   selectedSlug,
   onSelect,
+  requestDate,
+  guestCount,
 }: {
   distances?: Record<string, DiscoveryMatch>;
   venues: VenueListing[];
+  requestDate?: string;
+  guestCount?: number;
   selectedSlug?: string;
   onSelect?: (venue: VenueListing) => void;
 }) {
@@ -22,12 +28,16 @@ export function VenueCards({
       {venues.map((venue) => {
         const image = safeImageUrl(venue.hero_image),
           selected = selectedSlug === venue.slug;
+        const query = new URLSearchParams();
+        if (requestDate) query.set("date", requestDate);
+        if (guestCount) query.set("guests", String(guestCount));
+        const detailHref = `/venues/${venue.slug}${query.size ? `?${query}` : ""}`;
         return (
           <article
             key={venue.id}
             className="flex min-w-0 flex-col border-b border-sand pb-6"
           >
-            <Link href={`/venues/${venue.slug}`} className="group">
+            <Link href={detailHref} className="group">
               {image ? (
                 <img
                   src={image}
@@ -57,17 +67,30 @@ export function VenueCards({
                   : "Location needs confirming"}
               </p>
             )}
+            {venue.details?.venue_type && (
+              <p className="mt-2 text-xs text-clay">
+                {VENUE_TYPES[
+                  venue.details.venue_type as keyof typeof VENUE_TYPES
+                ] || venue.details.venue_type}
+                {venue.matterport_url ? " · Walkthrough available" : ""}
+              </p>
+            )}
+            <p className="mt-3 text-sm">
+              {venue.details?.hire_from_pence != null
+                ? `Venue hire from ${formatGBP(venue.details.hire_from_pence / 100)}`
+                : "Venue hire price on request"}
+            </p>
             {venue.package_from_pence !== null && (
               <p className="mt-3 text-sm">
                 Styling from {formatGBP(venue.package_from_pence / 100)}
               </p>
             )}
+            <div className="mt-4">
+              <VenueShortlist id={venue.id} />
+            </div>
             <div className="mt-auto flex flex-wrap items-center gap-4 pt-5">
-              <Link
-                href={`/venues/${venue.slug}`}
-                className="text-sm underline"
-              >
-                Details & dates
+              <Link href={detailHref} className="text-sm underline">
+                View venue & request a date
               </Link>
               {onSelect ? (
                 <button
@@ -101,15 +124,16 @@ export function VenueOperatorCallout() {
         </p>
         <h2 className="mt-2 font-serif text-3xl">Bring your venue to Styled</h2>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink/60">
-          Share your space, photography and styling possibilities. Our team will
-          work with you on an approved listing, packages and date enquiries.
+          Create a private venue listing with photos, facilities, prices and a
+          walkthrough. Submit it for review, then manage enquiries and dates in
+          your venue workspace.
         </p>
       </div>
       <Link
         href="/venues/partner"
         className="self-start rounded-full border border-ink px-5 py-3 text-center text-sm"
       >
-        Partner with us
+        List your venue
       </Link>
     </section>
   );

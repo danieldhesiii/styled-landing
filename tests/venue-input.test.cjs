@@ -9,6 +9,7 @@ execFileSync(process.execPath, [
   "node_modules/typescript/lib/tsc.js",
   "lib/venue-input.ts",
   "lib/venue-admin-input.ts",
+  "lib/venues.ts",
   "--outDir",
   directory,
   "--target",
@@ -134,4 +135,156 @@ test("admin packages require a real style and explicit whole-pence price", () =>
     { sort_order: 2147483648 },
   ])
     assert.throws(() => parseVenuePackage({ ...input, ...change }));
+});
+
+const { parseVenueDetails, parseVenueResponse, listingMissing } = require(
+  path.join(directory, "venue-details.js"),
+);
+const { filterVenueListings } = require(path.join(directory, "venues.js"));
+test("venue profiles separate hire prices, strip unrecognised data and validate facilities", () => {
+  const d = parseVenueDetails({
+    venue_type: "barn",
+    hire_from_pence: "450000",
+    features: ["parking", "parking", "exclusive_use"],
+    private_email: "hidden@example.com",
+  });
+  assert.equal(d.hire_from_pence, 450000);
+  assert.deepEqual(d.features, ["parking", "exclusive_use"]);
+  assert.equal(d.private_email, undefined);
+  for (const bad of [
+    { hire_from_pence: true },
+    { hire_from_pence: 1.5 },
+    { features: ["invented"] },
+    { venue_type: "invalid" },
+    { bedrooms: -1 },
+    { postcode: "X".repeat(13) },
+  ])
+    assert.throws(() => parseVenueDetails(bad));
+  assert.ok(listingMissing({ name: "A venue" }).includes("main photograph"));
+});
+test("venue filters respect guest capacity, hire budget, known facilities and location search", () => {
+  const venue = {
+    name: "Oak Barn",
+    county: "Essex",
+    location: "Chelmsford",
+    capacity_min: 20,
+    capacity_max: 120,
+    indoor_outdoor: "both",
+    details: {
+      venue_type: "barn",
+      hire_from_pence: 450000,
+      features: ["parking", "exclusive_use"],
+    },
+  };
+  const f = { county: "", setting: "", guests: 80 };
+  assert.equal(
+    filterVenueListings([venue], {
+      ...f,
+      query: "chelmsford",
+      type: "barn",
+      maxHirePence: 500000,
+      features: ["parking"],
+    }).length,
+    1,
+  );
+  for (const extra of [
+    { guests: 121 },
+    { maxHirePence: 400000 },
+    { features: ["accommodation"] },
+    { type: "hotel" },
+    { query: "London" },
+  ])
+    assert.equal(filterVenueListings([venue], { ...f, ...extra }).length, 0);
+  assert.equal(
+    filterVenueListings(
+      [{ ...venue, details: { ...venue.details, hire_from_pence: null } }],
+      { ...f, maxHirePence: 500000 },
+    ).length,
+    0,
+  );
+});
+test("venue responses require explanation for decisions and bounded valid alternative dates", () => {
+  assert.throws(() => parseVenueResponse({ status: "booked" }, "2026-10-23"));
+  assert.throws(() =>
+    parseVenueResponse({ status: "cancelled", response: "No" }, "2026-10-23"),
+  );
+  for (const dates of [
+    ["2026-02-30"],
+    ["2026-10-22"],
+    Array(6).fill("2027-01-01"),
+    ["tomorrow"],
+  ])
+    assert.throws(() =>
+      parseVenueResponse(
+        { status: "contacted", alternative_dates: dates },
+        "2026-10-23",
+      ),
+    );
+  assert.deepEqual(
+    parseVenueResponse(
+      {
+        status: "declined",
+        response: "Another date?",
+        alternative_dates: ["2027-06-12", "2027-06-12"],
+      },
+      "2026-10-23",
+    ).alternative_dates,
+    ["2027-06-12"],
+  );
+});
+test("walkthroughs accept provider share links and reject credentials, lookalike domains and profile links", () => {
+  for (const url of [
+    "https://kuula.co/share/collection/7abcD",
+    "https://kuula.co/share/abcDE/collection/7abcD?logo=1",
+  ])
+    assert.equal(venueEmbed(url, "tour"), url);
+  for (const url of [
+    "https://kuula.co/post/abcDE",
+    "https://kuula.co.evil.test/share/collection/abcDE",
+    "https://user:pass@my.matterport.com/show/?m=abc",
+    "https://kuula.co:444/share/collection/abcDE",
+    '<iframe src="https://kuula.co/share/collection/abcDE"></iframe>',
+  ])
+    assert.equal(venueEmbed(url, "tour"), null);
+});
+test("enquiries distinguish viewing from booking and cannot set owner or response fields", () => {
+  const { value } = validateVenueEnquiry(
+    {
+      ...valid,
+      requestKind: "viewing",
+      owner_user_id: "spoof",
+      response: "confirmed",
+    },
+    "2026-10-22",
+  );
+  assert.equal(value.request_kind, "viewing");
+  assert.equal(value.owner_user_id, undefined);
+  assert.equal(value.response, undefined);
+  assert.ok(
+    validateVenueEnquiry({ ...valid, requestKind: "other" }, "2026-10-22")
+      .error,
+  );
+});
+
+test("venue owners enter pound prices without losing pennies or accepting ambiguous formats", () => {
+  const { poundsToPence } = require(path.join(directory, "venue-details.js"));
+  assert.equal(poundsToPence("4250.75"), 425075);
+  assert.equal(poundsToPence("0"), 0);
+  assert.equal(poundsToPence(""), null);
+  assert.equal(
+    parseVenueDetails({ hire_from_pounds: "4250.75" }).hire_from_pence,
+    425075,
+  );
+  for (const price of ["1e4", "12.345", "-1", "£100", true, 100, "1000000.01"])
+    assert.throws(() => poundsToPence(price));
+  const parsed = parseVenue({
+    name: "Oak Barn",
+    slug: "oak-barn",
+    location: "Chelmsford",
+    county: "Essex",
+    styling_from_pounds: "1250.50",
+    hire_from_pounds: "4250.75",
+  });
+  assert.equal(parsed.package_from_pence, 125050);
+  assert.equal(parsed.details.hire_from_pence, 425075);
 });

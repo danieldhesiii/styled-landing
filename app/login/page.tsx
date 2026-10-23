@@ -18,7 +18,8 @@ function friendly(message: string): string {
     return "That email already has an account. Try logging in instead.";
   if (m.includes("invalid login") || m.includes("invalid credentials"))
     return "That email and password don't match.";
-  if (m.includes("at least")) return "Your password needs to be at least 6 characters.";
+  if (m.includes("at least"))
+    return "Your password needs to be at least 6 characters.";
   if (m.includes("valid email")) return "Please enter a valid email address.";
   if (m.includes("email not confirmed"))
     return "Please confirm your email address first, then sign in.";
@@ -40,7 +41,15 @@ async function mergeAnonSession(anonUserId: string) {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/design";
+  const requestedNext = searchParams.get("next") || "/design";
+  const next =
+    requestedNext.startsWith("/") &&
+    !requestedNext.startsWith("//") &&
+    !requestedNext.includes("\\")
+      ? requestedNext
+      : "/design";
+  const isVenueTeam = next.startsWith("/venue-portal");
+  const isVenueRequest = next.startsWith("/venues/");
 
   const [mode, setMode] = useState<Mode>("signup");
   const [email, setEmail] = useState("");
@@ -68,7 +77,9 @@ function LoginForm() {
     try {
       // Capture any anon session that exists before we replace it. We may need
       // to migrate its data into the real account after a successful sign-in.
-      const { data: { user: current } } = await supabase.auth.getUser();
+      const {
+        data: { user: current },
+      } = await supabase.auth.getUser();
       const anonId = current?.is_anonymous ? current.id : null;
 
       if (mode === "signup") {
@@ -88,7 +99,9 @@ function LoginForm() {
           ) {
             // Email already registered. Switch to sign-in mode and keep their
             // work in memory; after they sign in we will merge the anon session.
-            setError("That email already has an account. Sign in below to continue. Your work will carry over.");
+            setError(
+              "That email already has an account. Sign in below to continue. Your work will carry over.",
+            );
             setMode("login");
           } else {
             setError(friendly(res.error.message));
@@ -104,15 +117,18 @@ function LoginForm() {
             // merge is needed. For a fresh signUp the user had no prior session.
             router.replace(next);
           } else {
-            setNotice("Account created. Check your email to confirm, then sign in.");
+            setNotice(
+              "Account created. Check your email to confirm, then sign in.",
+            );
             setMode("login");
           }
         }
       } else {
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
+        const { data, error: signInError } =
+          await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password,
+          });
         if (signInError) {
           setError(friendly(signInError.message));
         } else if (data.session) {
@@ -133,7 +149,10 @@ function LoginForm() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-cream px-4 py-16">
-      <Link href="/" className="mb-8 font-serif text-2xl tracking-wide text-ink">
+      <Link
+        href="/"
+        className="mb-8 font-serif text-2xl tracking-wide text-ink"
+      >
         Styled
       </Link>
 
@@ -143,8 +162,16 @@ function LoginForm() {
         </h1>
         <p className="mt-1 text-sm text-ink/50">
           {mode === "signup"
-            ? "Sign up to start designing your wedding."
-            : "Sign in to continue designing."}
+            ? isVenueTeam
+              ? "Create an account to list and manage your venue."
+              : isVenueRequest
+                ? "Create an account to send and track venue requests."
+                : "Sign up to start designing your wedding."
+            : isVenueTeam
+              ? "Sign in to your venue workspace."
+              : isVenueRequest
+                ? "Sign in to manage your venue plans."
+                : "Sign in to continue designing."}
         </p>
 
         <form onSubmit={submit} className="mt-6 space-y-3">
@@ -169,7 +196,9 @@ function LoginForm() {
               type="password"
               required
               minLength={6}
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
+              autoComplete={
+                mode === "signup" ? "new-password" : "current-password"
+              }
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="mt-1.5 w-full rounded-xl border border-sand bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-clay/60"

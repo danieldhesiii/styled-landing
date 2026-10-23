@@ -95,11 +95,11 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
     steps: [
       {
         title: "Explore published venues",
-        body: "Use county, setting and guest-count filters to narrow the collection. Venue listings appear as the Styled team publishes them.",
+        body: "Search by name, county, date and guest count in the venue directory. More filters cover venue type, hire budget and facilities. Shortlisted venues are saved on this device. Venue listings appear after Styled reviews them.",
       },
       {
         title: "View details and dates",
-        body: "Details & dates opens the venue page with available photography, styling packages, tours and the date enquiry form. Unavailable dates are disabled in the calendar.",
+        body: "Open the venue page for hire information, facilities, photography, styling and an optional captured 360° walkthrough. Known unavailable dates are disabled; every other date still needs confirmation.",
       },
       {
         title: "Choose a venue for your design",
@@ -110,7 +110,7 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
         body: "If you already have a venue, use your own photograph in the AI visualiser. You can change your selected venue from the wedding details bar.",
       },
     ],
-    note: "Choosing a venue does not reserve a date. Venue enquiries and confirmation are separate from your supplier basket.",
+    note: "Sign in to send a booking or viewing request, then follow the response in My venue requests. Venue teams can suggest alternative dates or confirm a booking manually. Venue hire, contracts and payment are separate from supplier basket orders. Venue owners can create a private listing in the venue workspace and submit it for review.",
   },
   saved_items: {
     label: "Saved items",
@@ -261,23 +261,23 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
     label: "Venue partners",
     title: "Bring your venue to Styled",
     intro:
-      "Venue teams have a partnership application separate from the couple’s venue-selection journey.",
+      "Venue teams have their own workspace to prepare listings, manage enquiries and keep dates up to date.",
     steps: [
       {
         title: "Share your venue",
-        body: "Use Partner with us to send the venue name, county, capacity, website and the best contact for your team.",
+        body: "Choose List your venue, sign in and create a private listing. You can also use the partnership form to speak to Styled before getting started.",
       },
       {
         title: "Discuss the listing",
-        body: "Styled will discuss your photography, styling possibilities and what a pilot could look like. An application does not immediately publish a venue.",
+        body: "Add photographs, guest capacities, venue hire prices, facilities and practical information. Save your draft at any time.",
       },
       {
         title: "Prepare the public page",
-        body: "The Styled team manages approved venue listings, images, packages and supported tours in the existing venue admin tools.",
+        body: "Add an optional captured Matterport or Kuula tour and a separate video. Submit your listing for review. Styled publishes approved changes; draft edits do not change your live page.",
       },
       {
         title: "Coordinate date enquiries",
-        body: "Couples request dates through the venue detail page. Styled staff manage the enquiry status and coordinate confirmation with the venue team.",
+        body: "Use Requests to answer booking and viewing enquiries, record agreements and offer alternative dates. In Calendar, block dates booked elsewhere. Confirmed Styled bookings block their date automatically.",
       },
     ],
     note: "Venue selection in the studio is not a booking. Venue operators are not automatically given access to Styled’s staff admin.",
@@ -298,7 +298,11 @@ export function helpTopicForPage(
     if (studioSection === "visualiser") return "visualiser";
     return "catalogue";
   }
-  if (pathname === "/venues/partner" || pathname.startsWith("/admin/venues"))
+  if (
+    pathname === "/venues/partner" ||
+    pathname.startsWith("/venue-portal") ||
+    pathname.startsWith("/admin/venues")
+  )
     return "venue_partners";
   if (pathname === "/venues" || pathname.startsWith("/venues/"))
     return "venues";

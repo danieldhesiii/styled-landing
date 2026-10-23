@@ -92,7 +92,7 @@ export default function VenueExplorer({
           </p>
         </div>
         <Link href="/venues" className="text-sm underline">
-          Open full venue directory →
+          Search venues, prices & dates →
         </Link>
       </div>
       <div className="my-7 grid gap-4 border-y border-sand py-5 sm:grid-cols-[1fr_1fr_120px_auto]">
@@ -208,6 +208,12 @@ export default function VenueExplorer({
         Venue enquiries and confirmation are handled separately from your
         supplier basket. Choosing a venue here does not reserve a date.
       </p>
+      <Link
+        href="/venues/requests"
+        className="mt-5 inline-block text-sm underline"
+      >
+        My venue booking & viewing requests →
+      </Link>
       <VenueOperatorCallout />
     </section>
   );

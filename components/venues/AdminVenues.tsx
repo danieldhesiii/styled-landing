@@ -1,19 +1,17 @@
 "use client";
 import Link from "next/link";
+import VenueDetailsFields from "./VenueDetailsFields";
+import VenueRequestCard, { type VenueRequest } from "./VenueRequestCard";
+import VenueTour from "./VenueTour";
+import { venueEmbed } from "@/lib/venue-input";
 import VenuePhotoUpload from "./VenuePhotoUpload";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { VenueListing, VenuePackage } from "@/lib/venues";
 import { STYLES } from "@/lib/styles";
-type AdminVenue = VenueListing & { active: boolean; updated_at?: string };
-type Enquiry = {
-  id: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  guest_count: number | null;
-  preferred_date: string | null;
-  message: string | null;
-  status: string;
+type AdminVenue = VenueListing & {
+  active: boolean;
+  updated_at?: string;
+  review_status?: string;
 };
 const input =
   "mt-1 block w-full rounded-lg border border-sand bg-white p-3 text-sm";
@@ -22,11 +20,18 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
     [selected, setSelected] = useState(initialId || ""),
     [venue, setVenue] = useState<AdminVenue | null>(null),
     [packages, setPackages] = useState<VenuePackage[]>([]),
-    [enquiries, setEnquiries] = useState<Enquiry[]>([]),
+    [enquiries, setEnquiries] = useState<VenueRequest[]>([]),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false),
     [loaded, setLoaded] = useState(false);
+  const [draft, setDraft] = useState<{
+      payload: AdminVenue;
+      status: string;
+      updated_at: string;
+    } | null>(null),
+    [members, setMembers] = useState<{ user_id: string }[]>([]),
+    [blocks, setBlocks] = useState<{ day: string; note: string | null }[]>([]);
   const load = useCallback(async () => {
     try {
       const list = await fetch("/api/admin/venues").then((r) => r.json());
@@ -40,10 +45,16 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
         setVenue(d.venue);
         setPackages(d.packages);
         setEnquiries(d.enquiries);
+        setDraft(d.draft);
+        setMembers(d.members || []);
+        setBlocks(d.blocks || []);
       } else {
         setVenue(null);
         setPackages([]);
         setEnquiries([]);
+        setDraft(null);
+        setMembers([]);
+        setBlocks([]);
       }
       setLoaded(true);
     } catch (e) {
@@ -84,6 +95,7 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
       id: selected || undefined,
       action: "saveVenue",
       active: f.get("active") === "on",
+      features: f.getAll("features"),
     });
   }
   async function savePackage(e: FormEvent<HTMLFormElement>) {
@@ -128,7 +140,11 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
           {venues.map((v) => (
             <option key={v.id} value={v.id}>
               {v.name}
-              {v.active ? "" : " (draft)"}
+              {v.review_status === "submitted"
+                ? " (review requested)"
+                : v.active
+                  ? ""
+                  : " (draft)"}
             </option>
           ))}
         </select>
@@ -166,10 +182,11 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
                     county: "County",
                     capacity_min: "Minimum guests",
                     capacity_max: "Maximum guests",
-                    package_from_pence: "Starting price (pence)",
+                    package_from_pence:
+                      "Styling from (pence, separate from venue hire)",
                     hero_image: "Hero image URL",
                     video_url: "YouTube / Vimeo URL",
-                    matterport_url: "Matterport URL",
+                    matterport_url: "360° / 3D tour URL (Matterport or Kuula)",
                     map_embed_url: "Google Maps embed URL",
                   }[key]
                 }
@@ -220,6 +237,7 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
                 className={input}
               />
             </label>
+            <VenueDetailsFields details={venue?.details} />
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -245,6 +263,192 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
           </form>
           {selected && (
             <>
+              {draft && (
+                <section className="mt-8 rounded-xl bg-blush p-6">
+                  <h2 className="font-serif text-3xl">
+                    Venue team’s{" "}
+                    {draft.status === "submitted"
+                      ? "submitted listing"
+                      : "draft"}
+                  </h2>
+                  <p className="mt-3 text-sm">
+                    Review these proposed public details before publishing. The
+                    live page has not changed.
+                  </p>
+                  <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+                    {Object.entries(draft.payload)
+                      .filter(([k]) => k !== "active")
+                      .map(([k, v]) => (
+                        <div key={k} className="min-w-0">
+                          <dt className="text-xs font-medium uppercase tracking-wide text-clay">
+                            {k.replace(/_/g, " ")}
+                          </dt>
+                          <dd className="mt-2 whitespace-pre-wrap break-words text-sm">
+                            {v !== null && typeof v === "object"
+                              ? JSON.stringify(v, null, 2)
+                              : String(v ?? "Not supplied")}
+                          </dd>
+                        </div>
+                      ))}
+                  </dl>
+                  {draft.payload.hero_image && (
+                    <img
+                      src={draft.payload.hero_image}
+                      alt="Proposed main venue photograph"
+                      className="mt-5 aspect-video w-full max-w-md rounded-xl object-cover"
+                    />
+                  )}
+                  <VenueTour
+                    management
+                    name={draft.payload.name}
+                    url={venueEmbed(draft.payload.matterport_url, "tour")}
+                  />
+                  {draft.status === "submitted" && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        void action({
+                          action: "approveDraft",
+                          venueId: selected,
+                        })
+                      }
+                      className="mt-6 rounded-full bg-ink px-5 py-3 text-sm text-cream"
+                    >
+                      Approve & publish submitted listing
+                    </button>
+                  )}
+                </section>
+              )}
+              <section className="mt-8 rounded-xl border border-sand p-6">
+                <h2 className="font-serif text-2xl">Venue team access</h2>
+                <p className="mt-2 text-sm text-ink/60">
+                  Link an existing verified Styled account. The team can manage
+                  only this venue through /venue-portal.
+                </p>
+                <ul className="mt-4 space-y-3">
+                  {members.map((m) => (
+                    <li
+                      key={m.user_id}
+                      className="flex flex-wrap items-center justify-between gap-3 text-xs"
+                    >
+                      <span className="break-all">{m.user_id}</span>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className="underline"
+                        onClick={() =>
+                          void action({
+                            action: "removeMember",
+                            venueId: selected,
+                            userId: m.user_id,
+                          })
+                        }
+                      >
+                        Remove access
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const form = e.currentTarget;
+                    if (
+                      await action({
+                        action: "addMember",
+                        venueId: selected,
+                        ...Object.fromEntries(new FormData(form)),
+                      })
+                    )
+                      form.reset();
+                  }}
+                  className="mt-5 flex flex-wrap gap-3"
+                >
+                  <input
+                    name="userId"
+                    required
+                    placeholder="Existing account user ID"
+                    aria-label="Existing account user ID"
+                    className="min-w-0 flex-1 rounded-lg border border-sand p-3 text-sm"
+                  />
+                  <button
+                    disabled={busy}
+                    className="rounded-full border border-sand px-4 py-2 text-sm"
+                  >
+                    Add team member
+                  </button>
+                </form>
+              </section>
+              <section className="mt-8 rounded-xl border border-sand p-6">
+                <h2 className="font-serif text-2xl">Unavailable dates</h2>
+                <p className="mt-2 text-sm text-ink/60">
+                  Block dates booked outside Styled. Confirmed Styled bookings
+                  are blocked automatically.
+                </p>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const form = e.currentTarget;
+                    if (
+                      await action({
+                        ...Object.fromEntries(new FormData(form)),
+                        action: "block",
+                        venueId: selected,
+                        block: true,
+                      })
+                    )
+                      form.reset();
+                  }}
+                  className="mt-4 flex flex-wrap gap-3"
+                >
+                  <input
+                    type="date"
+                    name="day"
+                    required
+                    aria-label="Date to block"
+                    className="rounded-lg border border-sand p-3"
+                  />
+                  <input
+                    name="note"
+                    maxLength={300}
+                    placeholder="Private note"
+                    aria-label="Private blocked date note"
+                    className="min-w-0 flex-1 rounded-lg border border-sand p-3"
+                  />
+                  <button
+                    disabled={busy}
+                    className="rounded-full border border-sand px-4 py-2 text-sm"
+                  >
+                    Block date
+                  </button>
+                </form>
+                {blocks.map((b) => (
+                  <div
+                    key={b.day}
+                    className="mt-4 flex flex-wrap justify-between gap-3 text-sm"
+                  >
+                    <span>
+                      {b.day} · {b.note || "Unavailable"}
+                    </span>
+                    <button
+                      disabled={busy}
+                      type="button"
+                      className="underline"
+                      onClick={() =>
+                        void action({
+                          action: "block",
+                          venueId: selected,
+                          day: b.day,
+                          block: false,
+                        })
+                      }
+                    >
+                      Unblock
+                    </button>
+                  </div>
+                ))}
+              </section>
               <VenuePhotoUpload
                 venueId={selected}
                 onUploaded={() => void load()}
@@ -395,43 +599,18 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
                   </p>
                 )}
                 {enquiries.map((e) => (
-                  <article
+                  <VenueRequestCard
                     key={e.id}
-                    className="mt-4 rounded-xl border border-sand p-5"
-                  >
-                    <h3 className="font-serif text-2xl">{e.name}</h3>
-                    <a href={`mailto:${e.email}`} className="text-sm underline">
-                      {e.email}
-                    </a>
-                    <p className="mt-2 text-sm">
-                      {e.preferred_date || "Date not specified"} ·{" "}
-                      {e.guest_count ?? "Unknown"} guests
-                      {e.phone ? ` · ${e.phone}` : ""}
-                    </p>
-                    <p className="mt-3 whitespace-pre-line text-sm text-ink/70">
-                      {e.message}
-                    </p>
-                    <label className="mt-4 block max-w-xs text-sm">
-                      Status
-                      <select
-                        value={e.status}
-                        disabled={busy}
-                        onChange={(v) =>
-                          void action({
-                            action: "setEnquiryStatus",
-                            venueId: selected,
-                            id: e.id,
-                            status: v.target.value,
-                          })
-                        }
-                        className={input}
-                      >
-                        {["new", "contacted", "booked", "declined"].map((s) => (
-                          <option key={s}>{s}</option>
-                        ))}
-                      </select>
-                    </label>
-                  </article>
+                    request={e}
+                    busy={busy}
+                    onRespond={(value) =>
+                      void action({
+                        ...value,
+                        action: "setEnquiryStatus",
+                        venueId: selected,
+                      })
+                    }
+                  />
                 ))}
               </section>
             </>

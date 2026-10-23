@@ -22,12 +22,22 @@ export async function GET(
     .eq("venue_id", venue.id)
     .eq("status", "booked")
     .gte("preferred_date", new Date().toISOString().slice(0, 10));
-  if (datesError)
+  const { data: blocks, error: blockError } = await admin
+    .from("venue_date_blocks")
+    .select("day")
+    .eq("venue_id", venue.id)
+    .gte("day", new Date().toISOString().slice(0, 10));
+  if (datesError || blockError)
     return NextResponse.json({ error: "Dates unavailable." }, { status: 503 });
   return NextResponse.json(
     {
       blockedDates: [
-        ...new Set((data ?? []).map((r) => r.preferred_date).filter(Boolean)),
+        ...new Set(
+          [
+            ...(data ?? []).map((r) => r.preferred_date),
+            ...(blocks ?? []).map((b) => b.day),
+          ].filter(Boolean),
+        ),
       ],
     },
     { headers: { "Cache-Control": "no-store" } },

@@ -1,3 +1,4 @@
+import { parseVenueDetails, poundsToPence } from "./venue-details";
 import { safeImageUrl, venueEmbed } from "./venue-input";
 import { STYLES } from "./styles";
 export function parseVenue(body: Record<string, unknown>) {
@@ -11,7 +12,7 @@ export function parseVenue(body: Record<string, unknown>) {
     name.length > 200 ||
     !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) ||
     slug.length > 160 ||
-    ["partner"].includes(slug)
+    ["partner", "requests"].includes(slug)
   )
     throw new Error(
       "Enter a venue name and a unique URL slug, such as oak-barn.",
@@ -57,7 +58,7 @@ export function parseVenue(body: Record<string, unknown>) {
     const value = str(body[key]) || null;
     if (value && !venueEmbed(value, kind))
       throw new Error(
-        `Check the ${kind} URL. Use YouTube/Vimeo, Matterport or Google Maps embed links as appropriate.`,
+        `Check the ${kind} URL. Use YouTube/Vimeo, Matterport/Kuula or Google Maps embed links as appropriate.`,
       );
     embeds[key] = value;
   }
@@ -65,6 +66,13 @@ export function parseVenue(body: Record<string, unknown>) {
   if (description.length > 10000)
     throw new Error("Keep the description under 10,000 characters.");
   return {
+    details: parseVenueDetails(
+      body.details &&
+        typeof body.details === "object" &&
+        !Array.isArray(body.details)
+        ? (body.details as Record<string, unknown>)
+        : body,
+    ),
     name,
     slug,
     location,
@@ -76,7 +84,12 @@ export function parseVenue(body: Record<string, unknown>) {
     hero_image,
     gallery_images,
     ...embeds,
-    package_from_pence: integer(body.package_from_pence, 0),
+    package_from_pence: integer(
+      body.styling_from_pounds !== undefined
+        ? poundsToPence(body.styling_from_pounds)
+        : body.package_from_pence,
+      0,
+    ),
     active: body.active === true,
   };
 }
