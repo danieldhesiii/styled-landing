@@ -210,6 +210,7 @@ export default function VenuePortal() {
             <select
               className={field}
               value={selected}
+              disabled={busy}
               onChange={(e) => {
                 setSelected(e.target.value);
                 setAdding(false);
@@ -227,6 +228,7 @@ export default function VenuePortal() {
           <button
             type="button"
             onClick={() => setAdding((a) => !a)}
+            disabled={busy}
             className="rounded-full border border-sand px-5 py-3 text-sm"
           >
             {adding ? "Close" : "Add another venue"}
@@ -269,7 +271,7 @@ export default function VenuePortal() {
           </form>
         </section>
       )}
-      {venue && value && (
+      {venue && value && venue.id === selected && (
         <>
           <div className="mb-6 flex flex-wrap items-center gap-3 text-xs">
             <span className="rounded-lg bg-sand px-3 py-2">
