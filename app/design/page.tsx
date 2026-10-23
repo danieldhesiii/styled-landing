@@ -118,6 +118,9 @@ function DesignStudio() {
     guestCountEstimated: true,
     planSetupComplete: false,
   });
+  const budgetUnset =
+    brief.budgetUnknown ??
+    (!brief.planSetupComplete && !brief.weddingDate && !brief.venueName);
   const [boards, setBoards] = useState<WeddingBoard[]>([]);
   const [workspacePhotos, setWorkspacePhotos] = useState<
     Record<string, string>
@@ -1344,7 +1347,7 @@ function DesignStudio() {
                   <BasketPanel
                     basket={basket}
                     guestCount={brief.guestCount}
-                    budget={brief.budgetUnknown ? null : brief.budget}
+                    budget={budgetUnset ? null : brief.budget}
                     weddingDate={brief.weddingDate}
                     deliveryDate={deliveryDay(brief)}
                     onQty={setQty}
@@ -1402,7 +1405,7 @@ function DesignStudio() {
           <BasketPanel
             basket={basket}
             guestCount={brief.guestCount}
-            budget={brief.budgetUnknown ? null : brief.budget}
+            budget={budgetUnset ? null : brief.budget}
             weddingDate={brief.weddingDate}
             deliveryDate={deliveryDay(brief)}
             onQty={setQty}
