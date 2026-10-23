@@ -1,5 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { loadCatalogue, SCENE_CATEGORIES, type ServerCatalogueItem } from "@/lib/server/catalogue";
+import {
+  loadCatalogue,
+  SCENE_CATEGORIES,
+  type ServerCatalogueItem,
+} from "@/lib/server/catalogue";
 import { loadAvailability } from "@/lib/server/availability";
 import { composeLook, type DayAvailability, type LookReport } from "@/lib/look";
 import { isValidDay, todayUtc } from "@/lib/availability";
@@ -25,6 +29,7 @@ export async function composeOrderableLook(opts: {
   chosenIds: string[];
   setting: SceneId;
   weddingDate: string | null;
+  deliveryDate?: string | null;
   guestCount: number;
   autoFill?: boolean;
   substitute?: boolean;
@@ -34,9 +39,18 @@ export async function composeOrderableLook(opts: {
 
   let availability: Map<string, DayAvailability> | null = null;
   if (date && catalogue.length > 0) {
-    const raw = await loadAvailability(createAdminClient(), catalogue.map((i) => i.id), date);
+    const raw = await loadAvailability(
+      createAdminClient(),
+      catalogue.map((i) => i.id),
+      date,
+      undefined,
+      opts.deliveryDate || date,
+    );
     availability = new Map(
-      [...raw].map(([id, a]) => [id, { effectiveCapacity: a.effectiveCapacity, available: a.available }])
+      [...raw].map(([id, a]) => [
+        id,
+        { effectiveCapacity: a.effectiveCapacity, available: a.available },
+      ]),
     );
   }
 

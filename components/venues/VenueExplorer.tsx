@@ -3,13 +3,18 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { filterVenueListings, type VenueListing } from "@/lib/venues";
 import { VenueCards, VenueOperatorCallout } from "./VenueCollection";
+import type { DiscoveryMatch } from "@/lib/location";
 export default function VenueExplorer({
+  matches,
+  searchRadius = 50,
   active,
   guestCount,
   selectedSlug,
   onSelect,
   onVisualise,
 }: {
+  matches?: Record<string, DiscoveryMatch>;
+  searchRadius?: number;
   active: boolean;
   guestCount: number;
   selectedSlug?: string;
@@ -47,11 +52,24 @@ export default function VenueExplorer({
     return () => controller.abort();
   }, [active, retry]);
   const counties = [...new Set((venues || []).map((v) => v.county))].sort();
-  const visible = filterVenueListings(venues || [], {
+  const filtered = filterVenueListings(venues || [], {
     county,
     setting,
     guests: Number(guests),
   });
+  const visible = filtered
+    .filter(
+      (v) =>
+        !matches ||
+        !matches[v.slug] ||
+        !searchRadius ||
+        matches[v.slug].miles <= searchRadius,
+    )
+    .sort(
+      (a, b) =>
+        (matches?.[a.slug]?.miles ?? Infinity) -
+        (matches?.[b.slug]?.miles ?? Infinity),
+    );
   const field =
     "mt-2 block w-full rounded-lg border border-sand bg-cream px-3 py-2 text-sm";
   return (
@@ -164,6 +182,7 @@ export default function VenueExplorer({
           </div>
         ) : (
           <VenueCards
+            distances={matches}
             venues={visible}
             selectedSlug={selectedSlug}
             onSelect={onSelect}
@@ -173,8 +192,8 @@ export default function VenueExplorer({
         <div>
           <h2 className="font-serif text-2xl">Already have your venue?</h2>
           <p className="mt-2 text-sm text-ink/60">
-            Use your own venue photo in the AI visualiser. Your basket stays
-            with you.
+            Save your venue and its photographs in My wedding, then use them in
+            the visualiser. Your basket stays with you.
           </p>
         </div>
         <button
@@ -182,7 +201,7 @@ export default function VenueExplorer({
           onClick={onVisualise}
           className="rounded-full border border-sand px-4 py-2 text-sm"
         >
-          Use my own venue photo
+          Add my own venue
         </button>
       </div>
       <p className="mt-5 text-xs leading-relaxed text-ink/50">

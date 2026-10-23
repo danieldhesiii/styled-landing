@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { classifyAvailability, type ItemAvailability } from "@/lib/availability";
+import {
+  classifyAvailability,
+  type ItemAvailability,
+} from "@/lib/availability";
 
 // Reads availability from the database function public.product_availability,
 // the single definition of what's free on a given day.
@@ -16,18 +19,32 @@ export async function loadAvailability(
   admin: SupabaseClient,
   productIds: string[],
   day: string,
-  excludeOrderId?: string
+  excludeOrderId?: string,
+  startDay?: string,
 ): Promise<Map<string, RawAvailability>> {
-  const { data, error } = await admin.rpc("product_availability", {
-    p_product_ids: productIds,
-    p_day: day,
-    p_exclude_order: excludeOrderId ?? null,
-  });
+  const { data, error } = await admin.rpc(
+    startDay && startDay !== day
+      ? "product_availability_range"
+      : "product_availability",
+    {
+      p_product_ids: productIds,
+      ...(startDay && startDay !== day
+        ? { p_start: startDay, p_end: day }
+        : { p_day: day }),
+      p_exclude_order: excludeOrderId ?? null,
+    },
+  );
   if (error) throw new Error(`Couldn't check availability: ${error.message}`);
 
   return new Map(
     (data ?? []).map(
-      (r: { product_id: string; capacity: number | null; effective_capacity: number | null; reserved: number; available: number | null }) => [
+      (r: {
+        product_id: string;
+        capacity: number | null;
+        effective_capacity: number | null;
+        reserved: number;
+        available: number | null;
+      }) => [
         r.product_id,
         {
           productId: r.product_id,
@@ -36,8 +53,8 @@ export async function loadAvailability(
           reserved: r.reserved,
           available: r.available,
         },
-      ]
-    )
+      ],
+    ),
   );
 }
 
@@ -46,9 +63,16 @@ export async function checkQuantities(
   admin: SupabaseClient,
   wanted: { itemId: string; quantity: number }[],
   day: string,
-  excludeOrderId?: string
+  excludeOrderId?: string,
+  startDay?: string,
 ): Promise<Map<string, ItemAvailability>> {
-  const raw = await loadAvailability(admin, wanted.map((w) => w.itemId), day, excludeOrderId);
+  const raw = await loadAvailability(
+    admin,
+    wanted.map((w) => w.itemId),
+    day,
+    excludeOrderId,
+    startDay,
+  );
   const out = new Map<string, ItemAvailability>();
   for (const w of wanted) {
     const a = raw.get(w.itemId);

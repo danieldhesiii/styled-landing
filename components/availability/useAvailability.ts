@@ -11,7 +11,8 @@ import type { ItemAvailability } from "@/lib/availability";
 // Both stay empty until there is a real date today or later.
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
-const usable = (date: string) => DAY.test(date) && date >= new Date().toISOString().slice(0, 10);
+const usable = (date: string) =>
+  DAY.test(date) && date >= new Date().toISOString().slice(0, 10);
 
 export interface ShopAvailability {
   items: Record<string, ItemAvailability> | null;
@@ -19,28 +20,52 @@ export interface ShopAvailability {
   error: string | null;
 }
 
-export function useShopAvailability(date: string, guests: number): ShopAvailability {
-  const [state, setState] = useState<ShopAvailability>({ items: null, loading: false, error: null });
+export function useShopAvailability(
+  date: string,
+  guests: number,
+  delivery = date,
+): ShopAvailability {
+  const [state, setState] = useState<ShopAvailability>({
+    items: null,
+    loading: false,
+    error: null,
+  });
 
   useEffect(() => {
-    if (!usable(date)) {
+    if (!usable(date) || !usable(delivery)) {
       setState({ items: null, loading: false, error: null });
       return;
     }
     let cancelled = false;
-    setState((s) => ({ ...s, loading: true, error: null }));
-    fetch(`/api/availability?date=${date}&guests=${guests}`, { cache: "no-store" })
+    setState({ items: null, loading: true, error: null });
+    fetch(
+      `/api/availability?date=${date}&guests=${guests}&delivery=${encodeURIComponent(delivery)}`,
+      { cache: "no-store" },
+    )
       .then((r) => r.json())
       .then((d) => {
         if (cancelled) return;
-        if (!d?.ok) setState({ items: null, loading: false, error: d?.error ?? "Couldn't check availability." });
+        if (!d?.ok)
+          setState({
+            items: null,
+            loading: false,
+            error: d?.error ?? "Couldn't check availability.",
+          });
         else setState({ items: d.items, loading: false, error: null });
       })
-      .catch(() => !cancelled && setState({ items: null, loading: false, error: "Couldn't check availability." }));
+      .catch(
+        () =>
+          !cancelled &&
+          setState({
+            items: null,
+            loading: false,
+            error: "Couldn't check availability.",
+          }),
+      );
     return () => {
       cancelled = true;
     };
-  }, [date, guests]);
+  }, [date, guests, delivery]);
 
   return state;
 }
@@ -53,13 +78,30 @@ export interface BasketAvailability {
   checked: boolean; // a real answer for the current date and basket
 }
 
-export function useBasketAvailability(date: string, basket: BasketLine[], refreshKey = 0): BasketAvailability {
-  const [state, setState] = useState<BasketAvailability>({ lines: {}, allAvailable: true, loading: false, error: null, checked: false });
+export function useBasketAvailability(
+  date: string,
+  basket: BasketLine[],
+  refreshKey = 0,
+  delivery = date,
+): BasketAvailability {
+  const [state, setState] = useState<BasketAvailability>({
+    lines: {},
+    allAvailable: true,
+    loading: false,
+    error: null,
+    checked: false,
+  });
   const key = JSON.stringify(basket.map((l) => [l.itemId, l.quantity]));
 
   useEffect(() => {
-    if (!usable(date) || basket.length === 0) {
-      setState({ lines: {}, allAvailable: true, loading: false, error: null, checked: false });
+    if (!usable(date) || !usable(delivery) || basket.length === 0) {
+      setState({
+        lines: {},
+        allAvailable: true,
+        loading: false,
+        error: null,
+        checked: false,
+      });
       return;
     }
     let cancelled = false;
@@ -69,22 +111,46 @@ export function useBasketAvailability(date: string, basket: BasketLine[], refres
       fetch("/api/availability/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, basket }),
+        body: JSON.stringify({ date, basket, delivery }),
       })
         .then((r) => r.json())
         .then((d) => {
           if (cancelled) return;
-          if (!d?.ok) setState({ lines: {}, allAvailable: true, loading: false, error: d?.error ?? "Couldn't check availability.", checked: false });
-          else setState({ lines: d.lines, allAvailable: d.allAvailable, loading: false, error: null, checked: true });
+          if (!d?.ok)
+            setState({
+              lines: {},
+              allAvailable: true,
+              loading: false,
+              error: d?.error ?? "Couldn't check availability.",
+              checked: false,
+            });
+          else
+            setState({
+              lines: d.lines,
+              allAvailable: d.allAvailable,
+              loading: false,
+              error: null,
+              checked: true,
+            });
         })
-        .catch(() => !cancelled && setState({ lines: {}, allAvailable: true, loading: false, error: "Couldn't check availability.", checked: false }));
+        .catch(
+          () =>
+            !cancelled &&
+            setState({
+              lines: {},
+              allAvailable: true,
+              loading: false,
+              error: "Couldn't check availability.",
+              checked: false,
+            }),
+        );
     }, 350);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, key, refreshKey]);
+  }, [date, key, refreshKey, delivery]);
 
   return state;
 }

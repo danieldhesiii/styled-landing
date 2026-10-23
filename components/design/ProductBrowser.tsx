@@ -9,7 +9,13 @@ import { STYLES } from "@/lib/styles";
 import ResponsivePanel from "@/components/ui/ResponsivePanel";
 import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
 import type { ShopAvailability } from "@/components/availability/useAvailability";
-interface Props {
+import DeliveryDates from "@/components/wedding/DeliveryDates";
+import type { PlanningDetails } from "@/lib/wedding";
+import type { DiscoveryMatch } from "@/lib/location";
+interface Props extends PlanningDetails {
+  matches?: Record<string, DiscoveryMatch>;
+  searchRadius?: number;
+  onDates: (patch: Partial<PlanningDetails> & { weddingDate?: string }) => void;
   styleId: string;
   basket: BasketLine[];
   weddingDate: string;
@@ -27,12 +33,17 @@ interface Props {
   onToggleSave: (id: string) => void;
 }
 export default function ProductBrowser({
+  matches,
+  searchRadius = 50,
   basket,
   weddingDate,
   availability,
   lookSignal = 0,
   lookItemIds,
   onWeddingDate,
+  onDates,
+  deliverySameDay,
+  deliveryDate,
   onAdd,
   onRemove,
   onQty,
@@ -115,6 +126,24 @@ export default function ProductBrowser({
       (!query ||
         `${i.name} ${i.supplier}`.toLowerCase().includes(query.toLowerCase())),
   );
+  if (matches) {
+    items = items.filter((i) => {
+      if (savedOnly) return true;
+      const m = matches[i.supplierId || ""];
+      return (
+        !m ||
+        m.delivery === "nationwide" ||
+        m.delivery === "unknown" ||
+        (m.delivery !== "outside_area" &&
+          (!searchRadius || m.miles <= searchRadius))
+      );
+    });
+    items.sort(
+      (a, b) =>
+        (matches[a.supplierId || ""]?.miles ?? Infinity) -
+        (matches[b.supplierId || ""]?.miles ?? Infinity),
+    );
+  }
   if (savedOnly) items = items.filter((item) => savedItemIds.includes(item.id));
   if (view === "look") {
     const ids = new Set(
@@ -243,7 +272,9 @@ export default function ProductBrowser({
               onChange={(e) => setSort(e.target.value)}
               className={`${field} mt-1 w-full`}
             >
-              <option value="featured">Featured</option>
+              <option value="featured">
+                {matches ? "Nearest suppliers" : "Featured"}
+              </option>
               <option value="price_up">Price: low to high</option>
               <option value="price_down">Price: high to low</option>
               <option value="rated">Top rated</option>
@@ -368,23 +399,23 @@ export default function ProductBrowser({
           </button>
         )}
       </div>
-      <div className="my-5 flex flex-wrap items-center gap-3 border-y border-sand py-4 text-sm">
-        <label htmlFor="catalogue-date">Wedding date</label>
-        <input
-          id="catalogue-date"
-          type="date"
-          value={weddingDate}
-          onChange={(e) => onWeddingDate(e.target.value)}
-          className={field}
+      <div className="my-5 border-y border-sand py-5">
+        <DeliveryDates
+          compact
+          weddingDate={weddingDate}
+          deliverySameDay={deliverySameDay}
+          deliveryDate={deliveryDate}
+          onChange={onDates}
+          id="catalogue"
         />
-        <span className="text-xs text-ink/60">
+        <p role="status" className="mt-3 text-xs text-ink/60">
           {availability.error ||
             (availability.loading
-              ? "Checking availability…"
+              ? "Checking delivery-to-wedding availability…"
               : availability.items
-                ? "Availability checked for your date."
-                : "Choose a date to check availability.")}
-        </span>
+                ? "Availability checked from delivery through your wedding day."
+                : "Choose your dates to check availability.")}
+        </p>
       </div>
       <div
         className={
@@ -484,6 +515,16 @@ export default function ProductBrowser({
                     ) : (
                       <p className="mt-1 text-xs text-ink/60">
                         {item.supplier}
+                      </p>
+                    )}
+                    {matches && (
+                      <p className="mt-2 text-xs text-ink/60">
+                        {(() => {
+                          const m = matches[item.supplierId || ""];
+                          return !m
+                            ? "Location and delivery need confirming"
+                            : `${m.miles} miles away · ${m.delivery === "nationwide" ? "Nationwide delivery" : m.delivery === "within_area" ? "Within stated delivery area" : m.delivery === "outside_area" ? "Outside stated delivery area" : "Delivery coverage needs confirming"}`;
+                        })()}
                       </p>
                     )}
                     <p className="mt-3 text-lg">

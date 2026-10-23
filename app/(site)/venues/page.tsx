@@ -1,4 +1,5 @@
 import Link from "next/link";
+import NearbyVenues from "@/components/venues/NearbyVenues";
 import { filterVenueListings } from "@/lib/venues";
 import { loadPublicVenues } from "@/lib/server/venues";
 import {
@@ -99,7 +100,7 @@ export default async function VenuesPage({
             : "Our venue collection is being prepared. Check back soon."}
         </p>
       ) : (
-        <VenueCards venues={visible} />
+        <NearbyVenues venues={visible} />
       )}
       <VenueOperatorCallout />
     </div>

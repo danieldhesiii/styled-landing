@@ -1,4 +1,6 @@
 export const HELP_TOPICS = [
+  "wedding",
+  "boards",
   "catalogue",
   "venues",
   "saved_items",
@@ -18,6 +20,48 @@ type Guide = {
   note: string;
 };
 export const HELP_GUIDES: Record<HelpTopic, Guide> = {
+  wedding: {
+    label: "My wedding",
+    title: "Keep your plans together",
+    intro:
+      "Save your own venue, photographs, dates and budget in your private account.",
+    steps: [
+      {
+        title: "Choose your starting point",
+        body: "Tell us whether you already have a venue, are looking for one, or are just exploring. Add the wedding location postcode for relevant discovery.",
+      },
+      {
+        title: "Set wedding and delivery days",
+        body: "Delivery follows your wedding date while Same as wedding day is checked. Untick it for an earlier setup day. Stock is checked from delivery through the wedding.",
+      },
+      {
+        title: "Keep your photographs",
+        body: "Upload your venue rooms and angles. Set the first image as the visualiser starting point, then save wedding details to continue on another device.",
+      },
+    ],
+    note: "Your own venue and photos stay private. Delivery times, fees and collection are confirmed separately; selecting dates is not a confirmed booking.",
+  },
+  boards: {
+    label: "Boards",
+    title: "Collect ideas for your wedding",
+    intro:
+      "Private boards bring your products, inspiration, saved looks and notes into one place.",
+    steps: [
+      {
+        title: "Create a board",
+        body: "Name a board for your ceremony, reception or a style you want to explore.",
+      },
+      {
+        title: "Build the idea",
+        body: "Add catalogue pieces, upload your inspiration images, write notes or choose a look already saved in the visualiser. Board changes save to your account.",
+      },
+      {
+        title: "Shop when ready",
+        body: "Use Add to basket on real catalogue pieces. Inspiration images and generated looks are illustrative and cannot be ordered as photographs.",
+      },
+    ],
+    note: "Boards stay private. Adding a piece to a board does not reserve stock, change your basket or start image generation. Save wedding details before navigating away if you have edited them.",
+  },
   catalogue: {
     label: "Catalogue",
     title: "Find pieces for your day",
@@ -26,7 +70,7 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
     steps: [
       {
         title: "Set your wedding details",
-        body: "Use Edit details to set your guest count, budget and wedding date. Choose a date to check supplier availability; a venue choice is optional.",
+        body: "Use My wedding for your venue, guest count and budget. Set a wedding day and, if different, an earlier delivery day. Stock is checked across that interval. A venue choice is optional.",
       },
       {
         title: "Browse your way",
@@ -244,6 +288,8 @@ export function helpTopicForPage(
   studioSection?: string,
 ): HelpTopic {
   if (pathname === "/design" || pathname.startsWith("/design/")) {
+    if (studioSection === "wedding") return "wedding";
+    if (studioSection === "boards") return "boards";
     if (studioSection === "checkout") return "basket";
     if (studioSection === "saved") return "saved_items";
     if (studioSection === "venues") return "venues";

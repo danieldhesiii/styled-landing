@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { loadCatalogue } from "@/lib/server/catalogue";
 import { loadAvailability } from "@/lib/server/availability";
 import { classifyAvailability, isValidDay, todayUtc } from "@/lib/availability";
+import { deliveryError } from "@/lib/wedding";
 import { suggestedQty } from "@/lib/quote";
 
 export const dynamic = "force-dynamic";
@@ -20,21 +21,46 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const date = url.searchParams.get("date");
-  const guests = Math.min(1000, Math.max(1, Math.round(Number(url.searchParams.get("guests")) || 80)));
-  if (!isValidDay(date)) return NextResponse.json({ ok: false, error: "Please send a date as YYYY-MM-DD." }, { status: 400 });
-  if (date < todayUtc()) return NextResponse.json({ ok: false, error: "That date is in the past." }, { status: 400 });
+  const guests = Math.min(
+    1000,
+    Math.max(1, Math.round(Number(url.searchParams.get("guests")) || 80)),
+  );
+  if (!isValidDay(date))
+    return NextResponse.json(
+      { ok: false, error: "Please send a date as YYYY-MM-DD." },
+      { status: 400 },
+    );
+  if (date < todayUtc())
+    return NextResponse.json(
+      { ok: false, error: "That date is in the past." },
+      { status: 400 },
+    );
 
+  const start = url.searchParams.get("delivery") || date;
+  const invalid = deliveryError(date, start);
+  if (invalid)
+    return NextResponse.json({ ok: false, error: invalid }, { status: 400 });
   try {
     const catalogue = await loadCatalogue();
-    const raw = await loadAvailability(createAdminClient(), catalogue.map((i) => i.id), date);
+    const raw = await loadAvailability(
+      createAdminClient(),
+      catalogue.map((i) => i.id),
+      date,
+      undefined,
+      start,
+    );
     const items: Record<string, ReturnType<typeof classifyAvailability>> = {};
     for (const item of catalogue) {
       const a = raw.get(item.id);
-      if (a) items[item.id] = classifyAvailability(a, suggestedQty(item, guests));
+      if (a)
+        items[item.id] = classifyAvailability(a, suggestedQty(item, guests));
     }
     return NextResponse.json({ ok: true, date, guests, items });
   } catch (err) {
     console.error("[availability]", err);
-    return NextResponse.json({ ok: false, error: "Couldn't check availability." }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "Couldn't check availability." },
+      { status: 500 },
+    );
   }
 }

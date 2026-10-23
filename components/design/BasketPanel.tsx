@@ -13,6 +13,7 @@ interface Props {
   guestCount: number;
   budget: number | null;
   weddingDate: string;
+  deliveryDate?: string;
   onQty: (itemId: string, quantity: number) => void;
   onRemove: (itemId: string) => void;
   onCheckout: () => void;
@@ -23,6 +24,7 @@ export default function BasketPanel({
   guestCount,
   budget,
   weddingDate,
+  deliveryDate,
   onQty,
   onRemove,
   onCheckout,
@@ -31,7 +33,12 @@ export default function BasketPanel({
   // Instant preview while editing; checkout asks the server for the exact quote.
   const quote = useMemo(() => buildQuote(basket, getItem), [basket, getItem]);
   // Does everything in the basket fit on the wedding date, at these quantities?
-  const availability = useBasketAvailability(weddingDate, basket);
+  const availability = useBasketAvailability(
+    weddingDate,
+    basket,
+    0,
+    deliveryDate ?? weddingDate,
+  );
   const tables = Math.max(1, Math.ceil(guestCount / 10));
   const overBudget = budget != null && quote.subtotal > budget;
 
@@ -189,7 +196,7 @@ export default function BasketPanel({
         </div>
         <div className="mt-1 flex items-baseline justify-between">
           <span className="text-xs text-ink/40">
-            Deposit to secure your date ({Math.round(DEPOSIT_RATE * 100)}%)
+            Illustrative deposit ({Math.round(DEPOSIT_RATE * 100)}%)
           </span>
           <span className="text-sm text-clay">{formatGBP(quote.deposit)}</span>
         </div>

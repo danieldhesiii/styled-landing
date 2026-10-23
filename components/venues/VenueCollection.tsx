@@ -5,11 +5,14 @@ import { formatGBP } from "@/lib/quote";
 
 // Shared by public venue discovery and the studio. Only published, public
 // listing fields reach these cards; enquiries stay on the separate detail flow.
+import type { DiscoveryMatch } from "@/lib/location";
 export function VenueCards({
+  distances,
   venues,
   selectedSlug,
   onSelect,
 }: {
+  distances?: Record<string, DiscoveryMatch>;
   venues: VenueListing[];
   selectedSlug?: string;
   onSelect?: (venue: VenueListing) => void;
@@ -47,6 +50,13 @@ export function VenueCards({
                 ? ` · Up to ${venue.capacity_max} guests`
                 : ""}
             </p>
+            {distances && (
+              <p className="mt-2 text-xs text-ink/60">
+                {distances[venue.slug]
+                  ? `${distances[venue.slug].miles} miles from your chosen location`
+                  : "Location needs confirming"}
+              </p>
+            )}
             {venue.package_from_pence !== null && (
               <p className="mt-3 text-sm">
                 Styling from {formatGBP(venue.package_from_pence / 100)}

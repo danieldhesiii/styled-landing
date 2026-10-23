@@ -6,6 +6,11 @@ import { createClient } from "@/lib/supabase/client";
 
 const LINKS = [
   {
+    href: "/admin/locations",
+    label: "Locations",
+    match: (p: string) => p.startsWith("/admin/locations"),
+  },
+  {
     href: "/admin/venues",
     label: "Venues",
     match: (p: string) => p.startsWith("/admin/venues"),

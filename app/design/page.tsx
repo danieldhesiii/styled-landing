@@ -21,6 +21,18 @@ import AccountMenu from "@/components/auth/AccountMenu";
 import MyOrdersDrawer from "@/components/order/MyOrdersDrawer";
 import { useShopAvailability } from "@/components/availability/useAvailability";
 
+import LocationFilter from "@/components/wedding/LocationFilter";
+import type { DiscoveryResults } from "@/lib/location";
+import MyWedding from "@/components/wedding/MyWedding";
+import Boards from "@/components/wedding/Boards";
+import {
+  deliveryDay,
+  workspaceData,
+  workspaceFingerprint,
+  type WorkspaceData,
+  type WeddingBoard,
+} from "@/lib/wedding";
+
 type Step = "studio" | "checkout";
 
 export default function DesignPage() {
@@ -28,11 +40,13 @@ export default function DesignPage() {
   const [partnerVenue, setPartnerVenue] = useState<SampleVenue | null>(null);
   const [partnerError, setPartnerError] = useState("");
   const [studioTab, setStudioTab] = useState<
-    "catalogue" | "venues" | "saved" | "visualiser"
+    "catalogue" | "venues" | "saved" | "visualiser" | "wedding" | "boards"
   >("catalogue");
   const savedItems = useSavedItems();
+  const [discovery, setDiscovery] = useState<DiscoveryResults | null>(null),
+    [searchRadius, setSearchRadius] = useState(50);
   function switchStudioTab(
-    tab: "catalogue" | "venues" | "saved" | "visualiser",
+    tab: "catalogue" | "venues" | "saved" | "visualiser" | "wedding" | "boards",
   ) {
     setStudioTab(tab);
     const url = new URL(window.location.href);
@@ -61,6 +75,17 @@ export default function DesignPage() {
     weddingDate: "",
     budget: 6000,
   });
+  const [boards, setBoards] = useState<WeddingBoard[]>([]);
+  const [workspacePhotos, setWorkspacePhotos] = useState<
+    Record<string, string>
+  >({});
+  const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
+  const [workspaceSaving, setWorkspaceSaving] = useState(false);
+  const [workspaceError, setWorkspaceError] = useState("");
+  const [savedWorkspace, setSavedWorkspace] = useState("");
+  const workspaceRevision = useRef(0),
+    workspaceLock = useRef(false),
+    designKey = useRef("");
   const [basket, setBasket] = useState<BasketLine[]>([]);
 
   // Renders made for the current look (oldest first) and which one is showing.
@@ -110,85 +135,144 @@ export default function DesignPage() {
   // when the couple navigates away and comes back. The render's signed URL is
   // re-fetched fresh by id, since signed URLs expire.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("styled:design");
-      if (raw) {
-        const saved = JSON.parse(raw) as {
-          brief?: Partial<Brief>;
-          basket?: BasketLine[];
-          renderId?: string | null;
-        };
-        if (saved.brief) {
-          // Older saved state kept uploadedImages as plain URL strings; keep only
-          // entries in the current {id, url} shape (expired URLs are dropped anyway).
-          const restoredBrief = { ...saved.brief };
-          if (Array.isArray(restoredBrief.uploadedImages)) {
-            restoredBrief.uploadedImages = (
-              restoredBrief.uploadedImages as unknown[]
-            ).filter(
-              (p): p is UploadedPhoto =>
-                !!p &&
-                typeof p === "object" &&
-                typeof (p as UploadedPhoto).id === "string" &&
-                typeof (p as UploadedPhoto).url === "string",
-            );
+    let cancelled = false;
+    void (async () => {
+      const {
+        data: { user },
+      } = await createClient().auth.getUser();
+      if (!user || cancelled) return;
+      designKey.current = `styled:design:${user.id}`;
+      let localDraft: {
+        brief?: Partial<Brief>;
+        workspaceRevision?: number;
+      } | null = null;
+      try {
+        const raw = localStorage.getItem(designKey.current);
+        if (raw) {
+          const saved = JSON.parse(raw) as {
+            brief?: Partial<Brief>;
+            basket?: BasketLine[];
+            renderId?: string | null;
+            workspaceRevision?: number;
+          };
+          localDraft = saved;
+          if (saved.brief) {
+            // Older saved state kept uploadedImages as plain URL strings; keep only
+            // entries in the current {id, url} shape (expired URLs are dropped anyway).
+            const restoredBrief = { ...saved.brief };
+            if (Array.isArray(restoredBrief.uploadedImages)) {
+              restoredBrief.uploadedImages = (
+                restoredBrief.uploadedImages as unknown[]
+              ).filter(
+                (p): p is UploadedPhoto =>
+                  !!p &&
+                  typeof p === "object" &&
+                  typeof (p as UploadedPhoto).id === "string" &&
+                  typeof (p as UploadedPhoto).url === "string",
+              );
+            }
+            setBrief((b) => ({ ...b, ...restoredBrief }));
           }
-          setBrief((b) => ({ ...b, ...restoredBrief }));
+          if (Array.isArray(saved.basket)) setBasket(saved.basket);
+          if (
+            saved.renderId &&
+            !new URLSearchParams(window.location.search).has("venue") &&
+            !new URLSearchParams(window.location.search).has("style")
+          ) {
+            fetch(`/api/renders/${saved.renderId}`)
+              .then((r) => r.json())
+              .then((data) => {
+                if (
+                  data.status === "succeeded" &&
+                  data.imageUrl &&
+                  saved.renderId
+                ) {
+                  setVersions([
+                    {
+                      id: saved.renderId,
+                      url: data.imageUrl,
+                      itemIds: data.itemIds,
+                    },
+                  ]);
+                  setRenderId(saved.renderId);
+                }
+              })
+              .catch(() => {});
+          }
         }
-        if (Array.isArray(saved.basket)) setBasket(saved.basket);
-        if (
-          saved.renderId &&
-          !new URLSearchParams(window.location.search).has("venue") &&
-          !new URLSearchParams(window.location.search).has("style")
-        ) {
-          fetch(`/api/renders/${saved.renderId}`)
-            .then((r) => r.json())
-            .then((data) => {
-              if (
-                data.status === "succeeded" &&
-                data.imageUrl &&
-                saved.renderId
-              ) {
-                setVersions([
-                  {
-                    id: saved.renderId,
-                    url: data.imageUrl,
-                    itemIds: data.itemIds,
-                  },
-                ]);
-                setRenderId(saved.renderId);
-              }
-            })
-            .catch(() => {});
-        }
+      } catch {
+        // Corrupt saved state — start fresh.
       }
-    } catch {
-      // Corrupt saved state — start fresh.
-    }
-    const params = new URLSearchParams(window.location.search);
-    const styleParam = params.get("style");
-    if (
-      styleParam &&
-      [
-        "garden_romance",
-        "classic_elegance",
-        "modern_minimal",
-        "rustic_barn",
-      ].includes(styleParam)
-    )
-      setBrief((b) => ({ ...b, styleId: styleParam }));
-    const slug = params.get("venue");
-    if (slug && /^[a-z0-9-]+$/.test(slug))
-      setBrief((b) => ({
-        ...b,
-        venueId: `listing:${slug}`,
-        uploadedImages: [],
-      }));
-    const tab = params.get("tab");
-    if (tab === "saved" || tab === "visualiser" || tab === "venues")
-      setStudioTab(tab);
-    else if (params.get("render") === "true") setStudioTab("visualiser");
-    setRestored(true);
+      try {
+        const response = await fetch("/api/wedding", { cache: "no-store" });
+        const data = await response.json();
+        if (!response.ok || !data.ok)
+          throw Error(data.error || "Could not load your wedding.");
+        if (cancelled) return;
+        workspaceRevision.current = data.revision;
+        setWorkspacePhotos(data.photos || {});
+        if (data.data) {
+          const stored = data.data as WorkspaceData;
+          const { photoIds, ...details } = stored.brief;
+          const draft =
+            localDraft?.workspaceRevision === data.revision
+              ? localDraft?.brief
+              : undefined;
+          const selectedPhotoIds =
+            draft?.uploadedImages?.map((p) => p.id) ?? photoIds;
+          setBrief((b) => ({
+            ...b,
+            ...details,
+            ...draft,
+            uploadedImages: selectedPhotoIds
+              .filter((id) => data.photos[id])
+              .map((id) => ({ id, url: data.photos[id] })),
+          }));
+          setBoards(stored.boards);
+          setSavedWorkspace(workspaceFingerprint(stored));
+        }
+        setWorkspaceLoaded(true);
+      } catch (e) {
+        if (!cancelled)
+          setWorkspaceError(
+            e instanceof Error ? e.message : "Could not load your wedding.",
+          );
+      }
+      if (cancelled) return;
+      const params = new URLSearchParams(window.location.search);
+      const styleParam = params.get("style");
+      if (
+        styleParam &&
+        [
+          "garden_romance",
+          "classic_elegance",
+          "modern_minimal",
+          "rustic_barn",
+        ].includes(styleParam)
+      )
+        setBrief((b) => ({ ...b, styleId: styleParam }));
+      const slug = params.get("venue");
+      if (slug && /^[a-z0-9-]+$/.test(slug))
+        setBrief((b) => ({
+          ...b,
+          venueId: `listing:${slug}`,
+          uploadedImages: [],
+        }));
+      const tab = params.get("tab");
+      if (
+        tab === "saved" ||
+        tab === "visualiser" ||
+        tab === "venues" ||
+        tab === "wedding" ||
+        tab === "boards"
+      )
+        setStudioTab(tab);
+      else if (params.get("render") === "true") setStudioTab("visualiser");
+      setRestored(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Persist the design whenever it changes (once the initial restore has run,
@@ -197,8 +281,13 @@ export default function DesignPage() {
     if (!restored) return;
     try {
       localStorage.setItem(
-        "styled:design",
-        JSON.stringify({ brief, basket, renderId }),
+        designKey.current,
+        JSON.stringify({
+          brief,
+          basket,
+          renderId,
+          workspaceRevision: workspaceRevision.current,
+        }),
       );
     } catch {
       // Storage full or unavailable — non-fatal.
@@ -355,9 +444,19 @@ export default function DesignPage() {
   const shopAvailability = useShopAvailability(
     brief.weddingDate,
     brief.guestCount,
+    deliveryDay(brief),
   );
 
   const venue =
+    (brief.venueChoice === "have" && brief.venueName
+      ? {
+          id: "own",
+          name: brief.venueName,
+          area: brief.venuePostcode || "",
+          kind: "Your venue",
+          gradient: "",
+        }
+      : null) ??
     partnerVenue ??
     (brief.venueId.startsWith("listing:")
       ? {
@@ -394,6 +493,39 @@ export default function DesignPage() {
     setBrief((b) => ({ ...b, ...patch }));
   };
 
+  async function saveWorkspace(nextBoards = boards) {
+    if (!workspaceLoaded || workspaceLock.current) return false;
+    workspaceLock.current = true;
+    setWorkspaceSaving(true);
+    setWorkspaceError("");
+    const value = workspaceData(brief, nextBoards);
+    try {
+      const res = await fetch("/api/wedding", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          data: value,
+          revision: workspaceRevision.current,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok || !d.ok)
+        throw Error(d.error || "Could not save your wedding.");
+      workspaceRevision.current = d.revision;
+      setBoards(nextBoards);
+      setSavedWorkspace(workspaceFingerprint(value));
+      return true;
+    } catch (e) {
+      setWorkspaceError(
+        e instanceof Error ? e.message : "Could not save your wedding.",
+      );
+      return false;
+    } finally {
+      workspaceLock.current = false;
+      setWorkspaceSaving(false);
+    }
+  }
+
   function addItem(item: CatalogueItem) {
     setBasket((b) => {
       if (b.some((l) => l.itemId === item.id)) return b;
@@ -417,18 +549,11 @@ export default function DesignPage() {
     [venue, brief.uploadedImages],
   );
 
-  // Remove an uploaded venue photo: drop it from the design and delete the stored
-  // file/record, so it's no longer used for the render either.
-  async function removeAngle(id: string) {
+  // Detach an angle without deleting a photo that may also be pinned to a board.
+  function removeAngle(id: string) {
     patchBrief({
       uploadedImages: brief.uploadedImages.filter((p) => p.id !== id),
     });
-    try {
-      await fetch(`/api/venues/photos/${id}`, { method: "DELETE" });
-    } catch {
-      // The photo is already gone from the design; a failed delete just leaves an
-      // orphaned file, which is harmless.
-    }
   }
 
   return (
@@ -491,6 +616,22 @@ export default function DesignPage() {
                 aria-label="Marketplace"
                 className="flex max-w-full gap-2 overflow-x-auto whitespace-nowrap"
               >
+                <button
+                  type="button"
+                  onClick={() => switchStudioTab("wedding")}
+                  aria-current={studioTab === "wedding" ? "page" : undefined}
+                  className={`shrink-0 rounded-full border px-4 py-2 text-sm ${studioTab === "wedding" ? "border-ink bg-ink text-cream" : "border-sand"}`}
+                >
+                  My wedding
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchStudioTab("boards")}
+                  aria-current={studioTab === "boards" ? "page" : undefined}
+                  className={`shrink-0 rounded-full border px-4 py-2 text-sm ${studioTab === "boards" ? "border-ink bg-ink text-cream" : "border-sand"}`}
+                >
+                  Boards ({boards.length})
+                </button>
                 <button
                   type="button"
                   onClick={() => switchStudioTab("catalogue")}
@@ -631,8 +772,75 @@ export default function DesignPage() {
               </div>
             )}
 
+            {workspaceError && (
+              <div
+                role="alert"
+                className="mb-5 rounded-xl border border-clay p-4 text-sm"
+              >
+                {workspaceError}
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="ml-3 underline"
+                >
+                  Reload saved wedding
+                </button>
+              </div>
+            )}
+            <div hidden={studioTab !== "wedding"}>
+              <MyWedding
+                photos={workspacePhotos}
+                brief={brief}
+                onChange={patchBrief}
+                onSave={() => void saveWorkspace()}
+                saving={workspaceSaving}
+                loaded={workspaceLoaded}
+                status={
+                  !workspaceLoaded
+                    ? "Loading saved details…"
+                    : workspaceFingerprint(workspaceData(brief, boards)) ===
+                        savedWorkspace
+                      ? "Saved to your account"
+                      : "You have unsaved wedding details"
+                }
+                onFindVenue={() => switchStudioTab("venues")}
+                onVisualise={openVisualiser}
+              />
+            </div>
+            <div hidden={studioTab !== "boards"}>
+              <Boards
+                boards={boards}
+                onSave={saveWorkspace}
+                busy={workspaceSaving}
+                loaded={workspaceLoaded}
+                photos={workspacePhotos}
+                onPhoto={(id, url) =>
+                  setWorkspacePhotos((p) => ({ ...p, [id]: url }))
+                }
+                savedIds={savedItems.ids}
+                looks={savedLooks}
+                onAdd={addItem}
+              />
+            </div>
+            <div
+              hidden={
+                studioTab !== "catalogue" &&
+                studioTab !== "saved" &&
+                studioTab !== "venues"
+              }
+            >
+              <LocationFilter
+                postcode={brief.venuePostcode}
+                result={discovery}
+                onResult={setDiscovery}
+                radius={searchRadius}
+                onRadius={setSearchRadius}
+              />
+            </div>
             <div hidden={studioTab !== "venues"}>
               <VenueExplorer
+                matches={discovery?.venues}
+                searchRadius={searchRadius}
                 active={studioTab === "venues"}
                 guestCount={brief.guestCount}
                 selectedSlug={
@@ -640,10 +848,12 @@ export default function DesignPage() {
                     ? brief.venueId.slice(8)
                     : undefined
                 }
-                onVisualise={openVisualiser}
+                onVisualise={() => switchStudioTab("wedding")}
                 onSelect={(selected) => {
                   patchBrief({
                     venueId: `listing:${selected.slug}`,
+                    venueChoice: "have",
+                    venueName: selected.name,
                     uploadedImages: [],
                   });
                   setPartnerVenue({
@@ -659,8 +869,12 @@ export default function DesignPage() {
               />
             </div>
             <div
-              hidden={studioTab === "venues"}
-              className={`${studioTab === "venues" ? "hidden" : "grid"} gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start`}
+              hidden={
+                studioTab === "venues" ||
+                studioTab === "wedding" ||
+                studioTab === "boards"
+              }
+              className={`${studioTab === "venues" || studioTab === "wedding" || studioTab === "boards" ? "hidden" : "grid"} gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start`}
             >
               {/* Catalogue first, optional visualiser below. */}
               <div className="min-w-0 space-y-5">
@@ -686,9 +900,14 @@ export default function DesignPage() {
                     </div>
                   )}
                   <ProductBrowser
+                    matches={discovery?.suppliers}
+                    searchRadius={searchRadius}
                     styleId={brief.styleId}
                     basket={basket}
                     weddingDate={brief.weddingDate}
+                    deliverySameDay={brief.deliverySameDay}
+                    deliveryDate={brief.deliveryDate}
+                    onDates={patchBrief}
                     availability={shopAvailability}
                     lookSignal={shopLookSignal}
                     lookItemIds={currentRender?.itemIds}
@@ -740,13 +959,16 @@ export default function DesignPage() {
                       renderId={renderId}
                       versions={versions}
                       itemIds={basket.map((l) => l.itemId)}
+                      deliveryDate={deliveryDay(brief)}
                       weddingDate={brief.weddingDate}
                       onWeddingDate={(d) => patchBrief({ weddingDate: d })}
                       guestCount={brief.guestCount}
                       onRender={showRender}
                       onDeleteVersion={deleteVersion}
                       onStyle={(id) => patchBrief({ styleId: id })}
-                      onVenue={(id) => patchBrief({ venueId: id })}
+                      onVenue={(id) =>
+                        patchBrief({ venueId: id, venueChoice: "exploring" })
+                      }
                       onAddAngle={(photo) =>
                         setBrief((b) => ({
                           ...b,
@@ -777,6 +999,7 @@ export default function DesignPage() {
                     guestCount={brief.guestCount}
                     budget={brief.budget}
                     weddingDate={brief.weddingDate}
+                    deliveryDate={deliveryDay(brief)}
                     onQty={setQty}
                     onRemove={removeItem}
                     onCheckout={() => setStep("checkout")}
@@ -792,6 +1015,9 @@ export default function DesignPage() {
             basket={basket}
             weddingDate={brief.weddingDate}
             onWeddingDate={(d) => patchBrief({ weddingDate: d })}
+            deliverySameDay={brief.deliverySameDay}
+            deliveryDate={brief.deliveryDate}
+            onDates={patchBrief}
             styleId={brief.styleId}
             guestCount={brief.guestCount}
             venueLabel={venue.name}
@@ -849,6 +1075,7 @@ export default function DesignPage() {
             guestCount={brief.guestCount}
             budget={brief.budget}
             weddingDate={brief.weddingDate}
+            deliveryDate={deliveryDay(brief)}
             onQty={setQty}
             onRemove={removeItem}
             onCheckout={() => {

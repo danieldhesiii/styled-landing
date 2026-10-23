@@ -1,3 +1,7 @@
+# Latest planning phase
+
+My wedding, separate delivery dates, private boards and postcode discovery are implemented. See [wedding-workspace.md](wedding-workspace.md) for scope, verification and supplier/payment decisions. Earlier sections below record previous milestones.
+
 # Production build implementation
 
 Updated 22 October 2026. Implements `docs/production-build-plan.md` in the root application at `/Users/kamil/Desktop/styledukprodprogress`.

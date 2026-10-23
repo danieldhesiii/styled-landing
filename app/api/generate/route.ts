@@ -4,6 +4,7 @@ import { readPublicImage } from "@/lib/server/public-images";
 import { requireUser } from "@/lib/server/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/server/env";
+import { deliveryError } from "@/lib/wedding";
 import { composeOrderableLook, usableDate } from "@/lib/server/look";
 import type { LookReport } from "@/lib/look";
 import { categoryMeta } from "@/lib/categories";
@@ -56,6 +57,7 @@ interface GenerateRequest {
   parentRenderId?: unknown;
   setting?: unknown;
   weddingDate?: unknown;
+  deliveryDate?: unknown;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -110,6 +112,18 @@ export async function POST(req: Request) {
   // "unchecked": we then only keep pieces the supplier could ever supply for this
   // guest count, and tell the couple the date wasn't checked.
   const weddingDate = usableDate(body.weddingDate);
+  const deliveryDate =
+    body.deliveryDate === undefined
+      ? weddingDate
+      : usableDate(body.deliveryDate);
+  if (
+    weddingDate &&
+    (!deliveryDate || deliveryError(weddingDate, deliveryDate))
+  )
+    return fail(
+      400,
+      "Check your wedding and delivery dates before generating a look.",
+    );
   if (parentRenderId && !UUID.test(parentRenderId))
     return fail(400, "Invalid render id.");
 
@@ -156,6 +170,7 @@ export async function POST(req: Request) {
       chosenIds: itemIds,
       setting,
       weddingDate,
+      deliveryDate,
       guestCount,
       autoFill: !parentRenderId,
       substitute: !parentRenderId,

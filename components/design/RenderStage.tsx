@@ -30,6 +30,7 @@ interface Props {
   guestCount: number;
   /** The couple's wedding date (YYYY-MM-DD or ""), so a render only uses what's free on it. */
   weddingDate: string;
+  deliveryDate?: string;
   onWeddingDate: (date: string) => void;
   isSaved: boolean;
   onRender: (render: RenderRef | null) => void;
@@ -91,6 +92,7 @@ export default function RenderStage({
   itemIds,
   guestCount,
   weddingDate,
+  deliveryDate,
   onWeddingDate,
   isSaved,
   onRender,
@@ -258,6 +260,7 @@ export default function RenderStage({
           itemIds,
           guestCount,
           weddingDate: weddingDate || undefined,
+          deliveryDate: deliveryDate || undefined,
           primaryIndex: primary,
           setting,
           ...(opts?.parentRenderId

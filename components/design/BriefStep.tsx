@@ -12,6 +12,11 @@ export interface UploadedPhoto {
 }
 
 export interface Brief {
+  venueChoice?: "exploring" | "looking" | "have";
+  venueName?: string;
+  venuePostcode?: string;
+  deliverySameDay?: boolean;
+  deliveryDate?: string;
   venueId: string;
   uploadedImages: UploadedPhoto[];
   styleId: string;
@@ -41,7 +46,9 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
       const photo = await uploadVenuePhoto(file);
       onChange({ uploadedImages: [{ id: photo.id, url: photo.url }] });
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "Upload failed. Please try again.");
+      setUploadError(
+        err instanceof Error ? err.message : "Upload failed. Please try again.",
+      );
     } finally {
       setUploading(false);
     }
@@ -49,36 +56,52 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
 
   return (
     <div className="mx-auto max-w-4xl py-10">
-      <h1 className="font-serif text-4xl text-ink sm:text-5xl">Let's design your day.</h1>
+      <h1 className="font-serif text-4xl text-ink sm:text-5xl">
+        Let's design your day.
+      </h1>
       <p className="mt-3 max-w-xl text-ink/60">
-        Start with your venue and the look you love. You'll see it come together and
-        can shop every piece as you go.
+        Start with your venue and the look you love. You'll see it come together
+        and can shop every piece as you go.
       </p>
 
       {/* Venue */}
       <section className="mt-10">
         <h2 className="font-serif text-xl text-ink">Your venue</h2>
-        <p className="mt-1 text-sm text-ink/50">Pick a sample room or upload a photo of yours.</p>
+        <p className="mt-1 text-sm text-ink/50">
+          Pick a sample room or upload a photo of yours.
+        </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-4">
           {SAMPLE_VENUES.map((v) => {
-            const active = brief.venueId === v.id && brief.uploadedImages.length === 0;
+            const active =
+              brief.venueId === v.id && brief.uploadedImages.length === 0;
             return (
               <button
                 key={v.id}
                 type="button"
                 onClick={() => onChange({ venueId: v.id, uploadedImages: [] })}
                 className={`overflow-hidden rounded-2xl border text-left transition-colors ${
-                  active ? "border-clay ring-2 ring-clay/30" : "border-sand hover:border-clay/50"
+                  active
+                    ? "border-clay ring-2 ring-clay/30"
+                    : "border-sand hover:border-clay/50"
                 }`}
               >
-                <div className="aspect-[4/3] bg-sand" style={{ background: v.gradient }}>
+                <div
+                  className="aspect-[4/3] bg-sand"
+                  style={{ background: v.gradient }}
+                >
                   {v.image && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={v.image} alt={v.name} className="h-full w-full object-cover" />
+                    <img
+                      src={v.image}
+                      alt={v.name}
+                      className="h-full w-full object-cover"
+                    />
                   )}
                 </div>
                 <div className="p-2.5">
-                  <p className="text-xs font-medium leading-snug text-ink">{v.name}</p>
+                  <p className="text-xs font-medium leading-snug text-ink">
+                    {v.name}
+                  </p>
                   <p className="text-[11px] text-ink/40">{v.area}</p>
                 </div>
               </button>
@@ -108,9 +131,17 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
               </>
             )}
           </button>
-          <input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            onChange={handleUpload}
+            className="hidden"
+          />
         </div>
-        {uploading && <p className="mt-3 text-xs text-ink/50">Uploading your photo…</p>}
+        {uploading && (
+          <p className="mt-3 text-xs text-ink/50">Uploading your photo…</p>
+        )}
         {uploadError && <p className="mt-3 text-xs text-clay">{uploadError}</p>}
       </section>
 
@@ -124,18 +155,26 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
               type="button"
               onClick={() => onChange({ styleId: s.id })}
               className={`overflow-hidden rounded-2xl border text-left transition-colors ${
-                brief.styleId === s.id ? "border-clay ring-2 ring-clay/30" : "border-sand hover:border-clay/50"
+                brief.styleId === s.id
+                  ? "border-clay ring-2 ring-clay/30"
+                  : "border-sand hover:border-clay/50"
               }`}
             >
               <div className="aspect-[4/3]">
                 {s.render && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={s.render} alt={s.name} className="h-full w-full object-cover" />
+                  <img
+                    src={s.render}
+                    alt={s.name}
+                    className="h-full w-full object-cover"
+                  />
                 )}
               </div>
               <div className="p-2.5">
                 <p className="text-xs font-medium text-ink">{s.name}</p>
-                <p className="text-[11px] leading-snug text-ink/40">{s.tagline}</p>
+                <p className="text-[11px] leading-snug text-ink/40">
+                  {s.tagline}
+                </p>
               </div>
             </button>
           ))}
@@ -151,7 +190,9 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
             min={10}
             max={400}
             value={brief.guestCount}
-            onChange={(e) => onChange({ guestCount: Math.max(1, Number(e.target.value)) })}
+            onChange={(e) =>
+              onChange({ guestCount: Math.max(1, Number(e.target.value)) })
+            }
             className="mt-2 w-full rounded-xl border border-sand bg-white px-4 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-clay/30"
           />
         </div>
@@ -166,7 +207,8 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
         </div>
         <div>
           <label className="text-sm font-medium text-ink">
-            Budget <span className="text-ink/40">{formatGBP(brief.budget)}</span>
+            Budget{" "}
+            <span className="text-ink/40">{formatGBP(brief.budget)}</span>
           </label>
           <input
             type="range"

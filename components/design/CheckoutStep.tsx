@@ -8,7 +8,14 @@ import { useBasketAvailability } from "@/components/availability/useAvailability
 import { useUser } from "@/components/session/useUser";
 import { availabilityLabel } from "@/lib/availability";
 
-interface Props {
+import DeliveryDates from "@/components/wedding/DeliveryDates";
+import {
+  deliveryDay,
+  deliveryError,
+  type PlanningDetails,
+} from "@/lib/wedding";
+interface Props extends PlanningDetails {
+  onDates: (p: Partial<PlanningDetails> & { weddingDate?: string }) => void;
   basket: BasketLine[];
   weddingDate: string;
   onWeddingDate: (date: string) => void;
@@ -38,12 +45,20 @@ interface PlacedOrder {
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const fmtDate = (d: string) =>
-  new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+  new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 
 export default function CheckoutStep({
   basket,
   weddingDate,
   onWeddingDate,
+  deliveryDate,
+  deliverySameDay,
+  onDates,
   styleId,
   guestCount,
   venueLabel,
@@ -61,20 +76,29 @@ export default function CheckoutStep({
   const [placed, setPlaced] = useState<PlacedOrder | null>(null);
   const [serverQuote, setServerQuote] = useState<ServerQuote | null>(null);
   // Per-supplier delivery dates. Default: everything on the wedding day.
-  const [splitDelivery, setSplitDelivery] = useState(false);
-  const [deliveryDates, setDeliveryDates] = useState<Record<string, string>>({});
+  const delivery = deliveryDay({ weddingDate, deliveryDate, deliverySameDay });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   // Bumped to re-check availability after the server says something sold out.
   const [availabilityNonce, setAvailabilityNonce] = useState(0);
-  const availability = useBasketAvailability(weddingDate, basket, availabilityNonce);
-  const unavailable = basket.filter((l) => availability.lines[l.itemId]?.status === "unavailable");
+  const availability = useBasketAvailability(
+    weddingDate,
+    basket,
+    availabilityNonce,
+    delivery,
+  );
+  const unavailable = basket.filter(
+    (l) => availability.lines[l.itemId]?.status === "unavailable",
+  );
 
   // One key per checkout: a double click or a retry returns the same order
   // instead of creating a second.
   const idempotencyKey = useRef<string>(crypto.randomUUID());
 
-  const nameOf = useCallback((id: string) => getItem(id)?.name ?? id, [getItem]);
+  const nameOf = useCallback(
+    (id: string) => getItem(id)?.name ?? id,
+    [getItem],
+  );
 
   // Ask the server for the exact quote (and show an instant estimate meanwhile).
   const fetchQuote = useCallback(async () => {
@@ -90,13 +114,15 @@ export default function CheckoutStep({
         setError(
           gone.length > 0
             ? `These items are no longer available: ${gone.map(nameOf).join(", ")}. Please remove them from your design.`
-            : (data?.error ?? "Couldn't price your design. Please try again.")
+            : (data?.error ?? "Couldn't price your design. Please try again."),
         );
         return;
       }
       setServerQuote(data.quote as ServerQuote);
     } catch {
-      setError("Couldn't reach the server to price your design. Please try again.");
+      setError(
+        "Couldn't reach the server to price your design. Please try again.",
+      );
     }
   }, [basket, nameOf]);
 
@@ -109,21 +135,32 @@ export default function CheckoutStep({
     ? {
         subtotal: serverQuote.subtotalPence / 100,
         deposit: serverQuote.depositPence / 100,
-        groups: serverQuote.bySupplier.map((g) => ({ supplier: g.supplier, total: g.totalPence / 100 })),
+        groups: serverQuote.bySupplier.map((g) => ({
+          supplier: g.supplier,
+          total: g.totalPence / 100,
+        })),
       }
     : {
         subtotal: preview.subtotal,
         deposit: preview.deposit,
-        groups: preview.bySupplier.map((g) => ({ supplier: g.supplier, total: g.total })),
+        groups: preview.bySupplier.map((g) => ({
+          supplier: g.supplier,
+          total: g.total,
+        })),
       };
 
   async function placeOrder() {
     if (!serverQuote || submitting) return;
     setError(null);
+    const dateIssue = deliveryError(weddingDate, delivery);
+    if (dateIssue) return setError(dateIssue);
     if (!name.trim()) return setError("Please tell us your names.");
-    if (!EMAIL.test(email.trim())) return setError("Please enter a valid email address.");
+    if (!EMAIL.test(email.trim()))
+      return setError("Please enter a valid email address.");
     if (unavailable.length > 0) {
-      return setError("Some items aren't available on your wedding date. Please adjust them below first.");
+      return setError(
+        "Some items aren't available between delivery and your wedding day. Please adjust them below first.",
+      );
     }
 
     setSubmitting(true);
@@ -136,16 +173,14 @@ export default function CheckoutStep({
           basket: basket.map((l) => ({
             itemId: l.itemId,
             quantity: l.quantity,
-            seenUnitPricePence: serverQuote.lines.find((q) => q.itemId === l.itemId)?.unitPricePence,
+            seenUnitPricePence: serverQuote.lines.find(
+              (q) => q.itemId === l.itemId,
+            )?.unitPricePence,
           })),
           coupleName: name.trim(),
           email: email.trim(),
           weddingDate: weddingDate || undefined,
-          // Per-supplier delivery dates, only when the couple chose to split them.
-          deliveryDates:
-            weddingDate && splitDelivery
-              ? Object.fromEntries(view.groups.map((g) => [g.supplier, deliveryDates[g.supplier] || weddingDate]))
-              : undefined,
+          deliveryDate: delivery,
           styleId,
           guestCount,
           venueLabel,
@@ -163,27 +198,40 @@ export default function CheckoutStep({
       if (res.status === 409 && data?.changed) {
         // A price moved since the quote was shown: refresh everything and let them decide.
         setServerQuote(null);
-        setError("Some prices changed while you were checking out. We've updated your total, so please review it and confirm again.");
+        setError(
+          "Some prices changed while you were checking out. We've updated your total, so please review it and confirm again.",
+        );
         await Promise.all([fetchQuote(), refresh()]);
       } else if (res.status === 422 && data?.tooSoon) {
         const items = (data.tooSoon as { name: string; leadTimeDays: number }[])
           .map((t) => `${t.name} (needs ${t.leadTimeDays} days' notice)`)
           .join(", ");
-        setError(`Your wedding date is too soon for: ${items}.`);
+        setError(`Your delivery date is too soon for: ${items}.`);
       } else if (res.status === 409 && data?.soldOut) {
         // Someone else took the last units, or stock changed, since availability was checked.
-        const items = (data.soldOut as { name: string; availableUnits: number }[])
-          .map((s) => `${s.name} (${s.availableUnits > 0 ? `only ${s.availableUnits} left` : "none left"})`)
+        const items = (
+          data.soldOut as { name: string; availableUnits: number }[]
+        )
+          .map(
+            (s) =>
+              `${s.name} (${s.availableUnits > 0 ? `only ${s.availableUnits} left` : "none left"})`,
+          )
           .join(", ");
-        setError(`These items aren't available on your wedding date: ${items}. Please lower the quantity, remove them, or choose another date.`);
+        setError(
+          `These items aren't available between delivery and your wedding day: ${items}. Please lower the quantity, remove them, or choose another date.`,
+        );
         setAvailabilityNonce((n) => n + 1);
       } else if (data?.unavailable?.length) {
-        setError(`These items are no longer available: ${(data.unavailable as string[]).map(nameOf).join(", ")}. Please remove them from your design.`);
+        setError(
+          `These items are no longer available: ${(data.unavailable as string[]).map(nameOf).join(", ")}. Please remove them from your design.`,
+        );
       } else {
         setError(data?.error ?? "Couldn't place your order. Please try again.");
       }
     } catch {
-      setError("Couldn't reach the server. Please check your connection and try again.");
+      setError(
+        "Couldn't reach the server. Please check your connection and try again.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -195,14 +243,17 @@ export default function CheckoutStep({
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sage/15 text-2xl">
           ✓
         </div>
-        <h1 className="mt-6 font-serif text-3xl text-ink">Your date is being secured.</h1>
+        <h1 className="mt-6 font-serif text-3xl text-ink">
+          Your request is with Styled.
+        </h1>
         <p className="mt-2 text-sm text-ink/50">
-          Reference <span className="font-medium text-ink">{placed.reference}</span>
+          Reference{" "}
+          <span className="font-medium text-ink">{placed.reference}</span>
         </p>
         <p className="mt-3 text-ink/60">
-          A stylist will confirm availability with each of your {placed.bySupplier.length}{" "}
-          suppliers and email {placed.email} within one working day. Nothing is
-          charged until every piece is confirmed for your date.
+          A stylist will confirm availability with each of your{" "}
+          {placed.bySupplier.length} suppliers and contact {placed.email} about
+          the next steps. No payment has been taken.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <a
@@ -232,10 +283,13 @@ export default function CheckoutStep({
       >
         ← Back to your design
       </button>
-      <h1 className="mt-4 font-serif text-4xl text-ink">Reserve your design.</h1>
+      <h1 className="mt-4 font-serif text-4xl text-ink">
+        Reserve your design.
+      </h1>
       <p className="mt-2 text-ink/60">
-        Pay a deposit to hold every supplier for your date. The balance is due six
-        weeks before the wedding.
+        Request your chosen pieces for your wedding and delivery dates. Supplier
+        confirmation, payment terms and collection arrangements follow before a
+        booking is final.
       </p>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_380px]">
@@ -261,7 +315,10 @@ export default function CheckoutStep({
             />
           </div>
           <div>
-            <label htmlFor="checkout-date" className="text-sm font-medium text-ink">
+            <label
+              htmlFor="checkout-date"
+              className="text-sm font-medium text-ink"
+            >
               Wedding date
             </label>
             <input
@@ -274,14 +331,14 @@ export default function CheckoutStep({
             />
             <p className="mt-1.5 text-xs text-ink/45">
               {!weddingDate
-                ? "Add it so we can check every supplier is free on your day. Without it, your stylist will ask."
+                ? "Add your wedding and delivery dates so we can check availability."
                 : availability.loading
                   ? "Checking every supplier for your date…"
                   : availability.error
                     ? availability.error
                     : unavailable.length > 0
                       ? "Some items need attention for this date:"
-                      : "Every item is free on this date."}
+                      : "Availability checked from delivery through your wedding day."}
             </p>
             {unavailable.length > 0 && (
               <ul className="mt-2 space-y-1 rounded-xl bg-red-50 px-4 py-3 text-xs text-red-800">
@@ -299,20 +356,32 @@ export default function CheckoutStep({
             connect to our payment provider before launch. No card is charged.
           </div>
           {error && (
-            <p role="alert" className="rounded-xl bg-blush/30 px-4 py-3 text-sm text-ink/80">
+            <p
+              role="alert"
+              className="rounded-xl bg-blush/30 px-4 py-3 text-sm text-ink/80"
+            >
               {error}
             </p>
           )}
           <button
             type="button"
             onClick={placeOrder}
-            disabled={!serverQuote || submitting || basket.length === 0 || unavailable.length > 0}
+            disabled={
+              !serverQuote ||
+              submitting ||
+              basket.length === 0 ||
+              unavailable.length > 0 ||
+              availability.loading ||
+              !availability.checked ||
+              !!availability.error ||
+              !!deliveryError(weddingDate, delivery)
+            }
             className="w-full rounded-full bg-ink px-6 py-3.5 text-cream hover:bg-ink/90 disabled:bg-ink/30"
           >
             {submitting
               ? "Placing your order…"
               : serverQuote
-                ? `Pay ${formatGBP(view.deposit)} deposit`
+                ? "Request this design"
                 : "Preparing your quote…"}
           </button>
         </div>
@@ -328,49 +397,27 @@ export default function CheckoutStep({
               </div>
             ))}
           </div>
-          {weddingDate && (
-            <div className="mt-4 border-t border-sand pt-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-ink">Delivery</span>
-                {splitDelivery ? (
-                  <button type="button" onClick={() => { setSplitDelivery(false); setDeliveryDates({}); }} className="text-xs text-clay hover:underline">
-                    All on the day
-                  </button>
-                ) : (
-                  <button type="button" onClick={() => setSplitDelivery(true)} className="text-xs text-clay hover:underline">
-                    Different days?
-                  </button>
-                )}
-              </div>
-              {!splitDelivery ? (
-                <p className="mt-1 text-xs text-ink/50">Everything arrives on your wedding day ({fmtDate(weddingDate)}).</p>
-              ) : (
-                <div className="mt-2 space-y-2">
-                  <p className="text-xs text-ink/50">When should each supplier deliver? Defaults to your wedding day.</p>
-                  {view.groups.map((g) => (
-                    <div key={g.supplier} className="flex items-center justify-between gap-2">
-                      <span className="min-w-0 truncate text-xs text-ink/70">{g.supplier}</span>
-                      <input
-                        type="date"
-                        value={deliveryDates[g.supplier] ?? weddingDate}
-                        min={new Date().toISOString().slice(0, 10)}
-                        onChange={(e) => setDeliveryDates((d) => ({ ...d, [g.supplier]: e.target.value }))}
-                        className="shrink-0 rounded-lg border border-sand px-2 py-1 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-clay/30"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          <div className="mt-5 border-t border-sand pt-5">
+            <DeliveryDates
+              weddingDate={weddingDate}
+              deliverySameDay={deliverySameDay}
+              deliveryDate={deliveryDate}
+              onChange={onDates}
+              id="checkout"
+            />
+          </div>
 
           <div className="mt-4 border-t border-sand pt-4">
             <div className="flex justify-between text-sm">
               <span className="text-ink/60">Estimated total</span>
-              <span className="font-serif text-lg text-ink">{formatGBP(view.subtotal)}</span>
+              <span className="font-serif text-lg text-ink">
+                {formatGBP(view.subtotal)}
+              </span>
             </div>
             <div className="mt-1 flex justify-between text-sm">
-              <span className="text-ink/60">Deposit due now</span>
+              <span className="text-ink/60">
+                Illustrative deposit (not charged)
+              </span>
               <span className="text-clay">{formatGBP(view.deposit)}</span>
             </div>
           </div>

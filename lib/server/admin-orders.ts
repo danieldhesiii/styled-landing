@@ -2,13 +2,16 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { checkQuantities } from "@/lib/server/availability";
 import type { ItemAvailability } from "@/lib/availability";
 
-export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function cleanText(v: unknown, max: number): string | null | undefined {
   if (v === undefined) return undefined;
   if (v === null) return null;
   if (typeof v !== "string") return undefined;
-  const s = v.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]+/g, " ").trim();
+  const s = v
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]+/g, " ")
+    .trim();
   return s ? s.slice(0, max) : null;
 }
 
@@ -16,7 +19,11 @@ export function cleanText(v: unknown, max: number): string | null | undefined {
 // fields couples never see), each supplier line with whether it still fits on the
 // wedding date, the couple's styled room, and the history.
 export async function loadAdminOrder(admin: SupabaseClient, id: string) {
-  const { data: order } = await admin.from("orders").select("*").eq("id", id).maybeSingle();
+  const { data: order } = await admin
+    .from("orders")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
   if (!order) return null;
 
   const { data: lines } = await admin
@@ -35,8 +42,25 @@ export async function loadAdminOrder(admin: SupabaseClient, id: string) {
   // Does each line still fit on the wedding date? (This order's own units are excluded.)
   let availability: Record<string, ItemAvailability> = {};
   if (order.wedding_date && lines?.length) {
-    const wanted = lines.filter((l) => l.product_id).map((l) => ({ itemId: l.product_id as string, quantity: l.quantity as number }));
-    availability = Object.fromEntries(await checkQuantities(admin, wanted, order.wedding_date as string, id));
+    const wanted = lines
+      .filter((l) => l.product_id)
+      .map((l) => ({
+        itemId: l.product_id as string,
+        quantity: l.quantity as number,
+      }));
+    const results = await Promise.all(
+      wanted.map(async (w) => {
+        const line = lines.find((l) => l.product_id === w.itemId);
+        return checkQuantities(
+          admin,
+          [w],
+          order.wedding_date as string,
+          id,
+          line?.needed_date || order.wedding_date,
+        );
+      }),
+    );
+    availability = Object.fromEntries(results.flatMap((r) => [...r]));
   }
 
   // The couple's most recent styled room, so the stylist can see what they're picturing.
@@ -51,10 +75,18 @@ export async function loadAdminOrder(admin: SupabaseClient, id: string) {
       .limit(1)
       .maybeSingle();
     if (render?.image_path) {
-      const { data: signed } = await admin.storage.from("renders").createSignedUrl(render.image_path as string, 3600);
+      const { data: signed } = await admin.storage
+        .from("renders")
+        .createSignedUrl(render.image_path as string, 3600);
       renderUrl = signed?.signedUrl ?? null;
     }
   }
 
-  return { order, lines: lines ?? [], events: events ?? [], availability, renderUrl };
+  return {
+    order,
+    lines: lines ?? [],
+    events: events ?? [],
+    availability,
+    renderUrl,
+  };
 }
