@@ -12,8 +12,13 @@ export type StudioTab =
 const destinations = [
   {
     id: "catalogue",
-    label: "Browse",
+    label: "Catalogue",
     path: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
+  },
+  {
+    id: "venues",
+    label: "Venues",
+    path: "M3 21h18 M5 21V9l7-6 7 6v12 M9 21v-7h6v7 M9 10h6",
   },
   {
     id: "boards",
@@ -32,7 +37,7 @@ const destinations = [
   },
   {
     id: "wedding",
-    label: "My wedding",
+    label: "Wedding details",
     path: "M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z",
   },
   {
@@ -42,7 +47,6 @@ const destinations = [
   },
 ] as const;
 export function primarySection(tab: StudioTab) {
-  if (tab === "venues") return "catalogue";
   if (tab === "looks") return "saved";
   return tab;
 }
@@ -60,8 +64,8 @@ export default function StudioNavigation({
       aria-label={mobile ? "Mobile studio" : "Studio"}
       className={
         mobile
-          ? "fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-sand bg-cream px-1 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden"
-          : "hidden items-center gap-6 lg:gap-9 md:flex"
+          ? "fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t border-sand bg-cream px-1 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden"
+          : "hidden items-center gap-4 lg:gap-7 md:flex"
       }
     >
       {destinations

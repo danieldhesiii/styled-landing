@@ -49,10 +49,10 @@ export default function MyWedding({
       <p className="text-xs uppercase tracking-widest text-clay">
         A place for your plans
       </p>
-      <h1 className="mt-3 font-serif text-4xl sm:text-5xl">My wedding</h1>
+      <h1 className="mt-3 font-serif text-4xl sm:text-5xl">Wedding details</h1>
       <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink/60">
-        Your dates, venue and photographs, together in one private space. Save
-        your details to pick up on another device.
+        Keep your dates, guest count, budget and chosen venue in one private
+        space. Use Venues to discover places to book, then save your plans here.
       </p>
       <div className="mt-8 grid gap-10 lg:grid-cols-2">
         <div className="space-y-8">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import VenueMediaPlaceholder from "@/components/venues/VenueMediaPlaceholder";
 import { notFound } from "next/navigation";
 import { loadPublicVenue } from "@/lib/server/venues";
 import { createClient } from "@/lib/supabase/server";
@@ -26,6 +27,9 @@ export async function generateMetadata({
       ? `${result.venue.name} · Wedding venue · Styled`
       : "Venue · Styled",
     description: result?.venue.description?.slice(0, 160),
+    ...(result?.venue.is_demo
+      ? { robots: { index: false, follow: false } }
+      : {}),
   };
 }
 export default async function VenuePage({
@@ -67,6 +71,25 @@ export default async function VenuePage({
           My venue requests
         </Link>
       </div>
+      {venue.is_demo && (
+        <div
+          role="note"
+          className="mt-6 rounded-xl border border-clay/30 bg-blush/30 p-5 text-sm leading-relaxed"
+        >
+          <strong>Demo venue · Not available to book.</strong> This fictional
+          listing shows how venue pages will work. Images, location and
+          capacities are illustrative. The video and 3D walkthrough spaces below
+          are intentionally blank.
+          <div className="mt-3 flex flex-wrap gap-5">
+            <a className="underline" href="#walkthrough">
+              See 3D walkthrough space ↓
+            </a>
+            <a className="underline" href="#video">
+              See video space ↓
+            </a>
+          </div>
+        </div>
+      )}
       <p className="mt-7 text-xs uppercase tracking-widest text-clay">
         {d?.venue_type
           ? VENUE_TYPES[d.venue_type as keyof typeof VENUE_TYPES]
@@ -83,7 +106,7 @@ export default async function VenuePage({
               : ""}
           </p>
         </div>
-        <VenueShortlist id={venue.id} />
+        {!venue.is_demo && <VenueShortlist id={venue.id} />}
       </div>
       {hero && (
         <img
@@ -99,7 +122,8 @@ export default async function VenuePage({
         {[
           ["overview", "Overview"],
           ["gallery", "Photos"],
-          ["walkthrough", "Walkthrough"],
+          ["walkthrough", "3D walkthrough"],
+          ["video", "Video"],
           ["packages", "Styling"],
           ["enquire", "Requests"],
         ].map(([id, l]) => (
@@ -164,7 +188,9 @@ export default async function VenuePage({
           )}
           <section className="mt-10">
             <h2 className="font-serif text-3xl">Venue hire & inclusions</h2>
-            <p className="mt-4 text-xl">{hire}</p>
+            <p className="mt-4 text-xl">
+              {venue.is_demo ? "Hire information will appear here" : hire}
+            </p>
             <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-ink/70">
               {d?.pricing_notes ||
                 "Ask for a tailored quote for your date, guest count and hire requirements. Styling, catering and accommodation may be priced separately."}
@@ -190,26 +216,48 @@ export default async function VenuePage({
           <p className="text-xs uppercase tracking-widest text-clay">
             Your day at {venue.name}
           </p>
-          <p className="mt-4 font-serif text-3xl">{hire}</p>
+          <p className="mt-4 font-serif text-3xl">
+            {venue.is_demo ? "Listing preview" : hire}
+          </p>
           <p className="mt-1 text-xs text-ink/60">
-            Venue hire, subject to inclusions and your date
+            {venue.is_demo
+              ? "Fictional venue · No dates or prices offered"
+              : "Venue hire, subject to inclusions and your date"}
           </p>
-          <a
-            href="#enquire"
-            className="mt-6 block rounded-full bg-ink px-5 py-3 text-center text-sm text-cream"
-          >
-            Request a booking or viewing
-          </a>
-          <p className="mt-4 text-xs leading-relaxed text-ink/60">
-            The venue reviews every request. Your date is reserved only after
-            confirmation; no payment is taken here.
-          </p>
-          <Link
-            href={`/design?venue=${encodeURIComponent(venue.slug)}&tab=catalogue`}
-            className="mt-5 block text-sm underline"
-          >
-            Browse styling for this venue →
-          </Link>
+          {!venue.is_demo && (
+            <>
+              <a
+                href="#enquire"
+                className="mt-6 block rounded-full bg-ink px-5 py-3 text-center text-sm text-cream"
+              >
+                Request a booking or viewing
+              </a>
+              <p className="mt-4 text-xs leading-relaxed text-ink/60">
+                The venue reviews every request. Your date is reserved only
+                after confirmation; no payment is taken here.
+              </p>
+              <Link
+                href={`/design?venue=${encodeURIComponent(venue.slug)}&tab=catalogue`}
+                className="mt-5 block text-sm underline"
+              >
+                Browse styling for this venue →
+              </Link>
+            </>
+          )}
+          {venue.is_demo && (
+            <div className="mt-5 space-y-4 text-sm">
+              <p className="text-ink/60">
+                Explore the blank media sections below. Booking requests will be
+                available on published venue listings.
+              </p>
+              <a href="#walkthrough" className="block underline">
+                3D walkthrough space ↓
+              </a>
+              <a href="#video" className="block underline">
+                Venue video space ↓
+              </a>
+            </div>
+          )}
         </aside>
       </div>
       <section id="gallery" className="mt-12 scroll-mt-24">
@@ -229,22 +277,31 @@ export default async function VenuePage({
       </section>
       <VenueTour
         name={venue.name}
+        demo={venue.is_demo}
         url={tour}
         viewingHref={`/venues/${venue.slug}?request=viewing${initialGuests ? `&guests=${initialGuests}` : ""}#enquire`}
       />
-      {video && (
-        <section className="mt-10">
-          <h2 className="mb-5 font-serif text-3xl">Watch the venue film</h2>
+      <section id="video" className="mt-10 scroll-mt-24">
+        <p className="text-xs uppercase tracking-widest text-clay">
+          See the atmosphere
+        </p>
+        <h2 className="mt-2 font-serif text-3xl">Venue video</h2>
+        <p className="mt-3 text-sm text-ink/60">
+          A venue film gives you a feel for the space, setting and celebrations.
+        </p>
+        {video ? (
           <iframe
             title={`${venue.name} video tour`}
             src={video}
-            className="aspect-video w-full rounded-xl"
+            className="mt-6 aspect-video w-full rounded-xl"
             loading="lazy"
             allowFullScreen
             referrerPolicy="no-referrer"
           />
-        </section>
-      )}
+        ) : (
+          <VenueMediaPlaceholder kind="video" />
+        )}
+      </section>
       <section id="packages" className="mt-12 scroll-mt-24">
         <h2 className="font-serif text-3xl">Make the space your own</h2>
         <p className="mt-3 text-sm text-ink/60">
@@ -273,7 +330,11 @@ export default async function VenuePage({
           </div>
         ) : (
           <Link
-            href={`/design?venue=${encodeURIComponent(venue.slug)}&tab=catalogue`}
+            href={
+              venue.is_demo
+                ? "/design?tab=catalogue"
+                : `/design?venue=${encodeURIComponent(venue.slug)}&tab=catalogue`
+            }
             className="mt-5 inline-block text-sm underline"
           >
             Explore supplier pieces in the catalogue →
@@ -284,48 +345,71 @@ export default async function VenuePage({
         id="enquire"
         className="mt-14 scroll-mt-24 border-t border-sand pt-10"
       >
-        <h2 className="font-serif text-4xl">Let’s talk about your plans</h2>
-        <p className="mb-8 mt-4 max-w-2xl text-sm leading-relaxed text-ink/60">
-          Request your wedding date or arrange a viewing. The venue will check
-          your plans and can suggest alternatives. Track the response in My
-          venue requests.
-        </p>
-        <VenueEnquiryForm
-          slug={venue.slug}
-          venueId={venue.id}
-          packages={packages}
-          accountEmail={email}
-          initialKind={initialKind}
-          initialDate={initialKind === "booking" ? initialDate : ""}
-          initialGuests={initialGuests}
-        />
-      </section>
-      <section className="mt-12 border-t border-sand pt-8">
-        <h2 className="font-serif text-3xl">Find your way here</h2>
-        <p className="mt-4 text-sm">
-          {[d?.address || venue.location, d?.postcode, venue.county]
-            .filter(Boolean)
-            .join(", ")}
-        </p>
-        {map ? (
-          <iframe
-            title={`${venue.name} location`}
-            src={map}
-            loading="lazy"
-            className="mt-5 h-80 w-full rounded-xl"
-            referrerPolicy="no-referrer"
-          />
+        {venue.is_demo ? (
+          <>
+            <h2 className="font-serif text-3xl">
+              Booking requests will appear here
+            </h2>
+            <p className="mt-4 text-sm text-ink/60">
+              This is a demonstration only. Published venues will let you
+              request a date or arrange a viewing here, with manual confirmation
+              from the venue team.
+            </p>
+            <Link
+              href="/venues/partner"
+              className="mt-5 inline-block text-sm underline"
+            >
+              List your venue →
+            </Link>
+          </>
         ) : (
-          <a
-            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([venue.name, d?.address || venue.location, d?.postcode, venue.county].filter(Boolean).join(" "))}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-4 inline-block text-sm underline"
-          >
-            Open location in Google Maps ↗
-          </a>
+          <>
+            <h2 className="font-serif text-4xl">Let’s talk about your plans</h2>
+            <p className="mb-8 mt-4 max-w-2xl text-sm leading-relaxed text-ink/60">
+              Request your wedding date or arrange a viewing. The venue will
+              check your plans and can suggest alternatives. Track the response
+              in My venue requests.
+            </p>
+            <VenueEnquiryForm
+              slug={venue.slug}
+              venueId={venue.id}
+              packages={packages}
+              accountEmail={email}
+              initialKind={initialKind}
+              initialDate={initialKind === "booking" ? initialDate : ""}
+              initialGuests={initialGuests}
+            />
+          </>
         )}
       </section>
+      {!venue.is_demo && (
+        <section className="mt-12 border-t border-sand pt-8">
+          <h2 className="font-serif text-3xl">Find your way here</h2>
+          <p className="mt-4 text-sm">
+            {[d?.address || venue.location, d?.postcode, venue.county]
+              .filter(Boolean)
+              .join(", ")}
+          </p>
+          {map ? (
+            <iframe
+              title={`${venue.name} location`}
+              src={map}
+              loading="lazy"
+              className="mt-5 h-80 w-full rounded-xl"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([venue.name, d?.address || venue.location, d?.postcode, venue.county].filter(Boolean).join(" "))}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-block text-sm underline"
+            >
+              Open location in Google Maps ↗
+            </a>
+          )}
+        </section>
+      )}
     </article>
   );
 }

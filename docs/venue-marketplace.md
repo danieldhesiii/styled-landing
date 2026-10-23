@@ -54,3 +54,11 @@ Migration: `20261023104157_venue_marketplace.sql`.
 ## Next operational steps
 
 Onboard a real venue, review its photographs/prices and publish its listing. Add a supplied tour link when available. Walk through a real enquiry with the venue before enabling deposits or online contracts. Later work can add recurring/calendar-feed blocks, staff review feedback history, a durable email outbox, automated storage cleanup, cloud-synced shortlists, richer venue packages and payments after commercial arrangements are agreed.
+
+## Navigation and media previews
+
+Catalogue and Venues are separate studio destinations. Wedding details stores the customer's private dates, budget, venue choice and photos.
+
+Three code-only fictional venue previews appear in a separate section of venue discovery. They are never published database records, included in search/date checks or accepted as studio partner venues. Their pages have no booking form or real map and are marked noindex. Preview images and capacities are illustrative. Remove the DemoVenues component from discovery when previews are no longer needed.
+
+Venue detail pages retain visible blank video and 3D walkthrough spaces until a venue provides media. The section navigation links directly to each space. Captured Matterport/Kuula tours use the existing lazy dialog; video links use the existing validated embed providers. No tour is automatically generated from photos.

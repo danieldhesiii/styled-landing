@@ -37,6 +37,11 @@ export function VenueCards({
             key={venue.id}
             className="flex min-w-0 flex-col border-b border-sand pb-6"
           >
+            {venue.is_demo && (
+              <p className="mb-3 text-xs uppercase tracking-widest text-clay">
+                Demo venue · Not bookable
+              </p>
+            )}
             <Link href={detailHref} className="group">
               {image ? (
                 <img
@@ -60,7 +65,7 @@ export function VenueCards({
                 ? ` · Up to ${venue.capacity_max} guests`
                 : ""}
             </p>
-            {distances && (
+            {distances && !venue.is_demo && (
               <p className="mt-2 text-xs text-ink/60">
                 {distances[venue.slug]
                   ? `${distances[venue.slug].miles} miles from your chosen location`
@@ -78,21 +83,27 @@ export function VenueCards({
             <p className="mt-3 text-sm">
               {venue.details?.hire_from_pence != null
                 ? `Venue hire from ${formatGBP(venue.details.hire_from_pence / 100)}`
-                : "Venue hire price on request"}
+                : venue.is_demo
+                  ? "Illustrative listing · No hire price"
+                  : "Venue hire price on request"}
             </p>
             {venue.package_from_pence !== null && (
               <p className="mt-3 text-sm">
                 Styling from {formatGBP(venue.package_from_pence / 100)}
               </p>
             )}
-            <div className="mt-4">
-              <VenueShortlist id={venue.id} />
-            </div>
+            {!venue.is_demo && (
+              <div className="mt-4">
+                <VenueShortlist id={venue.id} />
+              </div>
+            )}
             <div className="mt-auto flex flex-wrap items-center gap-4 pt-5">
               <Link href={detailHref} className="text-sm underline">
-                View venue & request a date
+                {venue.is_demo
+                  ? "Preview venue, video & 3D tour →"
+                  : "View venue & request a date"}
               </Link>
-              {onSelect ? (
+              {venue.is_demo ? null : onSelect ? (
                 <button
                   type="button"
                   onClick={() => onSelect(venue)}

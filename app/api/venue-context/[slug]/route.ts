@@ -8,7 +8,7 @@ export async function GET(
   try {
     const { slug } = await params;
     const result = await loadPublicVenue(slug);
-    if (!result)
+    if (!result || result.venue.is_demo)
       return NextResponse.json(
         { error: "Venue unavailable." },
         { status: 404 },

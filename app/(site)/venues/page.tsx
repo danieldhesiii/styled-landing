@@ -1,3 +1,4 @@
+import DemoVenues from "@/components/venues/DemoVenues";
 import Link from "next/link";
 import NearbyVenues from "@/components/venues/NearbyVenues";
 import { filterVenueListings } from "@/lib/venues";
@@ -271,6 +272,7 @@ export default async function VenuesPage({
           </div>
         ))}
       </section>
+      <DemoVenues />
       <VenueOperatorCallout />
     </div>
   );

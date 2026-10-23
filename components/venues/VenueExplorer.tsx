@@ -1,4 +1,5 @@
 "use client";
+import DemoVenues from "./DemoVenues";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { filterVenueListings, type VenueListing } from "@/lib/venues";
@@ -82,9 +83,7 @@ export default function VenueExplorer({
           <p className="text-xs uppercase tracking-widest text-clay">
             Your setting, your style
           </p>
-          <h1 className="mt-3 font-serif text-4xl sm:text-5xl">
-            Find your venue
-          </h1>
+          <h1 className="mt-3 font-serif text-4xl sm:text-5xl">Venues</h1>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink/60">
             Explore spaces, view styling packages and enquire about dates.
             Choose a venue to keep it with your design while you browse supplier
@@ -192,8 +191,8 @@ export default function VenueExplorer({
         <div>
           <h2 className="font-serif text-2xl">Already have your venue?</h2>
           <p className="mt-2 text-sm text-ink/60">
-            Save your venue and its photographs in My wedding, then use them in
-            the visualiser. Your basket stays with you.
+            Save your venue and its photographs in Wedding details, then use
+            them in the visualiser. Your basket stays with you.
           </p>
         </div>
         <button
@@ -214,6 +213,7 @@ export default function VenueExplorer({
       >
         My venue booking & viewing requests →
       </Link>
+      <DemoVenues />
       <VenueOperatorCallout />
     </section>
   );

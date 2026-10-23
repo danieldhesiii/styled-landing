@@ -1,14 +1,17 @@
 "use client";
+import VenueMediaPlaceholder from "./VenueMediaPlaceholder";
 import { useRef, useState } from "react";
 export default function VenueTour({
   name,
   url,
   management = false,
+  demo = false,
   viewingHref = "#enquire",
 }: {
   name: string;
   url?: string | null;
   management?: boolean;
+  demo?: boolean;
   viewingHref?: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -31,9 +34,11 @@ export default function VenueTour({
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/60">
             {url
               ? "Look around the rooms and move between viewpoints. Use the tour controls to explore at your own pace."
-              : management
-                ? "Add a public Matterport or Kuula tour link above when a captured walkthrough is ready. You can leave this section empty while arranging your capture."
-                : "A walkthrough has not been added for this venue yet. You can explore the photographs or request an in-person viewing below."}
+              : demo
+                ? "This preview shows where an interactive venue tour will go. No tour has been added yet."
+                : management
+                  ? "Add a public Matterport or Kuula tour link above when a captured walkthrough is ready. You can leave this section empty while arranging your capture."
+                  : "A walkthrough has not been added for this venue yet. You can explore the photographs or request an in-person viewing below."}
           </p>
         </div>
         {url ? (
@@ -47,7 +52,7 @@ export default function VenueTour({
           >
             Explore the venue ↗
           </button>
-        ) : !management ? (
+        ) : !management && !demo ? (
           <a
             href={viewingHref}
             className="rounded-full border border-sand px-5 py-3 text-sm"
@@ -56,6 +61,7 @@ export default function VenueTour({
           </a>
         ) : null}
       </div>
+      {!url && <VenueMediaPlaceholder kind="tour" />}
       {url && (
         <dialog
           ref={dialog}

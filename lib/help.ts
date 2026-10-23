@@ -21,7 +21,7 @@ type Guide = {
 };
 export const HELP_GUIDES: Record<HelpTopic, Guide> = {
   wedding: {
-    label: "My wedding",
+    label: "Wedding details",
     title: "Keep your plans together",
     intro:
       "Save your own venue, photographs, dates and budget in your private account.",
@@ -70,7 +70,7 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
     steps: [
       {
         title: "Set your wedding details",
-        body: "Use My wedding for your venue, guest count and budget. Set a wedding day and, if different, an earlier delivery day. Stock is checked across that interval. A venue choice is optional.",
+        body: "Use Wedding details for your venue, guest count and budget. Set a wedding day and, if different, an earlier delivery day. Stock is checked across that interval. A venue choice is optional.",
       },
       {
         title: "Browse your way",
@@ -95,11 +95,11 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
     steps: [
       {
         title: "Explore published venues",
-        body: "Search by name, county, date and guest count in the venue directory. More filters cover venue type, hire budget and facilities. Shortlisted venues are saved on this device. Venue listings appear after Styled reviews them.",
+        body: "Search by name, county, date and guest count in the venue directory. More filters cover venue type, hire budget and facilities. Shortlisted venues are saved on this device. Venue listings appear after Styled reviews them. A separate demo collection previews the layout; these fictional venues cannot be booked and do not take part in date searches.",
       },
       {
         title: "View details and dates",
-        body: "Open the venue page for hire information, facilities, photography, styling and an optional captured 360° walkthrough. Known unavailable dates are disabled; every other date still needs confirmation.",
+        body: "Open the venue page for hire information, facilities, photography, styling, a Venue video section and a 3D walkthrough section. Blank media spaces stay visible until the venue adds its content. Known unavailable dates are disabled; every other date still needs confirmation.",
       },
       {
         title: "Choose a venue for your design",

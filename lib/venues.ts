@@ -2,6 +2,7 @@
 export type VenueSetting = "indoor" | "outdoor" | "both";
 
 export interface VenueListing {
+  is_demo?: boolean;
   id: string;
   slug: string;
   name: string;

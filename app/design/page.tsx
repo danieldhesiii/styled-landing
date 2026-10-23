@@ -640,27 +640,11 @@ export default function DesignPage() {
           <div className="py-6 sm:py-8">
             {(studioTab === "catalogue" || studioTab === "venues") && (
               <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <nav
-                  aria-label="Browse"
-                  className="inline-flex gap-1 rounded-xl bg-sand/40 p-1"
-                >
-                  {(
-                    [
-                      ["catalogue", "Catalogue"],
-                      ["venues", "Venues"],
-                    ] as const
-                  ).map(([tab, label]) => (
-                    <button
-                      key={tab}
-                      type="button"
-                      onClick={() => switchStudioTab(tab)}
-                      aria-current={studioTab === tab ? "page" : undefined}
-                      className={`min-h-10 rounded-lg px-5 text-sm ${studioTab === tab ? "bg-white font-medium text-ink shadow-sm" : "text-ink/60 hover:text-ink"}`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </nav>
+                <p className="text-xs text-ink/60">
+                  {studioTab === "venues"
+                    ? "Find a space for your day"
+                    : "Discover pieces from wedding suppliers"}
+                </p>
                 <button
                   type="button"
                   onClick={() => switchStudioTab("wedding")}
@@ -677,7 +661,7 @@ export default function DesignPage() {
                     : "Set your wedding details"}
                   <span className="ml-2">· {brief.guestCount} guests</span>
                   <span className="ml-2 underline underline-offset-4">
-                    My wedding →
+                    Wedding details →
                   </span>
                 </button>
               </div>

@@ -1,4 +1,5 @@
 import "server-only";
+import { DEMO_VENUES } from "@/lib/demo-venues";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { validVenueDay } from "@/lib/venue-details";
 import { createAnonClient } from "@/lib/supabase/anon";
@@ -36,6 +37,8 @@ export async function loadPublicVenue(slug: string): Promise<{
   venue: VenueListing;
   packages: VenuePackage[];
 } | null> {
+  const demo = DEMO_VENUES.find((venue) => venue.slug === slug);
+  if (demo) return { venue: demo, packages: [] };
   const client = createAnonClient();
   const { data: venue, error } = await client
     .from("venue_listings")
