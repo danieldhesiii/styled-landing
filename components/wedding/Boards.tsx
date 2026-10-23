@@ -133,36 +133,41 @@ export default function Boards({
           </p>
         </>
       )}
-      <form
-        className="flex flex-wrap items-end gap-3"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          if (!name.trim()) return;
-          const b = { id: crypto.randomUUID(), name: name.trim(), pins: [] };
-          if (await onSave([...boards, b])) {
-            setSelected(b.id);
-            setName("");
-          }
-        }}
-      >
-        <label className="min-w-0 flex-1 text-sm">
-          New board name
-          <input
-            maxLength={80}
-            placeholder="e.g. Ceremony, reception or colour ideas"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className={field}
-          />
-        </label>
-        <button
-          disabled={disabled || boards.length >= 20}
-          className="rounded-full bg-ink px-5 py-3 text-sm text-cream disabled:opacity-50"
+      <details open={!boards.length} className="mb-5">
+        <summary className="w-fit cursor-pointer rounded-full border border-sand px-4 py-2 text-sm">
+          New board
+        </summary>
+        <form
+          className="mt-4 flex flex-wrap items-end gap-3"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!name.trim()) return;
+            const b = { id: crypto.randomUUID(), name: name.trim(), pins: [] };
+            if (await onSave([...boards, b])) {
+              setSelected(b.id);
+              setName("");
+            }
+          }}
         >
-          Create board
-        </button>
-      </form>
+          <label className="min-w-0 flex-1 text-sm">
+            New board name
+            <input
+              maxLength={80}
+              placeholder="e.g. Ceremony, reception or colour ideas"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className={field}
+            />
+          </label>
+          <button
+            disabled={disabled || boards.length >= 20}
+            className="rounded-full bg-ink px-5 py-3 text-sm text-cream disabled:opacity-50"
+          >
+            Create board
+          </button>
+        </form>
+      </details>
       <div className="my-6 flex flex-wrap gap-2">
         {boards.map((b) => (
           <button
@@ -187,128 +192,144 @@ export default function Boards({
         </p>
       ) : (
         <>
-          <div className="grid gap-5 border-y border-sand py-6 sm:grid-cols-2">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (product) void pin("product", product);
-              }}
-            >
-              <label className="text-sm">
-                Add a catalogue piece
-                <select
-                  value={product}
-                  onChange={(e) => setProduct(e.target.value)}
-                  required
-                  className={field}
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-serif text-3xl">{board.name}</h2>
+            <p className="text-xs text-ink/60">
+              {board.pins.length} {board.pins.length === 1 ? "idea" : "ideas"}{" "}
+              saved
+            </p>
+          </div>
+          <details className="border-y border-sand py-4">
+            <summary className="w-fit cursor-pointer rounded-full bg-ink px-5 py-2.5 text-sm text-cream">
+              Add to board
+            </summary>
+            <div className="mt-5 grid gap-5 sm:grid-cols-2">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (product) void pin("product", product);
+                }}
+              >
+                <label className="text-sm">
+                  Add a catalogue piece
+                  <select
+                    value={product}
+                    onChange={(e) => setProduct(e.target.value)}
+                    required
+                    className={field}
+                  >
+                    <option value="">Choose a piece</option>
+                    {[...items]
+                      .sort(
+                        (a, b) =>
+                          Number(savedIds.includes(b.id)) -
+                          Number(savedIds.includes(a.id)),
+                      )
+                      .map((i) => (
+                        <option key={i.id} value={i.id}>
+                          {savedIds.includes(i.id) ? "♥ " : ""}
+                          {i.name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <button
+                  disabled={disabled}
+                  className="mt-3 rounded-full border border-sand px-4 py-2 text-sm disabled:opacity-50"
                 >
-                  <option value="">Choose a piece</option>
-                  {[...items]
-                    .sort(
-                      (a, b) =>
-                        Number(savedIds.includes(b.id)) -
-                        Number(savedIds.includes(a.id)),
-                    )
-                    .map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {savedIds.includes(i.id) ? "♥ " : ""}
-                        {i.name}
+                  Save piece to board
+                </button>
+              </form>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (note.trim()) void pin("note", undefined, note.trim());
+                }}
+              >
+                <label className="text-sm">
+                  A note for this board
+                  <textarea
+                    maxLength={1000}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    required
+                    placeholder="Colours, flowers or ideas to remember"
+                    rows={2}
+                    className={field}
+                  />
+                </label>
+                <button
+                  disabled={disabled}
+                  className="mt-3 rounded-full border border-sand px-4 py-2 text-sm disabled:opacity-50"
+                >
+                  Add note
+                </button>
+              </form>
+              <div>
+                <p className="text-sm">Your inspiration images</p>
+                <p className="mt-2 text-xs text-ink/50">
+                  Upload images you have permission to use. Inspiration is not a
+                  purchasable product.
+                </p>
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => file.current?.click()}
+                  className="mt-3 rounded-full border border-sand px-4 py-2 text-sm disabled:opacity-50"
+                >
+                  {uploading ? "Uploading…" : "Upload inspiration"}
+                </button>
+                <input
+                  ref={file}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+                  className="hidden"
+                  onChange={(e) => {
+                    void upload(e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (look) void pin("look", look);
+                }}
+              >
+                <label className="text-sm">
+                  Add a saved AI look
+                  <select
+                    value={look}
+                    onChange={(e) => setLook(e.target.value)}
+                    required
+                    className={field}
+                  >
+                    <option value="">
+                      {looks.length
+                        ? "Choose a saved look"
+                        : "Save a look in the visualiser first"}
+                    </option>
+                    {looks.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.styleName}
                       </option>
                     ))}
-                </select>
-              </label>
-              <button
-                disabled={disabled}
-                className="mt-3 rounded-full border border-sand px-4 py-2 text-sm disabled:opacity-50"
-              >
-                Save piece to board
-              </button>
-            </form>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (note.trim()) void pin("note", undefined, note.trim());
-              }}
-            >
-              <label className="text-sm">
-                A note for this board
-                <textarea
-                  maxLength={1000}
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  required
-                  placeholder="Colours, flowers or ideas to remember"
-                  rows={2}
-                  className={field}
-                />
-              </label>
-              <button
-                disabled={disabled}
-                className="mt-3 rounded-full border border-sand px-4 py-2 text-sm disabled:opacity-50"
-              >
-                Add note
-              </button>
-            </form>
-            <div>
-              <p className="text-sm">Your inspiration images</p>
-              <p className="mt-2 text-xs text-ink/50">
-                Upload images you have permission to use. Inspiration is not a
-                purchasable product.
-              </p>
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => file.current?.click()}
-                className="mt-3 rounded-full border border-sand px-4 py-2 text-sm disabled:opacity-50"
-              >
-                {uploading ? "Uploading…" : "Upload inspiration"}
-              </button>
-              <input
-                ref={file}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
-                className="hidden"
-                onChange={(e) => {
-                  void upload(e.target.files?.[0]);
-                  e.target.value = "";
-                }}
-              />
-            </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (look) void pin("look", look);
-              }}
-            >
-              <label className="text-sm">
-                Add a saved AI look
-                <select
-                  value={look}
-                  onChange={(e) => setLook(e.target.value)}
-                  required
-                  className={field}
+                  </select>
+                </label>
+                <button
+                  disabled={disabled || !looks.length}
+                  className="mt-3 rounded-full border border-sand px-4 py-2 text-sm disabled:opacity-50"
                 >
-                  <option value="">
-                    {looks.length
-                      ? "Choose a saved look"
-                      : "Save a look in the visualiser first"}
-                  </option>
-                  {looks.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.styleName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                disabled={disabled || !looks.length}
-                className="mt-3 rounded-full border border-sand px-4 py-2 text-sm disabled:opacity-50"
-              >
-                Add look to board
-              </button>
-            </form>
-          </div>
-          <h2 className="mt-7 font-serif text-3xl">{board.name}</h2>
+                  Add look to board
+                </button>
+              </form>
+            </div>
+          </details>
+          {!board.pins.length && (
+            <p className="py-8 text-sm text-ink/60">
+              Your board is ready. Use Add to board to collect your first idea.
+            </p>
+          )}
           <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {board.pins.map((p) => {
               const item = p.kind === "product" ? getItem(p.ref || "") : null;

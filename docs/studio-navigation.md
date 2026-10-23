@@ -11,9 +11,24 @@
 - Basket is a separate header action with the total quantity, available from every studio section. Orders remains submitted requests.
 - Saved product filters are collapsed initially. Existing `?tab=saved`, `?tab=looks` and `?tab=boards` links and account-owned data continue to work.
 
-## Verification checkpoint
+## Verification
 
-Type checking, production build and 18 existing tests pass. Desktop/mobile browser checks and final deployment are in progress at this checkpoint. No schema, access policy or production database changes are required.
+Type checking, production build and 18 existing tests pass. Browser checks passed at desktop and 390 px phone width, with no horizontal page overflow on Saved or Orders. Verified:
+
+- Existing Boards deep link and Saved collection counts/active destinations.
+- Saved items shortlist, optional search controls and empty saved looks.
+- Product added from a board stays in the basket across section changes.
+- Wedding guest edits persist across navigation and save to the account.
+- Board editing expands on demand; new notes save and remain visible after collapsing it.
+- Contextual help opens on the current Saved subsection.
+- Basket opens from Boards, reaches checkout without submitting an order, and account-menu My orders returns to the full section.
+- Browse exposes venue discovery, and Visualise opens the AI tool without generating a paid image.
+
+Used a disposable customer-only fixture in development, then removed it. No schema, access policy or production database changes. The existing HEIC dependency emits its known static-analysis build warning; the build succeeds.
+
+Board creation and editing controls are now collapsed when viewing an existing board, keeping saved inspiration first.
+
+Screenshots: [desktop](screenshots/saved-boards-desktop.jpg), [phone](screenshots/saved-boards-mobile.jpg).
 
 ## Next: external inspiration inside Boards
 
