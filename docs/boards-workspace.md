@@ -13,9 +13,11 @@
 - The image request uses separate private inspiration photo IDs. Server queries require the signed-in owner and preserve explicit venue-photo order, avoiding the old latest-upload lookup when a board photo was uploaded more recently than the actual room.
 - Model instructions distinguish venue architecture, catalogue product references and mood-only inspiration. Inspiration must not introduce products outside the catalogue.
 
-## Verification checkpoint
+## Verification
 
-Typecheck and all 23 tests pass, including ownership/order failures, unsafe Pinterest links, reference limits, board preparation and image-role instructions. Production build and browser checks are next. No schema changes or new permissions.
+Production build, typecheck and all 23 tests pass, including ownership/order failures, unsafe Pinterest links, reference limits, board preparation and image-role instructions. Browser checked desktop and 390 px mobile with no horizontal page overflow. Verified provider guides, persistence of a Pinterest source link, private photo upload and a board-to-visualiser handoff showing the correct inspiration and product counts with an unchanged empty basket and no room photo replacement. No paid image or real order was generated. Disposable customer fixture and private uploaded assets were removed after testing. No schema changes or new permissions.
+
+Screenshots: `screenshots/boards-imports-mobile.jpg`, `screenshots/boards-imports-desktop.jpg`.
 
 ## Outstanding provider setup
 

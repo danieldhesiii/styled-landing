@@ -955,8 +955,15 @@ export default function DesignPage() {
                         </button>
                       </div>
                       <p className="mt-2 text-sm leading-relaxed text-ink/60">
-                        {boardInspiration.photoIds.length} inspiration photos
-                        and {boardInspiration.itemIds.length} catalogue pieces
+                        {boardInspiration.photoIds.length} inspiration{" "}
+                        {boardInspiration.photoIds.length === 1
+                          ? "photo"
+                          : "photos"}
+                        {" and "}
+                        {boardInspiration.itemIds.length} catalogue{" "}
+                        {boardInspiration.itemIds.length === 1
+                          ? "piece"
+                          : "pieces"}{" "}
                         prepared for a new look. Your venue photo and basket are
                         unchanged. Choose a venue photo or an example room, then
                         generate when ready.
