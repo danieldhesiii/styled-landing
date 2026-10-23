@@ -3,12 +3,14 @@ import { useEffect, useRef, useState } from "react";
 import { validPostcode, type DiscoveryResults } from "@/lib/location";
 export default function LocationFilter({
   postcode = "",
+  venueSlug,
   result,
   onResult,
   radius,
   onRadius,
 }: {
   postcode?: string;
+  venueSlug?: string;
   result: DiscoveryResults | null;
   onResult: (r: DiscoveryResults | null) => void;
   radius: number;
@@ -21,6 +23,7 @@ export default function LocationFilter({
   async function search(
     value:
       | { postcode: string }
+      | { venueSlug: string }
       | { point: { latitude: number; longitude: number } },
   ) {
     const revision = ++request.current;
@@ -48,6 +51,10 @@ export default function LocationFilter({
   useEffect(() => {
     ++request.current;
     setQuery(postcode);
+    if (venueSlug) {
+      const t = setTimeout(() => void search({ venueSlug }), 300);
+      return () => clearTimeout(t);
+    }
     if (!validPostcode(postcode)) {
       ++request.current;
       onResult(null);
@@ -56,7 +63,7 @@ export default function LocationFilter({
     }
     const t = setTimeout(() => void search({ postcode }), 700);
     return () => clearTimeout(t);
-  }, [postcode]);
+  }, [postcode, venueSlug]);
   function locate() {
     if (!navigator.geolocation) {
       setError("Location access is unavailable. Enter a postcode instead.");

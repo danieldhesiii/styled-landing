@@ -157,7 +157,7 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
       },
       {
         title: "Save and explore the pieces",
-        body: "Save a generated result to Saved looks if you want to return to it. Shop this look returns to the catalogue for its associated products; Saved items remains your separate product shortlist.",
+        body: "Save a generated result to Saved looks if you want to return to it. Shop this look scrolls to the associated catalogue pieces directly below the image. Add them to your basket there, or use Browse the full catalogue to explore more. Saved items remains your separate product shortlist.",
       },
     ],
     note: "AI previews are illustrative. Check the actual catalogue products, quantities, prices and date availability before making plans.",
@@ -202,11 +202,11 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
       },
       {
         title: "Enter your reservation details",
-        body: "Reserve this design opens the checkout details. Review the latest quote, your contact details and delivery information before submitting a request.",
+        body: "Request supplier confirmation opens the checkout details. Review the latest quote, your contact details and delivery information before submitting a request.",
       },
       {
         title: "Keep the confirmation",
-        body: "After a successful request, keep your reference and follow its progress in My orders or Track order. Supplier confirmation is a separate step.",
+        body: "After a successful request, keep your reference and follow its progress in My orders or Track order. Styled reviews supplier confirmation manually before a booking is confirmed. Suppliers can reply with alternative dates when needed.",
       },
     ],
     note: "In this preview the card-payment step is a placeholder, and no card is charged. The deposit shown in your quote is not a completed payment.",
@@ -288,6 +288,8 @@ export function helpTopicForPage(
   studioSection?: string,
 ): HelpTopic {
   if (pathname === "/design" || pathname.startsWith("/design/")) {
+    if (studioSection === "looks") return "saved_looks";
+    if (studioSection === "orders") return "orders";
     if (studioSection === "wedding") return "wedding";
     if (studioSection === "boards") return "boards";
     if (studioSection === "checkout") return "basket";

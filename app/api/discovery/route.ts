@@ -34,9 +34,32 @@ export async function POST(req: Request) {
     return fail(503, "Location matching is temporarily unavailable.");
   if (!allowed)
     return fail(429, "Please wait before checking another location.");
+  const [items, venues, { data: locations, error }] = await Promise.all([
+    loadCatalogue(),
+    loadPublicVenues(),
+    admin
+      .from("discovery_locations")
+      .select(
+        "entity_type,entity_id,latitude,longitude,radius_miles,nationwide",
+      ),
+  ]);
+  if (error) return fail(503, "Location matching is temporarily unavailable.");
   let point, label;
   try {
-    if (typeof body.postcode === "string") {
+    if (typeof body.venueSlug === "string") {
+      const venue = venues.find((v) => v.slug === body.venueSlug);
+      if (!venue) return fail(404, "Venue not found.");
+      const location = locations?.find(
+        (l) => l.entity_type === "venue" && l.entity_id === venue.id,
+      );
+      if (!location)
+        return fail(
+          422,
+          "This venue’s location needs confirming. Enter its postcode to search nearby.",
+        );
+      point = { latitude: location.latitude, longitude: location.longitude };
+      label = venue.name;
+    } else if (typeof body.postcode === "string") {
       point = await lookupPostcode(body.postcode);
       label = point.postcode;
     } else if (validPoint(body.point)) {
@@ -49,16 +72,6 @@ export async function POST(req: Request) {
       e instanceof Error ? e.message : "Could not locate that postcode.",
     );
   }
-  const [items, venues, { data: locations, error }] = await Promise.all([
-    loadCatalogue(),
-    loadPublicVenues(),
-    admin
-      .from("discovery_locations")
-      .select(
-        "entity_type,entity_id,latitude,longitude,radius_miles,nationwide",
-      ),
-  ]);
-  if (error) return fail(503, "Location matching is temporarily unavailable.");
   const suppliers = new Set(items.map((i) => i.supplierId)),
     venueIds = new Map(venues.map((v) => [v.id, v.slug]));
   const result: DiscoveryResults = { label, suppliers: {}, venues: {} };

@@ -74,7 +74,7 @@ export async function PATCH(
 
   const { data: order } = await admin
     .from("orders")
-    .select("id, status, wedding_date")
+    .select("id, status, wedding_date, couple_message")
     .eq("id", id)
     .maybeSingle();
   if (!order) return fail(404, "Order not found.");
@@ -218,6 +218,8 @@ export async function PATCH(
     status === "cancelled"
   ) {
     await notifyCoupleOfDecision(admin, id, status);
+  } else if (coupleMessage && coupleMessage !== order.couple_message) {
+    await notifyCoupleOfDecision(admin, id, "update");
   }
 
   return NextResponse.json({ ok: true, ...(await loadAdminOrder(admin, id)) });

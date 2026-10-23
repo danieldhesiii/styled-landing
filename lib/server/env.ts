@@ -11,7 +11,7 @@ if (typeof window !== "undefined") {
 function required(name: string, value: string | undefined): string {
   if (!value) {
     throw new Error(
-      `Missing environment variable ${name}. Add it to .env.local (see .env.example).`
+      `Missing environment variable ${name}. Add it to .env.local (see .env.example).`,
     );
   }
   return value;
@@ -21,14 +21,23 @@ function required(name: string, value: string | undefined): string {
 // inline NEXT_PUBLIC_* values in every runtime, including middleware.
 export const env = {
   get supabaseUrl() {
-    return required("NEXT_PUBLIC_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL);
+    return required(
+      "NEXT_PUBLIC_SUPABASE_URL",
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+    );
   },
   get supabaseAnonKey() {
-    return required("NEXT_PUBLIC_SUPABASE_ANON_KEY", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+    return required(
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    );
   },
   // Bypasses row level security. Server routes only.
   get supabaseServiceRoleKey() {
-    return required("SUPABASE_SERVICE_ROLE_KEY", process.env.SUPABASE_SERVICE_ROLE_KEY);
+    return required(
+      "SUPABASE_SERVICE_ROLE_KEY",
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+    );
   },
   get openaiApiKey() {
     return required("OPENAI_API_KEY", process.env.OPENAI_API_KEY);
@@ -88,15 +97,24 @@ export const env = {
   // Resend API key, emails are logged instead of sent, so local dev and preview
   // work without a provider. NOTIFY_FROM_EMAIL must be a verified Resend sender
   // in production.
+  get brevoApiKeyIfSet() {
+    return process.env.BREVO_API_KEY || undefined;
+  },
   get resendApiKeyIfSet() {
     return process.env.RESEND_API_KEY || undefined;
   },
+  get notifyReplyToEmailIfSet() {
+    return process.env.NOTIFY_REPLY_TO_EMAIL || "support@styleduk.com";
+  },
   get notifyFromEmail() {
-    return process.env.NOTIFY_FROM_EMAIL || "Styled <onboarding@resend.dev>";
+    return process.env.NOTIFY_FROM_EMAIL || "Styled <support@styleduk.com>";
   },
   // Absolute base URL for links in emails (the portal, order pages).
   get siteUrl() {
-    return (process.env.NEXT_PUBLIC_SITE_URL || "https://styled-landing-zeta.vercel.app").replace(/\/$/, "");
+    return (
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      "https://styled-landing-zeta.vercel.app"
+    ).replace(/\/$/, "");
   },
 
   // Shared secret for scheduled jobs (Vercel Cron sends it as a Bearer token).

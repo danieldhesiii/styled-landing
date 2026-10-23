@@ -18,7 +18,8 @@ import { helpTopicForPage } from "@/lib/help";
 import HowItWorks from "@/components/design/HowItWorks";
 import SavedLooks, { type SavedLook } from "@/components/design/SavedLooks";
 import AccountMenu from "@/components/auth/AccountMenu";
-import MyOrdersDrawer from "@/components/order/MyOrdersDrawer";
+import MyOrders from "@/components/order/MyOrders";
+import LookProducts from "@/components/design/LookProducts";
 import { useShopAvailability } from "@/components/availability/useAvailability";
 
 import LocationFilter from "@/components/wedding/LocationFilter";
@@ -40,15 +41,31 @@ export default function DesignPage() {
   const [partnerVenue, setPartnerVenue] = useState<SampleVenue | null>(null);
   const [partnerError, setPartnerError] = useState("");
   const [studioTab, setStudioTab] = useState<
-    "catalogue" | "venues" | "saved" | "visualiser" | "wedding" | "boards"
+    | "catalogue"
+    | "venues"
+    | "saved"
+    | "visualiser"
+    | "wedding"
+    | "boards"
+    | "looks"
+    | "orders"
   >("catalogue");
   const savedItems = useSavedItems();
   const [discovery, setDiscovery] = useState<DiscoveryResults | null>(null),
     [searchRadius, setSearchRadius] = useState(50);
   function switchStudioTab(
-    tab: "catalogue" | "venues" | "saved" | "visualiser" | "wedding" | "boards",
+    tab:
+      | "catalogue"
+      | "venues"
+      | "saved"
+      | "visualiser"
+      | "wedding"
+      | "boards"
+      | "looks"
+      | "orders",
   ) {
     setStudioTab(tab);
+    setStep("studio");
     const url = new URL(window.location.href);
     url.searchParams.set("tab", tab);
     url.searchParams.delete("render");
@@ -63,8 +80,6 @@ export default function DesignPage() {
   const [step, setStep] = useState<Step>("studio");
   const [showHowTo, setShowHowTo] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showSaved, setShowSaved] = useState(false);
-  const [showOrders, setShowOrders] = useState(false);
   const [savedLooks, setSavedLooks] = useState<SavedLook[]>([]);
 
   const [brief, setBrief] = useState<Brief>({
@@ -91,10 +106,11 @@ export default function DesignPage() {
   // Renders made for the current look (oldest first) and which one is showing.
   const [versions, setVersions] = useState<RenderRef[]>([]);
   const [renderId, setRenderId] = useState<string | null>(null);
-  const [shopLookSignal, setShopLookSignal] = useState(0);
+  const shopLookSignal = 0;
   const [restored, setRestored] = useState(false);
   const productBrowserRef = useRef<HTMLDivElement>(null);
   const visualiserRef = useRef<HTMLDivElement>(null);
+  const lookProductsRef = useRef<HTMLDivElement>(null);
   function openVisualiser() {
     switchStudioTab("visualiser");
     setTimeout(
@@ -264,7 +280,9 @@ export default function DesignPage() {
         tab === "visualiser" ||
         tab === "venues" ||
         tab === "wedding" ||
-        tab === "boards"
+        tab === "boards" ||
+        tab === "looks" ||
+        tab === "orders"
       )
         setStudioTab(tab);
       else if (params.get("render") === "true") setStudioTab("visualiser");
@@ -390,7 +408,6 @@ export default function DesignPage() {
     // Set the style without wiping the render (patchBrief would clear it).
     setBrief((b) => ({ ...b, styleId: look.styleId }));
     showRender({ id: look.id, url, itemIds });
-    setShowSaved(false);
     openVisualiser();
   }
 
@@ -448,7 +465,9 @@ export default function DesignPage() {
   );
 
   const venue =
-    (brief.venueChoice === "have" && brief.venueName
+    (!brief.venueId.startsWith("listing:") &&
+    brief.venueChoice === "have" &&
+    brief.venueName
       ? {
           id: "own",
           name: brief.venueName,
@@ -568,7 +587,7 @@ export default function DesignPage() {
             <button
               type="button"
               onClick={() => {
-                setShowSaved(true);
+                switchStudioTab("looks");
                 setShowSettings(false);
               }}
               className="hidden sm:flex items-center gap-1.5 rounded-full border border-sand px-4 py-1.5 text-xs text-ink/50 hover:border-clay/50 hover:text-ink transition-colors"
@@ -600,7 +619,7 @@ export default function DesignPage() {
             )}
             <AccountMenu
               onOpenOrders={() => {
-                setShowOrders(true);
+                switchStudioTab("orders");
                 setShowSettings(false);
               }}
             />
@@ -666,15 +685,17 @@ export default function DesignPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowSaved(true)}
-                  className="rounded-full border border-sand px-4 py-2 text-sm"
+                  onClick={() => switchStudioTab("looks")}
+                  aria-current={studioTab === "looks" ? "page" : undefined}
+                  className={`shrink-0 rounded-full border px-4 py-2 text-sm ${studioTab === "looks" ? "border-ink bg-ink text-cream" : "border-sand"}`}
                 >
                   Saved looks ({savedLooks.length})
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowOrders(true)}
-                  className="rounded-full border border-sand px-4 py-2 text-sm"
+                  onClick={() => switchStudioTab("orders")}
+                  aria-current={studioTab === "orders" ? "page" : undefined}
+                  className={`shrink-0 rounded-full border px-4 py-2 text-sm ${studioTab === "orders" ? "border-ink bg-ink text-cream" : "border-sand"}`}
                 >
                   My orders
                 </button>
@@ -787,6 +808,17 @@ export default function DesignPage() {
                 </button>
               </div>
             )}
+            {studioTab === "looks" && (
+              <SavedLooks
+                looks={savedLooks}
+                onClose={() => switchStudioTab("catalogue")}
+                onLoad={loadSavedLook}
+                onUnsave={unsaveLook}
+              />
+            )}
+            {studioTab === "orders" && (
+              <MyOrders onBrowse={() => switchStudioTab("catalogue")} />
+            )}
             <div hidden={studioTab !== "wedding"}>
               <MyWedding
                 photos={workspacePhotos}
@@ -830,6 +862,11 @@ export default function DesignPage() {
               }
             >
               <LocationFilter
+                venueSlug={
+                  brief.venueId.startsWith("listing:")
+                    ? brief.venueId.slice(8)
+                    : undefined
+                }
                 postcode={brief.venuePostcode}
                 result={discovery}
                 onResult={setDiscovery}
@@ -854,6 +891,7 @@ export default function DesignPage() {
                     venueId: `listing:${selected.slug}`,
                     venueChoice: "have",
                     venueName: selected.name,
+                    venuePostcode: "",
                     uploadedImages: [],
                   });
                   setPartnerVenue({
@@ -872,9 +910,11 @@ export default function DesignPage() {
               hidden={
                 studioTab === "venues" ||
                 studioTab === "wedding" ||
-                studioTab === "boards"
+                studioTab === "boards" ||
+                studioTab === "looks" ||
+                studioTab === "orders"
               }
-              className={`${studioTab === "venues" || studioTab === "wedding" || studioTab === "boards" ? "hidden" : "grid"} gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start`}
+              className={`${studioTab === "venues" || studioTab === "wedding" || studioTab === "boards" || studioTab === "looks" || studioTab === "orders" ? "hidden" : "grid"} gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start`}
             >
               {/* Catalogue first, optional visualiser below. */}
               <div className="min-w-0 space-y-5">
@@ -977,15 +1017,29 @@ export default function DesignPage() {
                       }
                       onRemoveAngle={removeAngle}
                       onShopLook={() => {
-                        switchStudioTab("catalogue");
-                        setShopLookSignal((n) => n + 1);
-                        productBrowserRef.current?.scrollIntoView({
+                        lookProductsRef.current?.scrollIntoView({
                           behavior: "smooth",
                           block: "start",
                         });
                       }}
                       isSaved={isCurrentSaved}
                       onToggleSave={toggleSaveCurrent}
+                    />
+                  </div>
+                  <div ref={lookProductsRef} className="scroll-mt-24">
+                    <LookProducts
+                      itemIds={currentRender?.itemIds || []}
+                      ready={!!currentRender}
+                      basket={basket}
+                      onAdd={addItem}
+                      onRemove={removeItem}
+                      onQty={setQty}
+                      onBrowse={() => switchStudioTab("catalogue")}
+                      savedIds={savedItems.ids}
+                      onSave={savedItems.toggle}
+                      saving={savedItems.busy}
+                      savesLoaded={savedItems.loaded}
+                      availability={shopAvailability}
                     />
                   </div>
                 </div>
@@ -1096,19 +1150,6 @@ export default function DesignPage() {
           onClose={() => setShowHowTo(false)}
         />
       )}
-
-      {/* Saved looks drawer */}
-      {showSaved && (
-        <SavedLooks
-          looks={savedLooks}
-          onClose={() => setShowSaved(false)}
-          onLoad={loadSavedLook}
-          onUnsave={unsaveLook}
-        />
-      )}
-
-      {/* My orders drawer */}
-      {showOrders && <MyOrdersDrawer onClose={() => setShowOrders(false)} />}
     </div>
   );
 }

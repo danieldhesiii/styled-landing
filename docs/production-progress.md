@@ -1,3 +1,5 @@
+See [manual-order-review.md](manual-order-review.md) for the latest manual approval, support email, full studio sections and inline visualiser shopping changes.
+
 # Latest planning phase
 
 My wedding, separate delivery dates, private boards and postcode discovery are implemented. See [wedding-workspace.md](wedding-workspace.md) for scope, verification and supplier/payment decisions. Earlier sections below record previous milestones.

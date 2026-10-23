@@ -86,7 +86,12 @@ export default function MyWedding({
               <input
                 maxLength={160}
                 value={brief.venueName || ""}
-                onChange={(e) => onChange({ venueName: e.target.value })}
+                onChange={(e) =>
+                  onChange({
+                    venueName: e.target.value,
+                    venueId: "manor_orangery",
+                  })
+                }
                 placeholder="The place you’ve chosen"
                 className={field}
               />

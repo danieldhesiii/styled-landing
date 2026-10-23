@@ -46,11 +46,15 @@ export default function BasketPanel({
     <div className="flex h-full flex-col">
       <div className="border-b border-sand px-5 py-4">
         <div className="flex items-baseline justify-between">
-          <h2 className="font-serif text-xl text-ink">Your design</h2>
+          <h2 className="font-serif text-xl text-ink">Your basket</h2>
           <span className="text-xs text-ink/40">
             {guestCount} guests · {tables} tables
           </span>
         </div>
+        <p className="mt-2 text-xs leading-relaxed text-ink/60">
+          Your choices before submission. Adding pieces here does not create an
+          order or confirm a booking.
+        </p>
         <div className="mt-2">
           <HelpButton
             topic="basket"
@@ -206,7 +210,7 @@ export default function BasketPanel({
           disabled={quote.lines.length === 0}
           className="mt-4 w-full rounded-full bg-ink px-5 py-3 text-sm text-cream transition-colors hover:bg-ink/90 disabled:cursor-not-allowed disabled:bg-ink/30"
         >
-          Reserve this design
+          Request supplier confirmation
         </button>
         <p className="mt-2 text-center text-[11px] text-ink/40">
           No card charged until a stylist confirms every supplier for your date.

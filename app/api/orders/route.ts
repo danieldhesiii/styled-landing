@@ -12,7 +12,10 @@ import {
 } from "@/lib/server/orders";
 import { deliveryError } from "@/lib/wedding";
 import { checkQuantities } from "@/lib/server/availability";
-import { notifySuppliersOfOrder } from "@/lib/server/notify";
+import {
+  notifySuppliersOfOrder,
+  notifyStaffOfOrder,
+} from "@/lib/server/notify";
 
 // POST /api/orders
 //
@@ -314,7 +317,17 @@ export async function POST(req: Request) {
   // Tell each supplier they have items to confirm. Best effort and only on a
   // genuinely new order (replays return earlier), so a couple is never emailed
   // about, nor a supplier double-notified for, the same order twice.
-  await notifySuppliersOfOrder(admin, orderId as string);
+  const [staffNotified] = await Promise.all([
+    notifyStaffOfOrder(admin, orderId as string),
+    notifySuppliersOfOrder(admin, orderId as string),
+  ]);
+  await admin
+    .from("order_events")
+    .insert({
+      order_id: orderId,
+      type: "review_notification",
+      detail: { staffEmailSent: staffNotified },
+    });
 
   const order = await loadOrderView(supabase, orderId as string);
   return NextResponse.json(

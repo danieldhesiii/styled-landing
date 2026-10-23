@@ -3,14 +3,18 @@ import { env } from "@/lib/server/env";
 
 // Transactional email, and the supplier "you have an order to confirm" notice.
 //
-// Sending goes through Resend's REST API (no SDK dependency — just fetch). If
-// RESEND_API_KEY isn't set, emails are logged instead of sent, so local dev,
+// Sending uses Brevo, with Resend supported as a fallback. Without a provider
+// key, emails are logged instead of sent, so local development,
 // previews and the demo-order script never fail on a missing provider. Nothing
 // here is allowed to throw into the caller: a notification must never break an
 // order.
 
 const escapeHtml = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 
 interface Email {
   to: string[];
@@ -24,20 +28,70 @@ export async function sendEmail(email: Email): Promise<boolean> {
   if (to.length === 0) return false;
 
   const key = env.resendApiKeyIfSet;
-  if (!key) {
+  const brevoKey = env.brevoApiKeyIfSet;
+  if (!key && !brevoKey) {
     // No provider configured: log so the flow is visible in dev without sending.
-    console.log(`[notify] (not sent: no RESEND_API_KEY) to=${to.join(",")} subject="${email.subject}"`);
+    console.log(
+      `[notify] (not sent: no transactional email provider configured) to=${to.join(",")} subject="${email.subject}"`,
+    );
     return false;
   }
 
   try {
+    if (brevoKey) {
+      const match = env.notifyFromEmail.match(/^(.*?)\s*<([^>]+)>$/);
+      const sender = match
+        ? { name: match[1].trim(), email: match[2].trim() }
+        : { name: "Styled", email: env.notifyFromEmail.trim() };
+      if (sender.email.endsWith("@resend.dev")) {
+        console.error(
+          "[notify] Configure a verified Brevo sender in NOTIFY_FROM_EMAIL.",
+        );
+        return false;
+      }
+      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        signal: AbortSignal.timeout(10000),
+        headers: { "api-key": brevoKey, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender,
+          to: to.map((email) => ({ email })),
+          subject: email.subject,
+          htmlContent: email.html,
+          textContent: email.text,
+          ...(env.notifyReplyToEmailIfSet
+            ? { replyTo: { email: env.notifyReplyToEmailIfSet } }
+            : {}),
+        }),
+      });
+      if (!response.ok) {
+        console.error(`[notify] Brevo returned ${response.status}`);
+        return false;
+      }
+      return true;
+    }
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: env.notifyFromEmail, to, subject: email.subject, html: email.html, text: email.text }),
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: env.notifyFromEmail,
+        ...(env.notifyReplyToEmailIfSet
+          ? { reply_to: env.notifyReplyToEmailIfSet }
+          : {}),
+        to,
+        subject: email.subject,
+        html: email.html,
+        text: email.text,
+      }),
     });
     if (!res.ok) {
-      console.error(`[notify] Resend ${res.status}:`, await res.text().catch(() => ""));
+      console.error(
+        `[notify] Resend ${res.status}:`,
+        await res.text().catch(() => ""),
+      );
       return false;
     }
     return true;
@@ -48,7 +102,15 @@ export async function sendEmail(email: Email): Promise<boolean> {
 }
 
 const longDate = (day: string | null) =>
-  day ? new Date(`${day}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : "a date to confirm";
+  day
+    ? new Date(`${day}T00:00:00Z`).toLocaleDateString("en-GB", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "UTC",
+      })
+    : "a date to confirm";
 
 const shell = (inner: string) =>
   `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#2b2622">${inner}<p style="color:#8a8277;font-size:13px">Styled</p></div>`;
@@ -59,7 +121,11 @@ const button = (href: string, label: string) =>
 // Tell the couple when a stylist confirms, declines or cancels their order. Best
 // effort: never throws into the caller. The couple's email and the stylist's
 // message come from the order itself; no internal fields are included.
-export async function notifyCoupleOfDecision(admin: SupabaseClient, orderId: string, status: "confirmed" | "declined" | "cancelled"): Promise<void> {
+export async function notifyCoupleOfDecision(
+  admin: SupabaseClient,
+  orderId: string,
+  status: "confirmed" | "declined" | "cancelled" | "update",
+): Promise<void> {
   try {
     const { data: order } = await admin
       .from("orders")
@@ -74,16 +140,24 @@ export async function notifyCoupleOfDecision(admin: SupabaseClient, orderId: str
     const message = (order.couple_message as string | null) ?? null;
     const orderUrl = `${env.siteUrl}/order?ref=${encodeURIComponent(ref)}`;
 
-    const copy: Record<typeof status, { subject: string; lead: string; cta: string }> = {
+    const copy: Record<
+      typeof status,
+      { subject: string; lead: string; cta: string }
+    > = {
       confirmed: {
         subject: `Your Styled order is confirmed: ${ref}`,
-        lead: `Great news! Every supplier has confirmed your order for <strong>${escapeHtml(date)}</strong>. The next step is your deposit to secure the date.`,
-        cta: "View your order & pay your deposit",
+        lead: `Great news! Every supplier has confirmed your order for <strong>${escapeHtml(date)}</strong>. Styled will contact you about the agreed payment and delivery arrangements.`,
+        cta: "View your order",
       },
       declined: {
         subject: `An update on your Styled order: ${ref}`,
         lead: `We're sorry, we weren't able to confirm your order for <strong>${escapeHtml(date)}</strong>.`,
         cta: "View your order",
+      },
+      update: {
+        subject: `An update on your Styled request: ${ref}`,
+        lead: `Styled has an update about your request for <strong>${escapeHtml(date)}</strong>. Please read the message below, including any alternative dates suggested by your suppliers.`,
+        cta: "View your request",
       },
       cancelled: {
         subject: `Your Styled order has been cancelled: ${ref}`,
@@ -93,11 +167,13 @@ export async function notifyCoupleOfDecision(admin: SupabaseClient, orderId: str
     };
     const c = copy[status];
 
-    const messageHtml = message ? `<p style="background:#f4efe8;border-radius:12px;padding:12px 16px">${escapeHtml(message)}</p>` : "";
+    const messageHtml = message
+      ? `<p style="background:#f4efe8;border-radius:12px;padding:12px 16px">${escapeHtml(message)}</p>`
+      : "";
     const html = shell(
       `<p style="font-size:20px;font-weight:600">${escapeHtml(c.subject.split(": ")[0])}</p>` +
-      `<p>Hi ${escapeHtml(name)},</p><p>${c.lead}</p>${messageHtml}${button(orderUrl, c.cta)}` +
-      `<p style="color:#8a8277;font-size:13px">Order reference: ${escapeHtml(ref)}</p>`
+        `<p>Hi ${escapeHtml(name)},</p><p>${c.lead}</p>${messageHtml}${button(orderUrl, c.cta)}` +
+        `<p style="color:#8a8277;font-size:13px">Order reference: ${escapeHtml(ref)}</p>`,
     );
     const text = [
       `Hi ${name},`,
@@ -110,7 +186,12 @@ export async function notifyCoupleOfDecision(admin: SupabaseClient, orderId: str
       `Styled`,
     ].join("\n");
 
-    await sendEmail({ to: [order.email as string], subject: c.subject, html, text });
+    await sendEmail({
+      to: [order.email as string],
+      subject: c.subject,
+      html,
+      text,
+    });
   } catch (err) {
     console.error("[notify] notifyCoupleOfDecision failed:", err);
   }
@@ -119,7 +200,10 @@ export async function notifyCoupleOfDecision(admin: SupabaseClient, orderId: str
 // Email every supplier on a new order the lines they need to confirm. Best
 // effort: resolves recipients (the supplier's contact email plus any portal
 // logins), sends one email per supplier, and swallows all errors.
-export async function notifySuppliersOfOrder(admin: SupabaseClient, orderId: string): Promise<void> {
+export async function notifySuppliersOfOrder(
+  admin: SupabaseClient,
+  orderId: string,
+): Promise<void> {
   try {
     const { data: order } = await admin
       .from("orders")
@@ -135,14 +219,26 @@ export async function notifySuppliersOfOrder(admin: SupabaseClient, orderId: str
     if (!lines || lines.length === 0) return;
 
     // Group lines by supplier, tracking their delivery date (shared by their lines).
-    const bySupplier = new Map<string, { deliveryDate: string | null; items: { name: string; quantity: number; unit: string | null }[] }>();
+    const bySupplier = new Map<
+      string,
+      {
+        deliveryDate: string | null;
+        items: { name: string; quantity: number; unit: string | null }[];
+      }
+    >();
     for (const l of lines) {
       if (!l.supplier_id) continue;
       const group = bySupplier.get(l.supplier_id as string) ?? {
-        deliveryDate: (l.needed_date as string | null) ?? (order.wedding_date as string | null),
+        deliveryDate:
+          (l.needed_date as string | null) ??
+          (order.wedding_date as string | null),
         items: [],
       };
-      group.items.push({ name: l.product_name as string, quantity: l.quantity as number, unit: l.unit as string | null });
+      group.items.push({
+        name: l.product_name as string,
+        quantity: l.quantity as number,
+        unit: l.unit as string | null,
+      });
       bySupplier.set(l.supplier_id as string, group);
     }
     if (bySupplier.size === 0) return;
@@ -150,15 +246,27 @@ export async function notifySuppliersOfOrder(admin: SupabaseClient, orderId: str
     const supplierIds = [...bySupplier.keys()];
 
     // Recipient emails: the supplier's business contact + any portal logins.
-    const { data: suppliers } = await admin.from("suppliers").select("id, name, contact_email").in("id", supplierIds);
-    const supplierById = new Map((suppliers ?? []).map((s) => [s.id as string, s]));
+    const { data: suppliers } = await admin
+      .from("suppliers")
+      .select("id, name, contact_email")
+      .in("id", supplierIds);
+    const supplierById = new Map(
+      (suppliers ?? []).map((s) => [s.id as string, s]),
+    );
 
-    const { data: links } = await admin.from("supplier_users").select("supplier_id, user_id").in("supplier_id", supplierIds);
+    const { data: links } = await admin
+      .from("supplier_users")
+      .select("supplier_id, user_id")
+      .in("supplier_id", supplierIds);
     const userIds = [...new Set((links ?? []).map((l) => l.user_id as string))];
     const emailByUser = new Map<string, string>();
     if (userIds.length > 0) {
-      const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-      for (const u of list?.users ?? []) if (u.email) emailByUser.set(u.id, u.email);
+      const { data: list } = await admin.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+      });
+      for (const u of list?.users ?? [])
+        if (u.email) emailByUser.set(u.id, u.email);
     }
     const loginEmails = new Map<string, string[]>();
     for (const l of links ?? []) {
@@ -176,14 +284,23 @@ export async function notifySuppliersOfOrder(admin: SupabaseClient, orderId: str
     const sends: Promise<boolean>[] = [];
     for (const [supplierId, group] of bySupplier) {
       const supplier = supplierById.get(supplierId);
-      const to = [...(supplier?.contact_email ? [supplier.contact_email as string] : []), ...(loginEmails.get(supplierId) ?? [])];
+      const to = [
+        ...(supplier?.contact_email ? [supplier.contact_email as string] : []),
+        ...(loginEmails.get(supplierId) ?? []),
+      ];
       if (to.length === 0) continue; // nobody to tell yet — staff can relay from admin
 
       const items = group.items;
       const deliveryDate = longDate(group.deliveryDate);
       // Note the wedding day only when the delivery date is different.
-      const whenNote = group.deliveryDate && group.deliveryDate !== (order.wedding_date as string | null) ? ` (wedding ${weddingDate})` : "";
-      const itemLines = items.map((i) => `${i.quantity} × ${i.name}${i.unit ? ` (${i.unit})` : ""}`);
+      const whenNote =
+        group.deliveryDate &&
+        group.deliveryDate !== (order.wedding_date as string | null)
+          ? ` (wedding ${weddingDate})`
+          : "";
+      const itemLines = items.map(
+        (i) => `${i.quantity} × ${i.name}${i.unit ? ` (${i.unit})` : ""}`,
+      );
       const count = items.length;
       const subject = `New Styled order to confirm: ${order.reference}`;
 
@@ -194,7 +311,9 @@ export async function notifySuppliersOfOrder(admin: SupabaseClient, orderId: str
         ``,
         ...itemLines.map((l) => `  • ${l}`),
         ``,
-        `Confirm or decline in your supplier portal:`,
+        `Please reply to this email with availability for both the delivery and wedding dates. If you cannot fulfil them, suggest your nearest available dates or suitable alternatives and include this order reference.`,
+        `Styled will review your reply manually before confirming anything to the couple. You do not need a stock-management system to reply.`,
+        `If you already use the supplier portal, you can also record your decision there:`,
         portalUrl,
         ``,
         `Order reference: ${order.reference}`,
@@ -208,6 +327,8 @@ export async function notifySuppliersOfOrder(admin: SupabaseClient, orderId: str
           <p>You have <strong>${count} item${count === 1 ? "" : "s"}</strong> to confirm for delivery on
              <strong>${escapeHtml(deliveryDate)}</strong>${whenNote ? ` ${escapeHtml(whenNote.trim())}` : ""}${venue ? ` at <strong>${escapeHtml(venue)}</strong>` : ""}.</p>
           <ul>${itemLines.map((l) => `<li>${escapeHtml(l)}</li>`).join("")}</ul>
+          <p>Please reply to this email to confirm product availability for both dates. If you cannot fulfil them, suggest your nearest available dates or suitable alternatives and include the order reference.</p>
+          <p>Styled will review your reply manually before confirming anything to the couple. You do not need a stock-management system to reply. If you already have portal access, you can also record your decision below.</p>
           <p style="margin:24px 0">
             <a href="${portalUrl}" style="background:#2b2622;color:#faf6f0;text-decoration:none;padding:12px 24px;border-radius:999px;display:inline-block">
               Confirm in your portal
@@ -222,5 +343,61 @@ export async function notifySuppliersOfOrder(admin: SupabaseClient, orderId: str
     await Promise.all(sends);
   } catch (err) {
     console.error("[notify] notifySuppliersOfOrder failed:", err);
+  }
+}
+
+// Notify existing Styled staff only. This creates a review task, never a booking
+// or payment. Exact addresses are resolved from existing staff memberships.
+export async function notifyStaffOfOrder(
+  admin: SupabaseClient,
+  orderId: string,
+): Promise<boolean> {
+  try {
+    const { data: order, error: orderError } = await admin
+      .from("orders")
+      .select("reference,couple_name,wedding_date,venue_label")
+      .eq("id", orderId)
+      .maybeSingle();
+    if (orderError || !order) return false;
+    const { data: staff, error: staffError } = await admin
+      .from("staff")
+      .select("user_id");
+    if (staffError || !staff?.length) return false;
+    const users = await Promise.all(
+      staff.map((s) => admin.auth.admin.getUserById(s.user_id)),
+    );
+    const to = users.flatMap((r) =>
+      r.data.user?.email ? [r.data.user.email] : [],
+    );
+    const { data: lines, error: lineError } = await admin
+      .from("order_lines")
+      .select("product_name,supplier_name,quantity,needed_date")
+      .eq("order_id", orderId);
+    if (lineError) return false;
+    const url = `${env.siteUrl}/admin/orders/${encodeURIComponent(orderId)}`;
+    const details = (lines || []).map(
+      (l) =>
+        `${l.quantity} × ${l.product_name} (${l.supplier_name}), delivery ${longDate(l.needed_date)}`,
+    );
+    const intro = `New request ${order.reference} from ${order.couple_name}. Wedding: ${longDate(order.wedding_date)}. Venue: ${order.venue_label || "To confirm"}.`;
+    return await sendEmail({
+      to,
+      subject: `Manual review needed: ${order.reference}`,
+      text: [
+        intro,
+        "",
+        ...details,
+        "",
+        "Check supplier availability, delivery and wedding dates. If unavailable, ask for alternatives before confirming. No payment has been collected.",
+        url,
+        "Styled",
+      ].join("\n"),
+      html: shell(
+        `<p>${escapeHtml(intro)}</p><ul>${details.map((d) => `<li>${escapeHtml(d)}</li>`).join("")}</ul><p>Check supplier availability and dates manually. Ask for alternatives if needed. No payment has been collected.</p>${button(url, "Review order request")}`,
+      ),
+    });
+  } catch (err) {
+    console.error("[notify] staff review notice failed", err);
+    return false;
   }
 }

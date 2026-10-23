@@ -257,10 +257,10 @@ export default function CheckoutStep({
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <a
-            href="/order"
+            href="/design?tab=orders"
             className="rounded-full bg-ink px-6 py-3 text-sm text-cream hover:bg-ink/90"
           >
-            Track your order
+            View my orders
           </a>
           <button
             type="button"
@@ -284,7 +284,7 @@ export default function CheckoutStep({
         ← Back to your design
       </button>
       <h1 className="mt-4 font-serif text-4xl text-ink">
-        Reserve your design.
+        Request supplier confirmation.
       </h1>
       <p className="mt-2 text-ink/60">
         Request your chosen pieces for your wedding and delivery dates. Supplier
@@ -381,7 +381,7 @@ export default function CheckoutStep({
             {submitting
               ? "Placing your order…"
               : serverQuote
-                ? "Request this design"
+                ? "Submit request for manual review"
                 : "Preparing your quote…"}
           </button>
         </div>
