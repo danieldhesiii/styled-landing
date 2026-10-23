@@ -1,7 +1,7 @@
 import sharp from "sharp";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/server/env";
-import { renderImage, ImageModelError } from "@/lib/server/image-model";
+import { editImage, ImageModelError } from "@/lib/server/image-model";
 import { sanitiseErrorText, type RenderErrorKind } from "@/lib/server/render-errors";
 
 // The slow part of a render: call the image model, store the picture, record the
@@ -15,8 +15,6 @@ export async function runRenderJob(opts: {
   images: Buffer[];
   prompt: string;
   size: string;
-  draft?: boolean;
-  provider?: "openai" | "gemini";
 }) {
   const { admin, renderId, userId } = opts;
 
@@ -30,13 +28,7 @@ export async function runRenderJob(opts: {
       });
 
   try {
-    const result = await renderImage({
-      images: opts.images,
-      prompt: opts.prompt,
-      size: opts.size,
-      provider: opts.provider,
-      draft: opts.draft,
-    });
+    const result = await editImage({ images: opts.images, prompt: opts.prompt, size: opts.size });
 
     // Confirm the model really returned an image before storing it.
     await sharp(result.image).metadata();
