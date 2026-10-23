@@ -1,0 +1,4 @@
+-- Migration applied directly in production (20261020100000).
+-- SQL not committed to this repo. Investigate and fill in before running
+-- against a fresh database if basket-hold functionality is needed.
+-- Placeholder so migration tooling doesn't report a gap.

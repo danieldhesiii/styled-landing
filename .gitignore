@@ -13,3 +13,6 @@ supabase/.branches/
 
 # temp env files
 .env*.tmp
+
+# nested sister projects (separate repos, should not be committed here)
+styled-landing/
