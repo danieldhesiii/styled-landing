@@ -1,10 +1,13 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import VenueMessageThread from "./VenueMessageThread";
 import { ENQUIRY_STATUSES } from "@/lib/venue-details";
 type Request = {
   id: string;
   preferred_date: string;
+  viewing_time?: string | null;
+  next_actor?: string;
   request_kind: string;
   guest_count: number;
   status: string;
@@ -33,6 +36,16 @@ export default function MyVenueRequests({
   useEffect(() => {
     load().catch((e) => setError(e.message));
   }, [load, retry]);
+  async function alternative(id: string, date: string) {
+    setBusy(id); setError("");
+    try {
+      const r = await fetch("/api/venue-follow-up", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action: "alternative", date }) });
+      const d = await r.json();
+      if (!r.ok) throw Error(d.error || "Could not request this date.");
+      await load();
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not request this date."); }
+    finally { setBusy(""); }
+  }
   async function cancel(id: string) {
     setBusy(id);
     setError("");
@@ -135,7 +148,7 @@ export default function MyVenueRequests({
                 {r.venue_listings?.name || "Your venue"}
               </h2>
               <p className="mt-3 text-sm text-ink/60">
-                {r.preferred_date} · {r.guest_count} wedding guests
+                {r.preferred_date}{r.viewing_time ? ` at ${r.viewing_time.slice(0, 5)} UK time` : ""} · {r.guest_count} wedding guests
               </p>
             </div>
             <span className="rounded-lg bg-sand px-3 py-2 text-sm">
@@ -158,17 +171,18 @@ export default function MyVenueRequests({
                   : "The venue team will check your plans and respond here. You can also contact support@styleduk.com.")}
             </p>
             {r.alternative_dates?.length > 0 && (
-              <p className="mt-3 text-sm">
-                Suggested dates: {r.alternative_dates.join(", ")}. Send a new
-                request to discuss one of these dates; suggestions are not
-                reservations.
-              </p>
+              <div className="mt-3 text-sm">
+                <p>Suggested {r.request_kind === "viewing" ? "viewing" : "wedding"} dates. Requesting one keeps this conversation and asks the venue to confirm; it does not reserve a date.</p>
+                <div className="mt-3 flex flex-wrap gap-3">{r.alternative_dates.map((day) => (
+                  <button key={day} disabled={!!busy || !["contacted", "declined"].includes(r.status)} onClick={() => void alternative(r.id, day)} className="rounded-full border border-sand px-4 py-2 disabled:opacity-50">Request {day}</button>
+                ))}</div>
+              </div>
             )}
           </div>
           <div className="mt-5 flex flex-wrap items-center gap-5">
             {r.venue_listings && (
               <Link
-                href={`/venues/${r.venue_listings.slug}#enquire`}
+                href={`/venues/${r.venue_listings.slug}?request=${r.request_kind}&date=${r.preferred_date}&guests=${r.guest_count}#enquire`}
                 className="text-sm underline"
               >
                 View venue / make another request
@@ -193,6 +207,8 @@ export default function MyVenueRequests({
               </details>
             )}
           </div>
+          {r.status === "viewing_confirmed" && <p className="mt-4 text-sm">Your viewing is confirmed. No wedding date is reserved.</p>}
+          <VenueMessageThread requestId={r.id} status={r.status} nextActor={r.next_actor} />
           {r.status === "booked" && (
             <p className="mt-4 text-xs text-ink/60">
               Your venue has confirmed the booking. Agree contracts, payment and

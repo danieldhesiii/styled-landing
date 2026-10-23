@@ -1,29 +1,36 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { supplierReadiness } from "@/lib/vendor-readiness";
 import AssetUpload from "./AssetUpload";
 export default function OnboardingChecklist() {
   const [data, setData] = useState<{
       profile: {
+        active: boolean;
         logo_url: string | null;
         bio: string | null;
         onboarding_availability_confirmed_at: string | null;
       };
       productCount: number;
+      readiness: ReturnType<typeof supplierReadiness>;
     } | null>(null),
     [error, setError] = useState(""),
     [bio, setBio] = useState(""),
     [saving, setSaving] = useState(false),
     [message, setMessage] = useState("");
+  const bioDirty = useRef(false);
   const load = useCallback(async () => {
+    setError("");
     try {
-      const r = await fetch("/api/vendor/profile");
+      const r = await fetch("/api/vendor/profile", { cache: "no-store" });
       const d = await r.json();
       if (!r.ok) throw Error(d.error);
       setData(d);
-      setBio(d.profile.bio || "");
+      if (!bioDirty.current) setBio(d.profile.bio || "");
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load profile.");
+      return false;
     }
   }, []);
   useEffect(() => {
@@ -41,8 +48,9 @@ export default function OnboardingChecklist() {
       });
       const d = await r.json();
       if (!r.ok) throw Error(d.error);
-      await load();
-      setMessage("Saved.");
+      if (body.bio !== undefined) bioDirty.current = false;
+      const refreshed = await load();
+      setMessage(refreshed ? "Saved." : "Changes saved; setup status could not refresh. Please retry loading.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save.");
     } finally {
@@ -51,26 +59,31 @@ export default function OnboardingChecklist() {
   }
   if (!data)
     return (
-      <p role="status" className="mb-8 text-sm">
-        {error || "Loading your supplier setup…"}
-      </p>
+      <div className="mb-8 text-sm">
+        <p role={error ? "alert" : "status"}>{error || "Loading your supplier setup…"}</p>
+        {error && <button type="button" className="mt-2 underline" onClick={() => void load()}>Retry supplier setup</button>}
+      </div>
     );
-  const steps = [
-      !!data.profile.logo_url,
-      data.productCount > 0,
-      !!data.profile.onboarding_availability_confirmed_at,
-    ],
-    count = steps.filter(Boolean).length;
+  const { steps, completed: count } = data.readiness;
   return (
     <section className="mb-10 rounded-2xl border border-sand bg-cream p-6">
       <h2 className="font-serif text-3xl">Your supplier setup</h2>
-      <p className="mt-2 text-sm text-ink/60">{count} of 3 steps complete</p>
+      <p className="mt-2 text-sm text-ink/60">{count} of 3 setup steps complete</p>
       <progress
         aria-label="Supplier setup progress"
         value={count}
         max={3}
         className="mt-3 w-full accent-clay"
       />
+      <div className="mt-4 text-sm text-ink/70">
+        <p>{data.readiness.total} products in setup · {data.readiness.draft} draft / hidden · {data.readiness.live} live in the public catalogue</p>
+        {!data.profile.active && <p className="mt-2">Your supplier listing is inactive. Ask Styled to review publication; enabling a product alone will not make it public.</p>}
+        <p className="mt-2">Setup completion does not publish your catalogue. New imports start hidden for review; hidden products may also have been switched off.</p>
+        {data.readiness.publicProfileHref ? (
+          <Link className="mt-2 inline-block underline" href={data.readiness.publicProfileHref}>View your public supplier profile</Link>
+        ) : <p className="mt-2">Your public profile is not available yet. Review your products and contact Styled if you are waiting for publication.</p>}
+        <Link className="mt-2 inline-block underline" href="/portal/products">Review products</Link>
+      </div>
       <ol className="mt-5 grid gap-5 md:grid-cols-3">
         <li>
           <p className="mb-3 text-sm">{steps[0] ? "✓" : "1."} Add your logo</p>
@@ -116,7 +129,8 @@ export default function OnboardingChecklist() {
         Your business story
         <textarea
           value={bio}
-          onChange={(e) => setBio(e.target.value)}
+          onChange={(e) => { bioDirty.current = true; setBio(e.target.value); }}
+          disabled={saving}
           maxLength={2000}
           rows={3}
           className="mt-2 w-full rounded-xl border border-sand bg-white p-3"
@@ -133,6 +147,7 @@ export default function OnboardingChecklist() {
       {error && (
         <p role="alert" className="mt-3 text-sm">
           {error}
+          <button type="button" className="ml-3 underline" onClick={() => void load()}>Refresh setup status</button>
         </p>
       )}
       {message && (

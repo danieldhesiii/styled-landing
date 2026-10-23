@@ -73,8 +73,8 @@ export default function BoardImports({
         </button>
         {(
           [
-            ["google", "Google Photos", "How to add your photos"],
-            ["pinterest", "Pinterest", "Save a link or add images"],
+            ["google", "Google Photos guide", "Manual download and upload"],
+            ["pinterest", "Pinterest links", "Save a link or upload images"],
           ] as const
         ).map(([id, label, detail]) => (
           <button
@@ -109,7 +109,7 @@ export default function BoardImports({
               : "Bring Pinterest ideas into your board"}
           </h3>
           <p className="mt-2 text-xs leading-relaxed text-ink/60">
-            Direct account import is not connected yet.{" "}
+            These are manual guides and links, not connected accounts.{" "}
             {source === "google"
               ? "For now, open Google Photos, download the photos you want to use, then upload them here. Styled cannot browse your Google library."
               : "For now, save a Pinterest board or Pin link below. To use an image in the visualiser, upload a copy you have permission to use. A saved link does not import the images from a Pinterest board."}

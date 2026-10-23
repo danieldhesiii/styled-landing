@@ -26,8 +26,7 @@ interface Props extends PlanningDetails {
   onOrdered: () => void; // called once an order is placed, so the basket can be cleared
 }
 
-// The server's exact quote (whole pence). Checkout shows these numbers, because
-// they are what the order will be charged at.
+// Current catalogue estimate in whole pence; final supplier terms are agreed manually.
 interface ServerQuote {
   lines: { itemId: string; unitPricePence: number }[];
   subtotalPence: number;
@@ -100,7 +99,7 @@ export default function CheckoutStep({
     [getItem],
   );
 
-  // Ask the server for the exact quote (and show an instant estimate meanwhile).
+  // Refresh the catalogue estimate before accepting a request.
   const fetchQuote = useCallback(async () => {
     try {
       const res = await fetch("/api/quote", {
@@ -134,7 +133,6 @@ export default function CheckoutStep({
   const view = serverQuote
     ? {
         subtotal: serverQuote.subtotalPence / 100,
-        deposit: serverQuote.depositPence / 100,
         groups: serverQuote.bySupplier.map((g) => ({
           supplier: g.supplier,
           total: g.totalPence / 100,
@@ -142,7 +140,6 @@ export default function CheckoutStep({
       }
     : {
         subtotal: preview.subtotal,
-        deposit: preview.deposit,
         groups: preview.bySupplier.map((g) => ({
           supplier: g.supplier,
           total: g.total,
@@ -169,7 +166,7 @@ export default function CheckoutStep({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          // The prices shown above, so we refuse (rather than overcharge) if one moved meanwhile.
+          // The estimate shown above, so a price change requires another review.
           basket: basket.map((l) => ({
             itemId: l.itemId,
             quantity: l.quantity,
@@ -253,7 +250,7 @@ export default function CheckoutStep({
         <p className="mt-3 text-ink/60">
           A stylist will confirm availability with each of your{" "}
           {placed.bySupplier.length} suppliers and contact {placed.email} about
-          the next steps. No payment has been taken.
+          a final quote and the next steps. Agree payment and delivery or collection before booking. This request does not reserve stock. No payment has been taken.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <a
@@ -287,17 +284,17 @@ export default function CheckoutStep({
         Request supplier confirmation.
       </h1>
       <p className="mt-2 text-ink/60">
-        Request your chosen pieces for your wedding and delivery dates. Supplier
-        confirmation, payment terms and collection arrangements follow before a
-        booking is final.
+        Submit your selection for manual supplier confirmation and a final quote. Agree payment and delivery or collection before booking. No payment is taken and stock is not reserved by this request.
       </p>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_380px]">
         {/* Details form */}
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-ink">Your names</label>
+            <label htmlFor="checkout-names" className="text-sm font-medium text-ink">Your names</label>
             <input
+              id="checkout-names"
+              autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Alex & Sam"
@@ -305,8 +302,10 @@ export default function CheckoutStep({
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-ink">Email</label>
+            <label htmlFor="checkout-email" className="text-sm font-medium text-ink">Email</label>
             <input
+              id="checkout-email"
+              autoComplete="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -352,8 +351,7 @@ export default function CheckoutStep({
             )}
           </div>
           <div className="rounded-xl border border-dashed border-sand bg-cream/50 p-4 text-sm text-ink/50">
-            Card payment is a placeholder in this preview. The deposit step will
-            connect to our payment provider before launch. No card is charged.
+            This form submits a request for manual review. Your final quote, any deposit, payment dates and delivery or collection costs must be agreed separately. No payment is taken here.
           </div>
           {error && (
             <p
@@ -379,7 +377,7 @@ export default function CheckoutStep({
             className="w-full rounded-full bg-ink px-6 py-3.5 text-cream hover:bg-ink/90 disabled:bg-ink/30"
           >
             {submitting
-              ? "Placing your order…"
+              ? "Submitting your request…"
               : serverQuote
                 ? "Submit request for manual review"
                 : "Preparing your quote…"}
@@ -388,7 +386,7 @@ export default function CheckoutStep({
 
         {/* Order summary */}
         <aside className="h-fit rounded-2xl border border-sand bg-white p-5 shadow-sm">
-          <h2 className="font-serif text-lg text-ink">Order summary</h2>
+          <h2 className="font-serif text-lg text-ink">Selection estimate</h2>
           <div className="mt-4 space-y-3">
             {view.groups.map((g) => (
               <div key={g.supplier} className="flex justify-between text-sm">
@@ -414,12 +412,7 @@ export default function CheckoutStep({
                 {formatGBP(view.subtotal)}
               </span>
             </div>
-            <div className="mt-1 flex justify-between text-sm">
-              <span className="text-ink/60">
-                Illustrative deposit (not charged)
-              </span>
-              <span className="text-clay">{formatGBP(view.deposit)}</span>
-            </div>
+            <p className="mt-3 text-xs leading-relaxed text-ink/70">Item estimate only. Delivery or collection charges and any deposit are confirmed in the final quote, not charged here. <a href="/service-info" className="underline">Service information</a>.</p>
           </div>
         </aside>
       </div>

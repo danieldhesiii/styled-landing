@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   } catch (e) {
     return NextResponse.json(
       {
-        error: e instanceof Error ? e.message : "Could not upload your photo.",
+        error: "Could not upload your photo. Use JPEG, PNG or WebP up to 5 MB and try again.",
       },
       { status: 422 },
     );

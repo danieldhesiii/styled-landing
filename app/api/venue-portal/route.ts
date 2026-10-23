@@ -1,3 +1,4 @@
+import { validateVenueTransition } from "@/lib/venue-workflow";
 import { NextResponse, after } from "next/server";
 import { randomUUID } from "node:crypto";
 import {
@@ -41,7 +42,7 @@ export async function GET(req: Request) {
     auth.admin
       .from("venue_enquiries")
       .select(
-        "id,name,email,phone,guest_count,preferred_date,message,status,request_kind,response,alternative_dates,responded_at,created_at",
+        "id,name,email,phone,guest_count,preferred_date,viewing_time,next_actor,message,status,request_kind,response,alternative_dates,responded_at,created_at",
       )
       .eq("venue_id", id)
       .order("created_at", { ascending: false })
@@ -158,16 +159,23 @@ export async function POST(req: Request) {
           status: body.action === "submit" ? "submitted" : "draft",
           updated_at: new Date().toISOString(),
         });
-      if (save) throw save;
+      if (save) return fail(503, "Could not save your draft. Your edits are still in this form.");
     } else if (body.action === "respond") {
       if (!venueUuid(body.id)) return fail(400, "Choose a request.");
       const value = parseVenueResponse(body, londonToday());
+      const { data: current, error: currentError } = await auth.admin.from("venue_enquiries")
+        .select("request_kind,status").eq("id", body.id).eq("venue_id", id).maybeSingle();
+      if (currentError) return fail(503, "Could not load the request status.");
+      if (!current) return fail(404, "Request not found.");
+      if (!validateVenueTransition(current.request_kind, current.status, value.status))
+        return fail(409, "This status does not match the request type or the request is already confirmed or cancelled.");
       const { error } = await auth.admin.rpc("respond_venue_enquiry", {
         p_venue_id: id,
         p_id: body.id,
         p_status: value.status,
         p_response: value.response,
         p_dates: value.alternative_dates,
+        p_viewing_time: value.viewing_time,
       });
       if (error)
         return fail(

@@ -5,6 +5,7 @@ import HelpButton from "@/components/help/HelpButton";
 import { useState } from "react";
 
 const NAV_LINKS = [
+  { href: "/login?mode=login", label: "Log in" },
   { href: "/venues", label: "Find venues" },
   { href: "/suppliers", label: "Suppliers" },
   { href: "/design?tab=orders", label: "My bookings" },
@@ -43,6 +44,8 @@ export default function SiteHeader() {
             Plan your wedding
           </a>
         </nav>
+
+        <Link href="/login?mode=login" className="ml-auto mr-3 text-sm text-ink underline underline-offset-4 lg:hidden">Log in</Link>
 
         {/* Mobile toggle */}
         <button

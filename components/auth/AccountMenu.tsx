@@ -1,21 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/components/session/useUser";
 import AuthDialog from "@/components/auth/AuthDialog";
 
 const CHIP =
-  "flex items-center gap-1.5 rounded-full border border-sand px-4 py-1.5 text-xs text-ink/50 hover:border-clay/50 hover:text-ink transition-colors";
+  "flex items-center gap-1.5 rounded-full border border-sand min-h-11 px-2 py-1.5 sm:px-4 text-xs text-ink/50 hover:border-clay/50 hover:text-ink transition-colors";
 
 // Header control: a Log in / Sign up button for guests, or the signed-in email
 // with a dropdown (My orders, Log out) for couples with an account.
 export default function AccountMenu({
   onOpenOrders,
+  onOpenHelp,
 }: {
   onOpenOrders?: () => void;
+  onOpenHelp?: () => void;
 }) {
   const { isAnonymous, email, loading } = useUser();
+  const trigger=useRef<HTMLButtonElement>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   // Staff accounts also get a shortcut into the /admin dashboard.
@@ -92,13 +95,19 @@ export default function AccountMenu({
   // Signed in — show the account with a small menu.
   const initial = email.charAt(0).toUpperCase();
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {setMenuOpen(false);trigger.current?.focus();}
+      }}
+    >
       <button
         type="button"
         onClick={() => setMenuOpen((o) => !o)}
         className={CHIP}
+        ref={trigger}
         aria-label="Account menu"
-        aria-haspopup="menu"
+        aria-haspopup="true"
         aria-expanded={menuOpen}
       >
         <span className="flex h-4 w-4 items-center justify-center rounded-full bg-clay text-[9px] font-medium text-cream">
@@ -146,6 +155,18 @@ export default function AccountMenu({
               >
                 My bookings
               </a>
+            )}
+            {onOpenHelp && (
+              <button
+                type="button"
+                className="block w-full px-4 py-2 text-left text-sm hover:bg-cream"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onOpenHelp();
+                }}
+              >
+                How it works
+              </button>
             )}
             {workspaces.venue && (
               <a

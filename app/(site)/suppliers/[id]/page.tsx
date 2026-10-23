@@ -17,7 +17,7 @@ export async function generateMetadata({
   const { id } = await params;
   const supplier = await loadPublicSupplier(id);
   if (!supplier) return { title: "Supplier · Styled" };
-  const description = `${supplier.name} (${supplier.area}) on Styled: ${supplier.productCount} wedding pieces you can design with and order to your venue.`;
+  const description = `${supplier.name} (${supplier.area}) on Styled: ${supplier.productCount} wedding pieces to explore and request, subject to supplier confirmation.`;
   // Prefer the supplier's logo for the share preview, else the first product photo.
   const image =
     supplier.logoUrl ?? supplier.products.find((p) => p.image)?.image;
@@ -118,7 +118,7 @@ export default async function SupplierProfilePage({
                 <span className="text-ink/40">{p.unit}</span>
               </p>
               <Link
-                href={`/design?supplier=${encodeURIComponent(supplier.id)}&add=${encodeURIComponent(p.id)}`}
+                href={`/design?tab=catalogue&supplier=${encodeURIComponent(supplier.id)}&add=${encodeURIComponent(p.id)}`}
                 className="mt-4 inline-block rounded-full bg-ink px-4 py-2 text-sm text-cream"
               >
                 Add in the studio
@@ -134,11 +134,10 @@ export default async function SupplierProfilePage({
           Design with {supplier.name}&apos;s pieces
         </h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-ink/60">
-          Add them to your venue in the design studio, see how they look, and
-          order everything in one go.
+          Explore these pieces in the catalogue and build a selection. Submit a request for supplier confirmation and a final quote before agreeing payment and delivery or collection.
         </p>
         <Link
-          href={`/design?supplier=${encodeURIComponent(supplier.id)}`}
+          href={`/design?tab=catalogue&supplier=${encodeURIComponent(supplier.id)}`}
           className="mt-5 inline-block rounded-full bg-ink px-6 py-3 text-sm text-cream hover:bg-ink/90"
         >
           Open the design studio
@@ -146,8 +145,7 @@ export default async function SupplierProfilePage({
       </div>
 
       <p className="mt-6 text-center text-xs text-ink/40">
-        Prices and images are illustrative. Availability is confirmed when you
-        order.
+        Prices and images are illustrative. Submit a request for manual availability checks and a final quote. No payment is taken on request.
       </p>
     </div>
   );

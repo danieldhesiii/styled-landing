@@ -93,6 +93,15 @@ export function parseWorkspace(raw: unknown): WorkspaceData {
     brief: {
       venueId: text(b.venueId, 120) || "manor_orangery",
       styleId: text(b.styleId, 60) || "garden_romance",
+      ...(typeof b.planSetupComplete === "boolean"
+        ? { planSetupComplete: b.planSetupComplete }
+        : {}),
+      ...(typeof b.guestCountEstimated === "boolean"
+        ? { guestCountEstimated: b.guestCountEstimated }
+        : {}),
+      ...(typeof b.budgetUnknown === "boolean"
+        ? { budgetUnknown: b.budgetUnknown }
+        : {}),
       guestCount,
       budget,
       weddingDate,

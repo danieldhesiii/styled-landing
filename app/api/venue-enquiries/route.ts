@@ -66,19 +66,22 @@ export async function POST(req: Request) {
       (venue.capacity_max && result.value.guest_count > venue.capacity_max)
     )
       return fail(422, "Your guest count is outside this venue’s capacity.");
-    const { data: booked, error: bookedError } = await admin
-      .from("venue_enquiries")
-      .select("id")
-      .eq("venue_id", venue.id)
-      .eq("preferred_date", result.value.preferred_date)
-      .eq("status", "booked")
-      .limit(1);
-    if (bookedError) throw bookedError;
-    if (booked?.length)
-      return fail(
-        409,
-        "That date is no longer available. Please choose another date.",
-      );
+    if (result.value.request_kind === "booking") {
+      const { data: booked, error: bookedError } = await admin
+        .from("venue_enquiries")
+        .select("id")
+        .eq("venue_id", venue.id)
+        .eq("preferred_date", result.value.preferred_date)
+        .eq("request_kind", "booking")
+        .eq("status", "booked")
+        .limit(1);
+      if (bookedError) throw bookedError;
+      if (booked?.length)
+        return fail(
+          409,
+          "That date is no longer available. Please choose another date.",
+        );
+    }
     if (result.value.package_id) {
       const { data: p, error } = await admin
         .from("venue_packages")
@@ -89,15 +92,17 @@ export async function POST(req: Request) {
       if (error) throw error;
       if (!p) return fail(422, "Please select a package for this venue.");
     }
-    const { data: blocked, error: blockError } = await admin
-      .from("venue_date_blocks")
-      .select("day")
-      .eq("venue_id", venue.id)
-      .eq("day", result.value.preferred_date)
-      .limit(1);
-    if (blockError) throw blockError;
-    if (blocked?.length)
-      return fail(409, "That date is unavailable. Please choose another date.");
+    if (result.value.request_kind === "booking") {
+      const { data: blocked, error: blockError } = await admin
+        .from("venue_date_blocks")
+        .select("day")
+        .eq("venue_id", venue.id)
+        .eq("day", result.value.preferred_date)
+        .limit(1);
+      if (blockError) throw blockError;
+      if (blocked?.length)
+        return fail(409, "That date is unavailable. Please choose another date.");
+    }
     const { data: request, error } = await admin
       .from("venue_enquiries")
       .insert({ ...result.value, owner_user_id: auth.user.id })
@@ -121,7 +126,7 @@ export async function GET(req: Request) {
   const { data, error } = await auth.admin
     .from("venue_enquiries")
     .select(
-      "id,venue_id,preferred_date,request_kind,guest_count,status,message,response,alternative_dates,responded_at,created_at,venue_listings(name,slug)",
+      "id,venue_id,preferred_date,viewing_time,next_actor,request_kind,guest_count,status,message,response,alternative_dates,responded_at,created_at,venue_listings(name,slug)",
     )
     .eq("owner_user_id", auth.user.id)
     .order("created_at", { ascending: false })
@@ -140,7 +145,7 @@ export async function DELETE(req: Request) {
     return fail(400, "Choose a request.");
   const { data, error } = await auth.admin
     .from("venue_enquiries")
-    .update({ status: "cancelled" })
+    .update({ status: "cancelled", next_actor: "none" })
     .eq("id", id)
     .eq("owner_user_id", auth.user.id)
     .in("status", ["new", "contacted"])

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Our suppliers · Styled",
   description:
-    "The hand-picked UK florists, décor, furniture and lighting suppliers you can design and order with on Styled.",
+    "Explore wedding supplier profiles and catalogue pieces, subject to manual availability and quote confirmation.",
 };
 
 export default async function SuppliersIndexPage() {
@@ -20,8 +20,7 @@ export default async function SuppliersIndexPage() {
         Meet our suppliers
       </h1>
       <p className="mt-3 max-w-xl text-ink/60">
-        A hand-picked network of UK wedding suppliers. Every piece they offer is
-        shoppable in the design studio and delivered to your venue.
+        Explore supplier profiles and catalogue pieces for your wedding. Availability, final prices and delivery or collection are confirmed manually for your date and venue.
       </p>
 
       {suppliers.length === 0 ? (
@@ -62,21 +61,7 @@ export default async function SuppliersIndexPage() {
         </div>
       )}
 
-      <div className="mt-14 rounded-3xl border border-clay/30 bg-blush/20 px-6 py-10 text-center sm:px-10">
-        <h2 className="font-serif text-2xl text-ink">
-          Are you a wedding supplier?
-        </h2>
-        <p className="mx-auto mt-2 max-w-md text-sm text-ink/60">
-          Reach couples designing their whole wedding around your pieces,
-          delivered to the venue.
-        </p>
-        <Link
-          href="/suppliers/join"
-          className="mt-5 inline-block rounded-full bg-ink px-6 py-3 text-sm text-cream hover:bg-ink/90"
-        >
-          List your business
-        </Link>
-      </div>
+
     </div>
   );
 }

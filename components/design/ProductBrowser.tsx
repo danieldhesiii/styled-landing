@@ -11,8 +11,16 @@ import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
 import type { ShopAvailability } from "@/components/availability/useAvailability";
 import DeliveryDates from "@/components/wedding/DeliveryDates";
 import type { PlanningDetails } from "@/lib/wedding";
+import { deliveryDay } from "@/lib/wedding";
+import { isValidDay } from "@/lib/availability";
 import type { DiscoveryMatch } from "@/lib/location";
-interface Props extends PlanningDetails {
+import ProductDetails from "./ProductDetails";
+import ProductPurchase from "./ProductPurchase";
+import BoardPicker, {
+  type BoardPickerProps,
+} from "@/components/wedding/BoardPicker";
+import { imageDisclosure, reviewDisclosure } from "@/lib/shopping";
+interface Props extends PlanningDetails, BoardPickerProps {
   matches?: Record<string, DiscoveryMatch>;
   searchRadius?: number;
   onDates: (patch: Partial<PlanningDetails> & { weddingDate?: string }) => void;
@@ -33,6 +41,9 @@ interface Props extends PlanningDetails {
   onToggleSave: (id: string) => void;
 }
 export default function ProductBrowser({
+  boards,
+  boardsBusy,
+  onAddToBoard,
   matches,
   searchRadius = 50,
   basket,
@@ -53,7 +64,47 @@ export default function ProductBrowser({
   savingItems,
   onToggleSave,
 }: Props) {
-  const { items: catalogue } = useCatalogue();
+  const {
+    items: catalogue,
+    loading: catalogueLoading,
+    error: catalogueError,
+  } = useCatalogue();
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const detail = catalogue.find((item) => item.id === detailId);
+  const dates = useRef<HTMLDetailsElement>(null);
+  const showDates = () => {
+    setDetailId(null);
+    setSavedToolsOpen(true);
+    window.setTimeout(() => {
+      if (dates.current) dates.current.open = true;
+      dates.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      dates.current?.querySelector("input")?.focus({ preventScroll: true });
+    }, 0);
+  };
+  const delivery = deliveryDay({ weddingDate, deliverySameDay, deliveryDate });
+  const formatDate = (date: string) =>
+    new Date(`${date}T12:00:00Z`).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  const datesLabel =
+    isValidDay(weddingDate) && isValidDay(delivery)
+      ? delivery === weddingDate
+        ? `${formatDate(weddingDate)} · Same-day delivery`
+        : `${formatDate(delivery)} to ${formatDate(weddingDate)} · Delivery to wedding`
+      : "Dates undecided";
+  const alternatives = (item: CatalogueItem) => {
+    setDetailId(null);
+    setCategory(item.category);
+    setSupplier("");
+    setStyle("");
+    setMin("");
+    setMax("");
+    setQuery("");
+    setView("browse");
+  };
   const [category, setCategory] = useState<Category | "">(""),
     [supplier, setSupplier] = useState(""),
     [sort, setSort] = useState("featured"),
@@ -157,7 +208,9 @@ export default function ProductBrowser({
     items = [...items].sort((a, b) => b.unitPrice - a.unitPrice);
   if (sort === "rated")
     items = [...items].sort(
-      (a, b) => (b.reviewCount ? b.rating : 0) - (a.reviewCount ? a.rating : 0),
+      (a, b) =>
+        (b.reviewsVerified && b.reviewCount ? b.rating : 0) -
+        (a.reviewsVerified && a.reviewCount ? a.rating : 0),
     );
   const [savedToolsOpen, setSavedToolsOpen] = useState(false);
   const field = "rounded-lg border border-sand bg-cream px-3 py-2 text-sm";
@@ -229,7 +282,7 @@ export default function ProductBrowser({
             </button>
           ))}
         </div>
-        <div className="mt-2 flex flex-wrap gap-3">
+        <div className="mt-2 flex flex-wrap gap-2">
           <label className="sr-only" htmlFor="catalogue-search">
             Search products
           </label>
@@ -238,7 +291,7 @@ export default function ProductBrowser({
             placeholder="Search pieces or suppliers"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className={`${field} min-w-0 basis-full sm:basis-auto flex-1`}
+            className={`${field} min-w-0 flex-1`}
           />
           <button
             type="button"
@@ -254,14 +307,13 @@ export default function ProductBrowser({
             onClick={() => setByVendor(!byVendor)}
             className="rounded-full border border-sand px-4 py-2 text-sm"
           >
-            Browse by supplier
+            Suppliers
           </button>
         </div>
         <ResponsivePanel
           open={filtersOpen}
           onClose={() => setFiltersOpen(false)}
           title="Catalogue filters"
-          alwaysDesktop
         >
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label className="text-xs text-ink/60">
@@ -291,7 +343,7 @@ export default function ProductBrowser({
                 </option>
                 <option value="price_up">Price: low to high</option>
                 <option value="price_down">Price: high to low</option>
-                <option value="rated">Top rated</option>
+                <option value="rated">Verified rating</option>
               </select>
             </label>
             <label className="text-xs text-ink/60">
@@ -380,31 +432,56 @@ export default function ProductBrowser({
           </div>
         </ResponsivePanel>
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              className="min-h-11 rounded-full bg-sand px-3 py-2"
+            >
+              Search: {query} ×
+            </button>
+          )}
+          {(query || category || supplier || style || min || max) && (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setCategory("");
+                setSupplier("");
+                setStyle("");
+                setMin("");
+                setMax("");
+              }}
+              className="min-h-11 px-3 underline"
+            >
+              Clear filters
+            </button>
+          )}
           {category && (
             <button
               type="button"
               onClick={() => setCategory("")}
-              className="rounded-full bg-sand px-3 py-2"
+              className="min-h-11 rounded-full bg-sand px-3 py-2"
             >
-              Category ×
+              {CATEGORY_META.find((c) => c.category === category)?.label} ×
             </button>
           )}
           {supplier && (
             <button
               type="button"
               onClick={() => setSupplier("")}
-              className="rounded-full bg-sand px-3 py-2"
+              className="min-h-11 rounded-full bg-sand px-3 py-2"
             >
-              Supplier ×
+              {suppliers.find((s) => s.id === supplier)?.name || supplier} ×
             </button>
           )}
           {style && (
             <button
               type="button"
               onClick={() => setStyle("")}
-              className="rounded-full bg-sand px-3 py-2"
+              className="min-h-11 rounded-full bg-sand px-3 py-2"
             >
-              Style ×
+              {STYLES.find((s) => s.id === style)?.name || style} ×
             </button>
           )}
           {(min || max) && (
@@ -414,30 +491,36 @@ export default function ProductBrowser({
                 setMin("");
                 setMax("");
               }}
-              className="rounded-full bg-sand px-3 py-2"
+              className="min-h-11 rounded-full bg-sand px-3 py-2"
             >
-              Price range ×
+              £{min || "0"} to {max ? `£${max}` : "any"} ×
             </button>
           )}
         </div>
-        <div className="my-5 border-y border-sand py-5">
-          <DeliveryDates
-            compact
-            weddingDate={weddingDate}
-            deliverySameDay={deliverySameDay}
-            deliveryDate={deliveryDate}
-            onChange={onDates}
-            id="catalogue"
-          />
-          <p role="status" className="mt-3 text-xs text-ink/60">
+        <details ref={dates} className="my-4 border-y border-sand py-3">
+          <summary className="min-h-11 cursor-pointer text-sm">
+            <span>{datesLabel}</span>
+            <span className="ml-2 text-xs text-ink/60">Edit dates</span>
+          </summary>
+          <div className="mt-3">
+            <DeliveryDates
+              compact
+              weddingDate={weddingDate}
+              deliverySameDay={deliverySameDay}
+              deliveryDate={deliveryDate}
+              onChange={onDates}
+              id="catalogue"
+            />
+          </div>
+        </details>
+        <p role="status" className="-mt-2 mb-4 text-xs text-ink/60">
             {availability.error ||
               (availability.loading
                 ? "Checking delivery-to-wedding availability…"
                 : availability.items
                   ? "Availability checked from delivery through your wedding day."
                   : "Choose your dates to check availability.")}
-          </p>
-        </div>
+        </p>
       </div>
       <div
         className={
@@ -489,9 +572,13 @@ export default function ProductBrowser({
         )}
         <div>
           <p role="status" className="mb-4 text-xs text-ink/50">
-            {items.length} pieces
+            {catalogueLoading
+              ? "Loading catalogue…"
+              : catalogueError
+                ? "Catalogue unavailable. Retry loading to browse pieces."
+                : `${items.length} pieces`}
           </p>
-          {!items.length && (
+          {!items.length && !catalogueLoading && !catalogueError && (
             <p className="py-12 text-center text-ink/60">
               {savedOnly && !savesLoaded
                 ? "Loading your saved pieces…"
@@ -513,7 +600,12 @@ export default function ProductBrowser({
                   key={item.id}
                   className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-sand"
                 >
-                  <div className="flex aspect-[16/10] items-center justify-center bg-cream">
+                  <button
+                    type="button"
+                    onClick={() => setDetailId(item.id)}
+                    aria-label={`View ${item.name} details`}
+                    className="flex aspect-[16/10] w-full items-center justify-center bg-cream"
+                  >
                     {item.image ? (
                       <img
                         src={item.image}
@@ -524,9 +616,27 @@ export default function ProductBrowser({
                     ) : (
                       <span className="text-4xl">{item.icon}</span>
                     )}
-                  </div>
+                  </button>
                   <div className="flex flex-1 flex-col p-4">
-                    <h3 className="font-serif text-xl">{item.name}</h3>
+                    <p className="mb-2 text-xs text-ink/60">
+                      {imageDisclosure(item)}
+                    </p>
+                    <h3 className="font-serif text-xl">
+                      <button
+                        type="button"
+                        onClick={() => setDetailId(item.id)}
+                        className="text-left underline decoration-sand underline-offset-4"
+                      >
+                        {item.name}
+                      </button>
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setDetailId(item.id)}
+                      className="mt-2 min-h-11 text-left text-xs underline"
+                    >
+                      View details and terms
+                    </button>
                     {item.supplierId ? (
                       <Link
                         href={`/suppliers/${item.supplierId}`}
@@ -553,11 +663,9 @@ export default function ProductBrowser({
                       {formatGBP(item.unitPrice)}{" "}
                       <span className="text-xs text-ink/50">{item.unit}</span>
                     </p>
-                    {item.reviewCount > 0 && (
-                      <p className="mt-1 text-xs">
-                        ★ {item.rating.toFixed(1)} ({item.reviewCount} reviews)
-                      </p>
-                    )}
+                    <p className="mt-1 text-xs text-ink/60">
+                      {reviewDisclosure(item)}
+                    </p>
                     <div className="mt-3">
                       <AvailabilityBadge
                         availability={availability.items?.[item.id]}
@@ -573,46 +681,33 @@ export default function ProductBrowser({
                       <p className="mt-2 text-xs text-ink/60">{item.note}</p>
                     )}
                     <div className="mt-auto pt-4">
-                      {line ? (
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs text-clay">Added ✓</span>
-                          <label className="text-xs">
-                            Qty
-                            <input
-                              aria-label={`Quantity of ${item.name}`}
-                              type="number"
-                              min="1"
-                              max="10000"
-                              value={line.quantity}
-                              onChange={(e) => {
-                                const n = Number(e.target.value);
-                                if (Number.isInteger(n) && n > 0 && n <= 10000)
-                                  onQty?.(item.id, n);
-                              }}
-                              className="ml-2 w-16 rounded border border-sand p-2"
-                            />
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => onRemove(item.id)}
-                            className="text-xs underline"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => onAdd(item)}
-                          className="w-full rounded-full bg-ink px-4 py-2 text-sm text-cream"
-                        >
-                          Add to basket
-                        </button>
-                      )}
+                      <ProductPurchase
+                        item={item}
+                        line={line}
+                        availability={availability.items?.[item.id]}
+                        onAdd={onAdd}
+                        onRemove={onRemove}
+                        onQty={onQty}
+                        onChangeDates={showDates}
+                        onAlternatives={() => alternatives(item)}
+                      />
+                      <BoardPicker
+                        boards={boards}
+                        boardsBusy={
+                          boardsBusy || catalogueLoading || !!catalogueError
+                        }
+                        onAddToBoard={onAddToBoard}
+                        target={{ kind: "product", ref: item.id }}
+                      />
                       <button
                         type="button"
                         onClick={() => onToggleSave(item.id)}
-                        disabled={!savesLoaded || savingItems.has(item.id)}
+                        disabled={
+                          catalogueLoading ||
+                          !!catalogueError ||
+                          !savesLoaded ||
+                          savingItems.has(item.id)
+                        }
                         aria-pressed={savedItemIds.includes(item.id)}
                         aria-label={`${savedItemIds.includes(item.id) ? "Unsave" : "Save"} ${item.name}`}
                         className={`mt-3 w-full rounded-full border px-4 py-2 text-sm disabled:opacity-50 ${savedItemIds.includes(item.id) ? "border-clay bg-blush text-ink" : "border-sand text-ink/60"}`}
@@ -631,6 +726,22 @@ export default function ProductBrowser({
           </div>
         </div>
       </div>
+      {detail && (
+        <ProductDetails
+          item={detail}
+          line={basket.find((line) => line.itemId === detail.id)}
+          availability={availability.items?.[detail.id]}
+          onAdd={onAdd}
+          onRemove={onRemove}
+          onQty={onQty}
+          onClose={() => setDetailId(null)}
+          onChangeDates={showDates}
+          onAlternatives={() => alternatives(detail)}
+          boards={boards}
+          boardsBusy={boardsBusy || catalogueLoading || !!catalogueError}
+          onAddToBoard={onAddToBoard}
+        />
+      )}
     </div>
   );
 }

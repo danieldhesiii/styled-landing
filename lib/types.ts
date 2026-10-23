@@ -52,7 +52,15 @@ export interface CatalogueItem {
   styles: string[]; // style ids this item suits
   icon: string; // emoji fallback when there's no photo
   swatch: string; // hex colour used in the preview / fallback
-  image?: string; // real catalogue photo (public path)
+  image?: string;
+  /** Set only when provenance is known. Seed imagery remains illustrative. */
+  imageKind?: "supplier" | "illustrative";
+  reviewsVerified?: boolean;
+  dimensions?: string;
+  material?: string;
+  hireUnits?: string;
+  deliveryTerms?: string;
+  damageTerms?: string;
   rating: number; // supplier item rating out of 5
   reviewCount: number;
   leadTimeDays: number; // how far ahead it must be booked

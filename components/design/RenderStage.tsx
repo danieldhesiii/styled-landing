@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { SampleVenue, StylePreset } from "@/lib/types";
 import { STYLES, getStyle } from "@/lib/styles";
 import { SCENES, DEFAULT_SCENE, type SceneId } from "@/lib/scenes";
@@ -36,6 +36,8 @@ interface Props {
   deliveryDate?: string;
   onWeddingDate: (date: string) => void;
   isSaved: boolean;
+  saveBusy?: boolean;
+  saveError?: string;
   onRender: (render: RenderRef | null) => void;
   /** Remove a generated version from the strip. */
   onDeleteVersion: (id: string) => void;
@@ -99,6 +101,8 @@ export default function RenderStage({
   deliveryDate,
   onWeddingDate,
   isSaved,
+  saveBusy = false,
+  saveError = "",
   onRender,
   onDeleteVersion,
   onStyle,
@@ -108,6 +112,11 @@ export default function RenderStage({
   onShopLook,
   onToggleSave,
 }: Props) {
+  const fieldId = useId();
+  const descriptionId = `${fieldId}-description`;
+  const changeId = `${fieldId}-change`;
+  const illustrationId = `${fieldId}-illustration`;
+  const saveErrorId = `${fieldId}-save-error`;
   const [description, setDescription] = useState("");
   const [sending, setSending] = useState(false);
   const [showGenPanel, setShowGenPanel] = useState(false);
@@ -466,11 +475,14 @@ export default function RenderStage({
           <button
             type="button"
             onClick={onToggleSave}
+            disabled={saveBusy}
+            aria-busy={saveBusy}
+            aria-describedby={saveError ? saveErrorId : undefined}
             aria-pressed={isSaved}
-            title={isSaved ? "Saved to your looks" : "Save to your looks"}
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] backdrop-blur-sm transition-colors ${isSaved ? "border-clay bg-clay text-cream" : "border-white/40 bg-white/15 text-white hover:bg-white/25"}`}
+            title={saveBusy ? "Saving your change…" : isSaved ? "Remove from your saved looks" : "Save to your looks"}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] backdrop-blur-sm transition-colors disabled:cursor-wait disabled:opacity-60 ${isSaved ? "border-clay bg-clay text-cream" : "border-white/40 bg-white/15 text-white hover:bg-white/25"}`}
           >
-            <span>{isSaved ? "♥" : "♡"}</span> {isSaved ? "Saved" : "Save"}
+            <span aria-hidden>{isSaved ? "♥" : "♡"}</span> {saveBusy ? "Saving…" : isSaved ? "Saved" : "Save"}
           </button>
           <button
             type="button"
@@ -486,8 +498,24 @@ export default function RenderStage({
     </div>
   );
 
+  const currentStep = sending || showGenPanel ? 2 : renderUrl ? 3 : originalImage ? 2 : 1;
+
   return (
     <div className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
+      <div className="border-b border-sand px-4 py-3">
+        <ol aria-label="Visualise progress" className="grid grid-cols-3 gap-3 text-xs sm:text-sm">
+          {["Venue photo", "Describe", "Review & shop"].map((label, index) => (
+            <li key={label} aria-current={currentStep === index + 1 ? "step" : undefined}
+              className={currentStep === index + 1 ? "font-medium text-ink" : "text-ink/60"}>
+              {index + 1}. {label}
+            </li>
+          ))}
+        </ol>
+        <p id={illustrationId} className="mt-2 text-xs leading-relaxed text-ink/60">
+          AI previews are illustrative. Room details, proportions and products may differ; review the pieces below and confirm details with suppliers.
+        </p>
+      </div>
+      {saveError && <p id={saveErrorId} role="alert" className="border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{saveError}</p>}
       {/* ── ERROR BANNER ───────────────────────────────────────────── */}
       {genError && (
         <div className="flex items-start gap-2 border-b border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700">
@@ -525,7 +553,7 @@ export default function RenderStage({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={previewImage!}
-                  alt="Your styled venue"
+                  alt="Illustrative AI preview of your venue"
                   className="aspect-video w-full animate-fade-in object-cover"
                 />
                 <div className="absolute right-3 top-3 rounded-full bg-ink/55 px-3 py-1 text-[11px] text-cream backdrop-blur-sm">
@@ -543,7 +571,7 @@ export default function RenderStage({
             <img
               key={displayImage}
               src={displayImage}
-              alt={showOriginal ? "Your original venue" : "Your styled venue"}
+              alt={showOriginal || !renderUrl ? "Original venue photo" : "Illustrative AI preview of your venue"}
               className="aspect-video w-full animate-fade-in object-cover"
             />
 
@@ -650,8 +678,8 @@ export default function RenderStage({
                   </p>
                   <p className="mt-2 max-w-sm text-sm text-ink/50">
                     Upload a photo of your room, then just describe the look you
-                    want. No need to pick a style. We'll generate exactly how
-                    your wedding could look.
+                    want, or try an example. Generate an illustrative AI preview,
+                    then review the look and explore the catalogue pieces.
                   </p>
                 </div>
                 <button
@@ -947,22 +975,24 @@ export default function RenderStage({
             /* ── TWEAK: a small change to the render that's showing ───────── */
             <>
               <p className="mb-4 text-xs leading-relaxed text-ink/50">
-                Keep this design and change only what you describe. The room,
-                angle, lighting and everything you don't mention stay exactly
-                the same.
+                Describe the changes you want to explore. AI may also change
+                room details, angle or lighting. Compare the new version with
+                your original photo and earlier looks.
               </p>
               <div className="mb-4">
-                <p className="mb-2 text-xs font-medium text-ink/60">
+                <label htmlFor={changeId} className="mb-2 block text-xs font-medium text-ink/60">
                   What would you like to change?
-                </p>
+                </label>
                 <textarea
+                  id={changeId}
+                  aria-describedby={`${changeId}-help ${illustrationId}`}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={3}
                   placeholder="e.g. make the floral arch fuller with blush roses, swap the chairs for gold chiavari, warmer lighting…"
                   className="w-full resize-none rounded-xl border border-sand bg-cream/50 px-3 py-2.5 text-sm text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-clay/30"
                 />
-                <p className="mt-1.5 text-[11px] text-ink/40">
+                <p id={`${changeId}-help`} className="mt-1.5 text-[11px] text-ink/60">
                   {genError ? (
                     <span className="text-clay">{genError}</span>
                   ) : (
@@ -1024,9 +1054,9 @@ export default function RenderStage({
               {/* Description — the primary input */}
               <div className="mb-4">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-medium text-ink/60">
+                  <label htmlFor={descriptionId} className="text-xs font-medium text-ink/60">
                     Describe your dream setup
-                  </p>
+                  </label>
                   <button
                     type="button"
                     onClick={improveDescription}
@@ -1039,13 +1069,15 @@ export default function RenderStage({
                   </button>
                 </div>
                 <textarea
+                  id={descriptionId}
+                  aria-describedby={`${descriptionId}-help ${illustrationId}`}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={4}
                   placeholder="e.g. blush and ivory roses with lots of trailing greenery, round tables down the middle, warm fairy lights across the ceiling, gold candlesticks and a floral arch at the entrance…"
                   className="w-full resize-none rounded-xl border border-sand bg-cream/50 px-3 py-2.5 text-sm text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-clay/30"
                 />
-                <p className="mt-1.5 text-[11px] text-ink/40">
+                <p id={`${descriptionId}-help`} className="mt-1.5 text-[11px] text-ink/60">
                   {improveError ? (
                     <span className="text-clay">{improveError}</span>
                   ) : (

@@ -3,6 +3,10 @@
 import HelpButton from "@/components/help/HelpButton";
 import { useEffect, useState } from "react";
 
+import BoardPicker, {
+  type BoardPickerProps,
+} from "@/components/wedding/BoardPicker";
+
 export interface SavedLook {
   id: string;
   styleId: string;
@@ -12,7 +16,9 @@ export interface SavedLook {
   savedAt: number;
 }
 
-interface Props {
+interface Props extends BoardPickerProps {
+  busyIds?: Set<string>;
+  error?: string;
   embedded?: boolean;
   looks: SavedLook[];
   onClose: () => void;
@@ -21,6 +27,11 @@ interface Props {
 }
 
 export default function SavedLooks({
+  boards,
+  boardsBusy,
+  onAddToBoard,
+  busyIds,
+  error,
   embedded = false,
   looks,
   onClose,
@@ -38,6 +49,7 @@ export default function SavedLooks({
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     (async () => {
       const next: Record<string, string | null> = {};
       const nextOriginals: Record<string, string> = {};
@@ -103,6 +115,11 @@ export default function SavedLooks({
         </div>
       )}
 
+      {error && (
+        <p role="alert" className="px-6 pt-4 text-sm text-clay">
+          {error}
+        </p>
+      )}
       <div className="flex-1 overflow-y-auto px-6 py-6">
         {looks.length === 0 ? (
           <div className="flex flex-col items-center gap-3 pt-16 text-center">
@@ -126,52 +143,46 @@ export default function SavedLooks({
                   key={l.id}
                   className="overflow-hidden rounded-xl border border-sand bg-white shadow-sm"
                 >
-                  <button
-                    type="button"
-                    onClick={() => url && onLoad(l, url, itemIdsById[l.id])}
-                    disabled={!url}
-                    className="relative block aspect-[4/3] w-full bg-sand/40 disabled:cursor-not-allowed"
-                    title="Open this look in the studio"
-                  >
-                    {url ? (
-                      <>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={showingBefore ? original : url}
-                          alt={l.styleName}
-                          className="h-full w-full object-cover"
-                        />
-                        <span className="absolute left-1.5 top-1.5 rounded-full bg-ink/55 px-2 py-0.5 text-[9px] text-cream backdrop-blur-sm">
-                          {showingBefore ? "Before" : "After"}
+                  <div className="relative aspect-[4/3] w-full bg-sand/40">
+                    <button
+                      type="button"
+                      onClick={() => url && onLoad(l, url, itemIdsById[l.id])}
+                      disabled={!url}
+                      className="block h-full w-full disabled:cursor-not-allowed"
+                      aria-label={`Open ${l.styleName} in the studio`}
+                    >
+                      {url ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={showingBefore ? original : url}
+                            alt={l.styleName}
+                            className="h-full w-full object-cover"
+                          />
+                          <span className="absolute left-1.5 top-1.5 rounded-full bg-ink/55 px-2 py-0.5 text-[9px] text-cream backdrop-blur-sm">
+                            {showingBefore ? "Before" : "After"}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="flex h-full items-center justify-center text-[11px] text-ink/40">
+                          {loading ? "Loading…" : "Unavailable"}
                         </span>
-                      </>
-                    ) : (
-                      <span className="flex h-full items-center justify-center text-[11px] text-ink/40">
-                        {loading ? "Loading…" : "Unavailable"}
-                      </span>
-                    )}
+                      )}
+                    </button>
                     {/* Before/after toggle — only if we have the original. */}
                     {url && original && (
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setComparing((c) => ({ ...c, [l.id]: !c[l.id] }));
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setComparing((c) => ({ ...c, [l.id]: !c[l.id] }));
-                          }
-                        }}
-                        className="absolute bottom-1.5 right-1.5 cursor-pointer rounded-full border border-white/40 bg-ink/55 px-2 py-0.5 text-[9px] text-cream backdrop-blur-sm hover:bg-ink/75 transition-colors"
+                      <button
+                        type="button"
+                        aria-pressed={showingBefore}
+                        onClick={() =>
+                          setComparing((c) => ({ ...c, [l.id]: !c[l.id] }))
+                        }
+                        className="absolute bottom-1.5 right-1.5 min-h-11 rounded-full border border-white/40 bg-ink/75 px-3 text-xs text-cream"
                       >
                         {showingBefore ? "See after" : "See before"}
-                      </span>
+                      </button>
                     )}
-                  </button>
+                  </div>
                   <div className="flex items-center justify-between gap-2 px-2.5 py-2">
                     <div className="min-w-0">
                       <p className="truncate text-xs font-medium text-ink">
@@ -186,13 +197,30 @@ export default function SavedLooks({
                     </div>
                     <button
                       type="button"
+                      disabled={busyIds?.has(l.id)}
                       onClick={() => onUnsave(l.id)}
-                      aria-label="Remove from saved"
+                      aria-label={
+                        busyIds?.has(l.id)
+                          ? `Removing ${l.styleName} from saved`
+                          : `Remove ${l.styleName} from saved`
+                      }
                       title="Remove from saved"
-                      className="shrink-0 text-ink/30 hover:text-clay transition-colors"
+                      className="min-h-11 min-w-11 shrink-0 text-ink/30 hover:text-clay transition-colors disabled:opacity-50"
                     >
-                      ×
+                      {busyIds?.has(l.id) ? "…" : "×"}
                     </button>
+                  </div>
+                  <div className="px-3 pb-3">
+                    <p className="text-xs text-ink/60">
+                      Illustrative AI preview. Exact appearance is not
+                      guaranteed.
+                    </p>
+                    <BoardPicker
+                      boards={boards}
+                      boardsBusy={boardsBusy}
+                      onAddToBoard={onAddToBoard}
+                      target={{ kind: "look", ref: l.id, text: l.styleName }}
+                    />
                   </div>
                 </div>
               );

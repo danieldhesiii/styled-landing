@@ -1,14 +1,7 @@
 "use client";
 
-export type StudioTab =
-  | "catalogue"
-  | "venues"
-  | "saved"
-  | "looks"
-  | "boards"
-  | "visualiser"
-  | "wedding"
-  | "orders";
+import type { StudioTab } from "@/lib/studio-route";
+export type { StudioTab } from "@/lib/studio-route";
 const destinations = [
   {
     id: "wedding",
@@ -81,7 +74,7 @@ export default function StudioNavigation({
               onClick={() => onSelect(id)}
               className={
                 mobile
-                  ? `flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-lg text-[10px] font-medium transition-colors ${selected ? "bg-clay/10 text-ink" : "text-ink/60 hover:text-ink"}`
+                  ? `flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-lg text-[11px] leading-tight font-medium transition-colors ${selected ? "bg-clay/10 text-ink" : "text-ink/60 hover:text-ink"}`
                   : `min-h-14 border-b-2 text-sm transition-colors ${selected ? "border-clay font-medium text-ink" : "border-transparent text-ink/60 hover:border-sand hover:text-ink"}`
               }
             >

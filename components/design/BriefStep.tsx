@@ -12,6 +12,9 @@ export interface UploadedPhoto {
 }
 
 export interface Brief {
+  planSetupComplete?: boolean;
+  guestCountEstimated?: boolean;
+  budgetUnknown?: boolean;
   venueChoice?: "exploring" | "looking" | "have";
   venueName?: string;
   venuePostcode?: string;

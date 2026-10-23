@@ -20,6 +20,7 @@ export async function GET(
     .from("venue_enquiries")
     .select("preferred_date")
     .eq("venue_id", venue.id)
+    .eq("request_kind", "booking")
     .eq("status", "booked")
     .gte("preferred_date", new Date().toISOString().slice(0, 10));
   const { data: blocks, error: blockError } = await admin

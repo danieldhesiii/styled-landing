@@ -10,8 +10,7 @@ export default function SiteFooter() {
             Styled<span className="text-clay">.</span>
           </Link>
           <p className="mt-2 text-sm text-ink/50">
-            See your wedding before the day. Shop every piece, delivered to your
-            venue.
+            Explore wedding looks, build a selection and request supplier confirmation.
           </p>
         </div>
 
@@ -56,6 +55,16 @@ export default function SiteFooter() {
           </div>
           <div className="flex flex-col gap-2">
             <span className="text-xs uppercase tracking-wide text-ink/40">
+              Information & support
+            </span>
+            <Link href="/service-info" className="text-ink/70 hover:text-ink">Service information</Link>
+            <Link href="/service-info#support" className="text-ink/70 hover:text-ink">Contact support</Link>
+            <Link href="/privacy" className="text-ink/70 hover:text-ink">Privacy</Link>
+            <Link href="/terms" className="text-ink/70 hover:text-ink">Service terms</Link>
+            <Link href="/login?mode=login" className="text-ink/70 hover:text-ink">Log in</Link>
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-xs uppercase tracking-wide text-ink/40">
               For businesses
             </span>
             <a href="/business" className="text-ink/70 hover:text-ink">
@@ -77,7 +86,7 @@ export default function SiteFooter() {
         </nav>
       </div>
       <div className="border-t border-sand py-6 text-center text-xs text-ink/40">
-        Styled · Available across the UK · Renders are illustrative.
+        Styled · Coverage depends on the supplier and venue · Images are illustrative.
       </div>
     </footer>
   );

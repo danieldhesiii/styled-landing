@@ -13,41 +13,41 @@ const FEATURES = [
   {
     n: "I",
     title: "See it before you commit",
-    body: "Get a detailed visual of your wedding before a single item is booked. Swap florals, change linens, try different lighting. You decide when it looks right.",
+    body: "Explore an illustrative wedding look from your venue photo. Try florals, linens and lighting as inspiration; generated images may differ from actual products, sizes and layouts.",
   },
   {
     n: "II",
     title: "Shop the look",
-    body: "Every element in your preview links to a real product. Add the exact pieces you chose to your basket in one click.",
+    body: "Browse catalogue pieces alongside your inspiration and build a selection. Product details and supplier confirmation determine what can be supplied.",
   },
   {
     n: "III",
-    title: "Curated supplier network",
-    body: "A hand-picked selection of UK florists, furniture hire, décor specialists and lighting designers, all vetted and ready to deliver.",
+    title: "Explore suppliers",
+    body: "Explore supplier profiles for flowers, furniture, décor and lighting. Availability and delivery or collection depend on the supplier, location and date.",
   },
   {
     n: "IV",
-    title: "One order, door to door",
-    body: "Secure everything with a single deposit. We confirm each supplier, coordinate the details and arrange delivery to your venue on your timeline.",
+    title: "Request, then confirm",
+    body: "Submit your selection for manual review. Receive supplier confirmation and a final quote, then agree payment and delivery or collection before booking.",
   },
 ];
 
 const FAQS = [
   {
     q: "How does the preview work?",
-    a: "You upload a photo of your venue and choose items from our catalogue. We composite a detailed image showing how those choices would look in your actual space. You can keep refining it until it feels right.",
+    a: "Upload a venue photo and describe your look or choose catalogue pieces. The generated image is an illustration to help you explore ideas, not an exact product, layout or colour guarantee.",
   },
   {
     q: "Do I have to buy everything through Styled?",
-    a: "No. You can use the preview tool to explore and then purchase only the items you want through us. We are working on a feature to include items you have sourced elsewhere.",
+    a: "No. Use the preview to explore ideas and request only the catalogue pieces you want. A preview does not reserve stock or create a booking.",
   },
   {
-    q: "What happens once I place an order?",
-    a: "Your order starts as a request. Styled confirms stock and availability with each supplier for your date, then you secure the whole order with a single deposit. We arrange delivery to your venue on the dates you set. You deal with us, not five different suppliers.",
+    q: "What happens after I submit a request?",
+    a: "Styled checks your selection and dates manually with suppliers. You receive confirmation and a final quote before agreeing payment and delivery or collection. Submitting a request does not take payment or reserve stock.",
   },
   {
-    q: "Where do you deliver?",
-    a: "We deliver across the whole of the UK. Suppliers ship direct to your venue wherever you are.",
+    q: "Is delivery available to my venue?",
+    a: "Coverage, delivery and collection options vary by supplier and venue. These arrangements and any extra costs need to be confirmed as part of your final quote.",
   },
 ];
 
@@ -86,12 +86,10 @@ export default function Page() {
         <div className="grid gap-8 lg:grid-cols-[2fr_3fr] lg:items-center lg:gap-12">
           <div>
             <h1 className="font-serif text-4xl leading-[1.05] text-ink sm:text-5xl lg:text-6xl">
-              See your wedding before the day. Then buy every piece of it.
+              Picture your wedding. Build a selection you love.
             </h1>
             <p className="mt-4 max-w-xl text-base text-ink/70 sm:mt-5 sm:text-lg">
-              Upload a photo of your venue, choose your flowers, furniture and
-              lighting, and see exactly how it will look. Everything you pick is
-              shoppable and delivered straight to your door.
+              Explore an illustrative look from your venue photo. Browse flowers, furniture and lighting, then request supplier confirmation and a final quote. Agree payment and delivery or collection before booking.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3 sm:mt-8">
               <Link
@@ -109,17 +107,17 @@ export default function Page() {
       {/* ------------------------------------------------- Trust band */}
       <section className="rounded-2xl border border-sand bg-sand/40 px-6 py-5">
         <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3 text-sm text-ink/60">
-          <span>Available across the UK</span>
+          <span>Supplier availability checked manually</span>
           <span
             className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block"
             aria-hidden
           />
-          <span>Delivered to your venue</span>
+          <span>Delivery or collection agreed with you</span>
           <span
             className="hidden h-1 w-1 rounded-full bg-ink/20 sm:block"
             aria-hidden
           />
-          <span>One checkout for every item</span>
+          <span>No payment taken on request</span>
         </div>
       </section>
 
@@ -135,16 +133,16 @@ export default function Page() {
           </p>
         </div>
         <StyleDemoPreview />
+        <p className="mt-5 text-center text-sm text-ink/70">Illustrative generated looks. Products, colours and layouts may differ in practice.</p>
       </section>
 
       {/* ------------------------------------------------- Features */}
       <section id="features" className="py-20">
         <h2 className="font-serif text-4xl text-ink sm:text-5xl">
-          Design, shop, deliver.
+          Explore, select, request.
         </h2>
         <p className="mt-3 max-w-lg text-ink/60">
-          No spreadsheets, no chasing five different suppliers, no guessing how
-          it will look.
+          Keep inspiration and supplier selections together as your plans take shape.
         </p>
         <div className="mt-10 grid gap-4 sm:grid-cols-2">
           {FEATURES.map((f) => (
@@ -209,15 +207,15 @@ export default function Page() {
         className="mb-4 rounded-3xl border border-clay/30 bg-blush/20 px-6 py-14 text-center sm:px-10"
       >
         <h2 className="mx-auto max-w-2xl font-serif text-4xl text-ink sm:text-5xl">
-          Your wedding, exactly how you pictured it.
+          Make room for your wedding ideas.
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-ink/70">
           Create a free account, upload your venue photo and start putting your
-          look together. When you are ready, order everything in one go.
+          look together. When you are ready, submit your selection for manual confirmation.
         </p>
         <CtaEmailForm />
         <p className="mt-4 text-xs text-ink/40">
-          No credit card needed. Cancel any time.
+          No payment is taken when you submit a supplier request.
         </p>
       </section>
     </>

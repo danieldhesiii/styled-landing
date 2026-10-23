@@ -88,11 +88,14 @@ export function validateVenueEnquiry(
     message = str(body.message),
     venueId = str(body.venueId),
     packageId = str(body.packageId);
+  const viewingTime = str(body.viewingTime);
   const guests = Number(body.guests);
   const request_kind =
     body.requestKind === undefined ? "booking" : str(body.requestKind);
   if (!["booking", "viewing"].includes(request_kind))
     return { error: "Choose a booking or viewing request." };
+  if (viewingTime && (request_kind !== "viewing" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(viewingTime)))
+    return { error: "Use a valid viewing time (HH:MM), or leave it blank." };
   const uuid =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuid.test(venueId) || (packageId && !uuid.test(packageId)))
@@ -122,6 +125,7 @@ export function validateVenueEnquiry(
       phone: phone || null,
       guest_count: guests,
       preferred_date: date,
+      viewing_time: request_kind === "viewing" ? viewingTime || null : null,
       message: message || null,
     },
   };

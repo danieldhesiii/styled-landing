@@ -115,3 +115,32 @@ test("saved-state fingerprints ignore object key insertion order", () => {
     workspaceFingerprint({ b: { d: 3, c: 2 }, a: 1 }),
   );
 });
+
+test("undecided planning flags survive validation without accepting truthy forged values", () => {
+  const input = {
+    ...valid,
+    brief: {
+      ...valid.brief,
+      weddingDate: "",
+      budget: 0,
+      planSetupComplete: true,
+      guestCountEstimated: true,
+      budgetUnknown: true,
+    },
+  };
+  const actual = parseWorkspace(input);
+  assert.equal(actual.brief.weddingDate, "");
+  assert.equal(actual.brief.budget, 0);
+  for (const key of [
+    "planSetupComplete",
+    "guestCountEstimated",
+    "budgetUnknown",
+  ]) {
+    assert.equal(actual.brief[key], true);
+    assert.equal(
+      parseWorkspace({ ...input, brief: { ...input.brief, [key]: "true" } })
+        .brief[key],
+      undefined,
+    );
+  }
+});

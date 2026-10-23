@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 const DESCRIPTION =
-  "Upload your venue, choose your style, and see exactly how your wedding will look. Then shop every item and have it delivered straight to your door.";
+  "Explore an illustrative wedding look from your venue photo, build a supplier selection and request manual confirmation and a final quote. Payment and delivery or collection are agreed separately.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(

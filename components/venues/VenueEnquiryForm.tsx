@@ -20,8 +20,11 @@ export default function VenueEnquiryForm({
   initialDate?: string;
   initialGuests?: number;
 }) {
-  const [date, setDate] = useState(initialDate);
+  const [weddingDate, setWeddingDate] = useState(initialKind === "viewing" ? "" : initialDate);
+  const [viewingDate, setViewingDate] = useState(initialKind === "viewing" ? initialDate : "");
   const [kind, setKind] = useState(initialKind);
+  const date = kind === "viewing" ? viewingDate : weddingDate;
+  const setDate = kind === "viewing" ? setViewingDate : setWeddingDate;
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/London",
     year: "numeric",
@@ -124,9 +127,13 @@ export default function VenueEnquiryForm({
           className={input}
         />
       </label>
-      <div className="sm:col-span-2">
+      {kind === "booking" && <div className="sm:col-span-2">
         <VenueCalendar slug={slug} value={date} onChange={setDate} />
-      </div>
+      </div>}
+      {kind === "viewing" && <label>Preferred viewing time (optional, UK local time)
+        <input name="viewingTime" type="time" className={input} />
+        <span className="mt-2 block text-sm text-ink/60">The venue will agree an appointment with you. A viewing never reserves a wedding date.</span>
+      </label>}
       <label>
         {kind === "viewing"
           ? "Preferred viewing date"

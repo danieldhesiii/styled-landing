@@ -84,77 +84,83 @@ export default function LocationFilter({
     );
   }
   return (
-    <section
-      aria-label="Location matching"
-      className="mb-5 rounded-2xl border border-sand bg-white p-5"
-    >
-      <div className="flex flex-wrap items-end gap-3">
-        <form
-          className="grid w-full min-w-0 grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto] lg:w-auto lg:flex-1"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void search({ postcode: query });
-          }}
-        >
-          <label className="min-w-0 text-sm">
-            Wedding location
-            <input
-              maxLength={10}
-              value={query}
-              onChange={(e) => setQuery(e.target.value.toUpperCase())}
-              placeholder="Enter a UK postcode"
-              className="mt-2 block w-full rounded-xl border border-sand px-3 py-2 text-sm"
-            />
-          </label>
-          <button
-            disabled={busy}
-            className="shrink-0 whitespace-nowrap rounded-full bg-ink px-4 py-2 text-sm text-cream disabled:opacity-50"
+    <details className="mb-5 rounded-xl border border-sand bg-white px-4 py-3">
+      <summary className="cursor-pointer text-sm">
+        <span className="font-medium">Location & delivery area</span>
+        <span className="ml-2 text-xs text-ink/70">
+          {result?.label || postcode || "Add a postcode"} ·{" "}
+          {radius ? `${radius} miles` : "Any distance"}
+        </span>
+      </summary>
+      <section aria-label="Location matching" className="pt-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <form
+            className="grid w-full min-w-0 grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto] lg:w-auto lg:flex-1"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void search({ postcode: query });
+            }}
           >
-            {busy ? "Finding matches…" : "Apply location"}
-          </button>
-        </form>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={locate}
-          className="rounded-full border border-sand px-4 py-2 text-sm disabled:opacity-50"
-        >
-          Use my location
-        </button>
-        <label className="text-xs">
-          Search distance
-          <select
-            value={radius}
-            onChange={(e) => onRadius(Number(e.target.value))}
-            className="mt-2 block rounded-xl border border-sand px-3 py-2 text-sm"
-          >
-            {[25, 50, 100, 250, 0].map((n) => (
-              <option value={n} key={n}>
-                {n ? `${n} miles` : "Any distance"}
-              </option>
-            ))}
-          </select>
-        </label>
-        {result && (
+            <label className="min-w-0 text-sm">
+              Wedding location
+              <input
+                maxLength={10}
+                value={query}
+                onChange={(e) => setQuery(e.target.value.toUpperCase())}
+                placeholder="Enter a UK postcode"
+                className="mt-2 block w-full rounded-xl border border-sand px-3 py-2 text-sm"
+              />
+            </label>
+            <button
+              disabled={busy}
+              className="shrink-0 whitespace-nowrap rounded-full bg-ink px-4 py-2 text-sm text-cream disabled:opacity-50"
+            >
+              {busy ? "Finding matches…" : "Apply location"}
+            </button>
+          </form>
           <button
             type="button"
-            onClick={() => {
-              ++request.current;
-              onResult(null);
-              setError("");
-            }}
-            className="py-2 text-xs underline"
+            disabled={busy}
+            onClick={locate}
+            className="rounded-full border border-sand px-4 py-2 text-sm disabled:opacity-50"
           >
-            Clear location
+            Use my location
           </button>
-        )}
-      </div>
-      <p role="status" className="mt-3 text-xs leading-relaxed text-ink/60">
-        {error ||
-          (result
-            ? `Showing matches around ${result.label}. Distances are approximate. Listings without confirmed location or delivery coverage stay visible and are labelled.`
-            : "Use your venue postcode when you have one. Location access is optional; your current position is not saved to your account.")}
-      </p>
-    </section>
+          <label className="text-xs">
+            Search distance
+            <select
+              value={radius}
+              onChange={(e) => onRadius(Number(e.target.value))}
+              className="mt-2 block rounded-xl border border-sand px-3 py-2 text-sm"
+            >
+              {[25, 50, 100, 250, 0].map((n) => (
+                <option value={n} key={n}>
+                  {n ? `${n} miles` : "Any distance"}
+                </option>
+              ))}
+            </select>
+          </label>
+          {result && (
+            <button
+              type="button"
+              onClick={() => {
+                ++request.current;
+                onResult(null);
+                setError("");
+              }}
+              className="py-2 text-xs underline"
+            >
+              Clear location
+            </button>
+          )}
+        </div>
+        <p role="status" className="mt-3 text-xs leading-relaxed text-ink/60">
+          {error ||
+            (result
+              ? `Showing matches around ${result.label}. Distances are approximate. Listings without confirmed location or delivery coverage stay visible and are labelled.`
+              : "Use your venue postcode when you have one. Location access is optional; your current position is not saved to your account.")}
+        </p>
+      </section>
+    </details>
   );
 }

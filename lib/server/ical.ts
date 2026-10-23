@@ -109,12 +109,13 @@ export async function syncSupplierCalendar(admin: SupabaseClient, supplierId: st
   const today = todayUtc();
 
   // Existing upcoming supplier-level overrides, by day.
-  const { data: existing } = await admin
+  const { data: existing, error: existingError } = await admin
     .from("availability_overrides")
     .select("id, day, source")
     .eq("supplier_id", supplierId)
     .is("product_id", null)
     .gte("day", today);
+  if (existingError) return { ok: false, error: "Could not read existing calendar blocks. Please retry." };
   const byDay = new Map<string, { id: string; source: string }>();
   for (const o of existing ?? []) byDay.set(o.day as string, { id: o.id as string, source: o.source as string });
 
@@ -130,9 +131,11 @@ export async function syncSupplierCalendar(admin: SupabaseClient, supplierId: st
   // Drop iCal blocks the feed no longer lists (manual blocks are never removed).
   const staleIds = (existing ?? []).filter((o) => o.source === "ical" && !busy.has(o.day as string)).map((o) => o.id as string);
   if (staleIds.length > 0) {
-    await admin.from("availability_overrides").delete().in("id", staleIds);
+    const { error } = await admin.from("availability_overrides").delete().eq("supplier_id", supplierId).eq("source", "ical").in("id", staleIds);
+    if (error) return { ok: false, error: "Could not remove old calendar blocks. Please retry." };
   }
 
-  await admin.from("suppliers").update({ ical_synced_at: new Date().toISOString() }).eq("id", supplierId);
+  const { error: stampError } = await admin.from("suppliers").update({ ical_synced_at: new Date().toISOString() }).eq("id", supplierId);
+  if (stampError) return { ok: false, error: "Dates were synced but the success time could not be saved. Please retry." };
   return { ok: true, blockedDays: busy.size };
 }

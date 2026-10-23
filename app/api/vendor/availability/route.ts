@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   const { admin, supplierId } = auth;
   const today = todayUtc();
 
-  const { data: blocks } = await admin
+  const { data: blocks, error: blocksError } = await admin
     .from("availability_overrides")
     .select("id, day, note, source")
     .eq("supplier_id", supplierId)
@@ -24,20 +24,23 @@ export async function GET(req: Request) {
     .gte("day", today)
     .order("day");
 
-  const { data: supplier } = await admin.from("suppliers").select("ical_url, ical_synced_at").eq("id", supplierId).maybeSingle();
+  const { data: supplier, error: supplierError } = await admin.from("suppliers").select("ical_url, ical_synced_at").eq("id", supplierId).maybeSingle();
 
   // Live orders per upcoming day for this supplier's products, to show alongside.
-  const { data: products } = await admin.from("products").select("id").eq("supplier_id", supplierId);
+  const { data: products, error: productsError } = await admin.from("products").select("id").eq("supplier_id", supplierId);
+  if (productsError) return fail(503, "Could not load your products. Please retry.");
+  if (blocksError || supplierError || !supplier) return fail(503, "Could not load availability. Please retry.");
   const productIds = (products ?? []).map((p) => p.id as string);
   const ordersByDay = new Map<string, number>();
   if (productIds.length > 0) {
-    const { data: lines } = await admin
+    const { data: lines, error: linesError } = await admin
       .from("order_lines")
       .select("orders!inner(id, wedding_date, status)")
       .in("product_id", productIds)
       .neq("supplier_status", "declined")
       .gte("orders.wedding_date", today)
       .in("orders.status", LIVE);
+    if (linesError) return fail(503, "Could not check existing orders. Please retry.");
     const seen = new Set<string>();
     for (const l of lines ?? []) {
       const o = (l as unknown as { orders: { id: string; wedding_date: string } }).orders;

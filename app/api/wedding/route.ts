@@ -50,8 +50,16 @@ export async function PUT(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
   const origin = req.headers.get("origin");
-  if (origin && new URL(origin).host !== new URL(req.url).host)
-    return fail(403, "Cross-site request refused.");
+  try {
+    if (
+      origin &&
+      new URL(origin).host !==
+        (req.headers.get("host") || new URL(req.url).host)
+    )
+      return fail(403, "Cross-site request refused.");
+  } catch {
+    return fail(403, "Invalid origin.");
+  }
   let body;
   try {
     const text = await req.text();

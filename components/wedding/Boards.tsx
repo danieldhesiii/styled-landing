@@ -7,6 +7,12 @@ import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
 import { formatGBP } from "@/lib/quote";
 import BoardImports from "./BoardImports";
+import BoardCataloguePicker from "./BoardCataloguePicker";
+import ProductDetails from "@/components/design/ProductDetails";
+import ProductPurchase from "@/components/design/ProductPurchase";
+import type { ShopAvailability } from "@/components/availability/useAvailability";
+import type { BasketLine } from "@/lib/types";
+import { imageDisclosure } from "@/lib/shopping";
 import { pinterestLink } from "@/lib/board-inspiration";
 function LookImage({ id }: { id: string }) {
   const [url, setUrl] = useState(""),
@@ -42,6 +48,12 @@ function LookImage({ id }: { id: string }) {
   );
 }
 export default function Boards({
+  availability,
+  basket = [],
+  onQty,
+  onRemove,
+  onChangeDates,
+  onAlternatives,
   embedded = false,
   boards,
   onSave,
@@ -60,6 +72,12 @@ export default function Boards({
   savedError,
   savingItems,
 }: {
+  availability?: ShopAvailability;
+  basket?: BasketLine[];
+  onQty?: (id: string, quantity: number) => void;
+  onRemove?: (id: string) => void;
+  onChangeDates?: () => void;
+  onAlternatives?: () => void;
   savedError?: string;
   savingItems: Set<string>;
   onOpenSaved: () => void;
@@ -78,11 +96,16 @@ export default function Boards({
   looks: SavedLook[];
   onAdd: (item: CatalogueItem) => void;
 }) {
-  const { items, getItem } = useCatalogue();
+  const {
+    items,
+    getItem,
+    loading: catalogueLoading,
+    error: catalogueError,
+  } = useCatalogue();
   const [selected, setSelected] = useState(""),
     [name, setName] = useState(""),
     [note, setNote] = useState(""),
-    [product, setProduct] = useState(""),
+    [detailId, setDetailId] = useState<string | null>(null),
     [look, setLook] = useState(""),
     [error, setError] = useState(""),
     [uploading, setUploading] = useState(false);
@@ -93,7 +116,16 @@ export default function Boards({
     "mt-2 w-full min-w-0 rounded-xl border border-sand bg-white px-3 py-2.5 text-sm";
   async function update(pins: BoardPin[]) {
     if (!board) return false;
-    return onSave(boards.map((b) => (b.id === board.id ? { ...b, pins } : b)));
+    try {
+      const saved = await onSave(
+        boards.map((b) => (b.id === board.id ? { ...b, pins } : b)),
+      );
+      if (!saved) setError("Could not save your board. Please try again.");
+      return saved;
+    } catch {
+      setError("Could not save your board. Please try again.");
+      return false;
+    }
   }
   async function pin(
     kind: BoardPin["kind"],
@@ -101,7 +133,16 @@ export default function Boards({
     text = "",
   ) {
     if (!board) throw Error("Choose a board first.");
+    if (
+      kind !== "note" &&
+      board.pins.some((pin) => pin.kind === kind && pin.ref === ref)
+    )
+      return true;
     setError("");
+    if (board.pins.length >= 100) {
+      setError("This board has 100 ideas. Remove one or create another board.");
+      return false;
+    }
     if (
       await update([
         ...board.pins,
@@ -109,7 +150,6 @@ export default function Boards({
       ])
     ) {
       setNote("");
-      setProduct("");
       setLook("");
     } else {
       setError("Could not save your board. Please try again.");
@@ -284,42 +324,16 @@ export default function Boards({
               Add to board
             </summary>
             <div className="mt-5 grid gap-5 sm:grid-cols-2">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (product) void pin("product", product);
-                }}
-              >
-                <label className="text-sm">
-                  Add a catalogue piece
-                  <select
-                    value={product}
-                    onChange={(e) => setProduct(e.target.value)}
-                    required
-                    className={field}
-                  >
-                    <option value="">Choose a piece</option>
-                    {[...items]
-                      .sort(
-                        (a, b) =>
-                          Number(savedIds.includes(b.id)) -
-                          Number(savedIds.includes(a.id)),
-                      )
-                      .map((i) => (
-                        <option key={i.id} value={i.id}>
-                          {savedIds.includes(i.id) ? "♥ " : ""}
-                          {i.name}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-                <button
-                  disabled={disabled}
-                  className="mt-3 rounded-full border border-sand px-4 py-2 text-sm disabled:opacity-50"
-                >
-                  Save piece to board
-                </button>
-              </form>
+              <BoardCataloguePicker
+                key={board.id}
+                items={items}
+                savedIds={savedIds}
+                pinnedIds={board.pins
+                  .filter((p) => p.kind === "product" && p.ref)
+                  .map((p) => p.ref!)}
+                disabled={disabled || catalogueLoading || !!catalogueError}
+                onPick={(id) => pin("product", id)}
+              />
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -449,7 +463,11 @@ export default function Boards({
                             ? "Pinterest board or Pin"
                             : p.text
                           : p.kind === "product"
-                            ? "Piece no longer listed"
+                            ? catalogueLoading
+                              ? "Loading catalogue piece…"
+                              : catalogueError
+                                ? "Catalogue temporarily unavailable"
+                                : "Piece no longer listed"
                             : p.kind === "photo"
                               ? p.text
                               : "Saved wedding look")}
@@ -480,13 +498,25 @@ export default function Boards({
                     )}
                     {item && (
                       <>
+                        <p className="mt-2 text-xs text-ink/60">
+                          {imageDisclosure(item)}
+                        </p>
                         <p className="mt-2 text-sm">
                           {formatGBP(item.unitPrice)} {item.unit}
                         </p>
                         <button
                           type="button"
+                          onClick={() => setDetailId(item.id)}
+                          className="min-h-11 text-xs underline"
+                        >
+                          View details and terms
+                        </button>
+                        <button
+                          type="button"
                           disabled={
                             disabled ||
+                            catalogueLoading ||
+                            !!catalogueError ||
                             savedIds.includes(item.id) ||
                             savingItems.has(item.id)
                           }
@@ -497,13 +527,16 @@ export default function Boards({
                             ? "Saved to items ✓"
                             : "Save to items"}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => onAdd(item)}
-                          className="mt-3 rounded-full bg-ink px-4 py-2 text-sm text-cream"
-                        >
-                          Add to basket
-                        </button>
+                        <ProductPurchase
+                          item={item}
+                          line={basket.find((line) => line.itemId === item.id)}
+                          availability={availability?.items?.[item.id]}
+                          onAdd={onAdd}
+                          onQty={onQty}
+                          onRemove={onRemove}
+                          onChangeDates={onChangeDates}
+                          onAlternatives={onAlternatives}
+                        />
                       </>
                     )}
                     <button
@@ -522,6 +555,33 @@ export default function Boards({
             })}
           </div>
         </>
+      )}
+      {detailId && getItem(detailId) && (
+        <ProductDetails
+          item={getItem(detailId)!}
+          line={basket.find((line) => line.itemId === detailId)}
+          availability={availability?.items?.[detailId]}
+          onAdd={onAdd}
+          onQty={onQty}
+          onRemove={onRemove}
+          onClose={() => setDetailId(null)}
+          onChangeDates={
+            onChangeDates
+              ? () => {
+                  setDetailId(null);
+                  onChangeDates();
+                }
+              : undefined
+          }
+          onAlternatives={
+            onAlternatives
+              ? () => {
+                  setDetailId(null);
+                  onAlternatives();
+                }
+              : undefined
+          }
+        />
       )}
     </section>
   );

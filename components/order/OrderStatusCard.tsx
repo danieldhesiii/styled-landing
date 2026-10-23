@@ -39,7 +39,7 @@ const BANNER: Record<
   },
   confirmed: {
     title: "Confirmed",
-    body: "Every supplier has confirmed your date.",
+    body: "Supplier availability has been confirmed. Check the final quote and agree payment and delivery or collection arrangements before proceeding.",
     tone: "border-sage/40 bg-sage/15",
   },
   declined: {
@@ -54,7 +54,7 @@ const BANNER: Record<
   },
   deposit_paid: {
     title: "Deposit received",
-    body: "Your deposit has been received and your date is secured.",
+    body: "This request is marked as deposit received. Refer to your agreed quote and payment confirmation for amounts, dates and delivery or collection arrangements.",
     tone: "border-sage/40 bg-sage/15",
   },
 };
@@ -142,7 +142,7 @@ export default function OrderStatusCard({ order }: { order: OrderView }) {
               </div>
               {differentDay && (
                 <p className="mt-0.5 text-xs text-clay">
-                  Delivery: {formatDay(deliveryDate)}
+                  Requested delivery / collection: {formatDay(deliveryDate)}
                 </p>
               )}
               <ul className="mt-2 divide-y divide-sand rounded-xl border border-sand">
@@ -177,23 +177,17 @@ export default function OrderStatusCard({ order }: { order: OrderView }) {
 
       <div className="border-t border-sand bg-cream/50 px-6 py-4 text-sm">
         <div className="flex justify-between">
-          <span className="text-ink/60">Total</span>
+          <span className="text-ink/60">Estimated item total</span>
           <span className="font-serif text-lg text-ink">
             {formatGBP(order.subtotalPence / 100)}
           </span>
         </div>
-        <div className="mt-1 flex justify-between">
-          <span className="text-ink/60">Deposit</span>
-          <span className="text-clay">
-            {formatGBP(order.depositPence / 100)}
-          </span>
-        </div>
-        <div className="mt-1 flex justify-between">
-          <span className="text-ink/60">Balance (due six weeks before)</span>
-          <span className="text-ink">
-            {formatGBP(order.balancePence / 100)}
-          </span>
-        </div>
+        <p className="mt-3 text-xs leading-relaxed text-ink/70">
+          Catalogue estimate only; this is not a payment receipt or an amount due.
+          Final prices, delivery or collection costs, any deposit and payment dates
+          must be agreed separately. Submitting a request does not take payment.
+        </p>
+        <a href="/service-info#support" className="mt-2 inline-block text-xs text-ink underline">Ask about your quote or request</a>
       </div>
     </article>
   );

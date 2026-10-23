@@ -1,4 +1,5 @@
 "use client";
+import VenueMessageThread from "./VenueMessageThread";
 import { ENQUIRY_STATUSES } from "@/lib/venue-details";
 export interface VenueRequest {
   id: string;
@@ -7,6 +8,8 @@ export interface VenueRequest {
   phone: string | null;
   guest_count: number | null;
   preferred_date: string | null;
+  viewing_time?: string | null;
+  next_actor?: string;
   message: string | null;
   status: string;
   request_kind?: string;
@@ -18,12 +21,14 @@ export default function VenueRequestCard({
   request: r,
   busy,
   onRespond,
+  showThread = true,
 }: {
   request: VenueRequest;
   busy: boolean;
+  showThread?: boolean;
   onRespond: (value: Record<string, unknown>) => void;
 }) {
-  const terminal = r.status === "booked" || r.status === "cancelled";
+  const terminal = ["booked", "viewing_confirmed", "cancelled"].includes(r.status);
   return (
     <article className="border-b border-sand py-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -42,7 +47,7 @@ export default function VenueRequestCard({
         </span>
       </div>
       <p className="mt-3 text-sm">
-        {r.preferred_date} · {r.guest_count} wedding guests
+        {r.preferred_date}{r.viewing_time ? ` at ${r.viewing_time.slice(0, 5)} UK time` : ""} · {r.guest_count} wedding guests
         {r.phone ? ` · ${r.phone}` : ""}
       </p>
       <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-ink/70">
@@ -74,6 +79,7 @@ export default function VenueRequestCard({
                 id: r.id,
                 status: f.get("status"),
                 response: f.get("response"),
+                viewing_time: f.get("viewing_time"),
                 alternative_dates: String(f.get("alternative_dates") || "")
                   .split(/[\s,]+/)
                   .map((x) => x.trim())
@@ -92,7 +98,7 @@ export default function VenueRequestCard({
                 {[
                   "new",
                   "contacted",
-                  ...(r.request_kind !== "viewing" ? ["booked"] : []),
+                  ...(r.request_kind !== "viewing" ? ["booked"] : ["viewing_confirmed"]),
                   "declined",
                 ].map((s) => (
                   <option key={s} value={s}>
@@ -113,6 +119,9 @@ export default function VenueRequestCard({
                 Up to five dates, YYYY-MM-DD, separated by commas.
               </span>
             </label>
+            {r.request_kind === "viewing" && <label className="text-sm">Agreed viewing time (optional, UK local time)
+              <input name="viewing_time" type="time" defaultValue={r.viewing_time?.slice(0, 5) || ""} className="mt-2 block w-full rounded-lg border border-sand p-3" />
+            </label>}
             <label className="text-sm sm:col-span-2">
               Message to the couple
               <textarea
@@ -127,8 +136,7 @@ export default function VenueRequestCard({
               Confirm a booking only after agreeing availability and
               arrangements with the couple. This records your decision and
               blocks the wedding date. Payment and your hire agreement are
-              arranged separately. For a viewing, use In discussion and include
-              the agreed viewing time.
+              arranged separately. Confirming a viewing records an appointment only; it never blocks a wedding date.
             </p>
             <button
               disabled={busy}
@@ -139,6 +147,8 @@ export default function VenueRequestCard({
           </form>
         </details>
       )}
+      {r.status === "viewing_confirmed" && <p className="mt-3 text-sm">Viewing appointment confirmed. No wedding date is reserved.</p>}
+      {showThread && <VenueMessageThread requestId={r.id} status={r.status} nextActor={r.next_actor} />}
     </article>
   );
 }

@@ -142,6 +142,7 @@ export default function PortalProductsPage() {
             : "Set your prices, how many you can supply per day, and what's shown in the shop."}
       </p>
 
+      <p className="mt-2 text-sm text-ink/60">Enabled products appear publicly only while your supplier listing is active. Check setup on the Orders page for the live catalogue count and public profile.</p>
       {products && products.length > 0 && (
         <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-ink/60">
           <label htmlFor="avail-date" className="font-medium text-ink">
@@ -295,7 +296,7 @@ export default function PortalProductsPage() {
                               disabled={saving}
                               className="h-4 w-4 rounded border-sand text-clay focus:ring-clay/30"
                             />
-                            {p.active ? "Live" : "Hidden"}
+                            {p.active ? "Enabled" : "Hidden"}
                           </label>
                           <button
                             type="button"

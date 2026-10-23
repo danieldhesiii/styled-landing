@@ -3,8 +3,19 @@ import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
 import type { ShopAvailability } from "@/components/availability/useAvailability";
 import type { BasketLine, CatalogueItem } from "@/lib/types";
+import { useState } from "react";
+import ProductDetails from "./ProductDetails";
+import ProductPurchase from "./ProductPurchase";
+import BoardPicker, {
+  type BoardPickerProps,
+} from "@/components/wedding/BoardPicker";
+import { imageDisclosure } from "@/lib/shopping";
 import { formatGBP } from "@/lib/quote";
 export default function LookProducts({
+  boards,
+  boardsBusy,
+  onAddToBoard,
+  onChangeDates,
   itemIds,
   ready,
   basket,
@@ -17,7 +28,8 @@ export default function LookProducts({
   saving,
   savesLoaded,
   availability,
-}: {
+}: BoardPickerProps & {
+  onChangeDates?: () => void;
   itemIds: string[];
   ready: boolean;
   basket: BasketLine[];
@@ -31,7 +43,13 @@ export default function LookProducts({
   savesLoaded: boolean;
   availability: ShopAvailability;
 }) {
-  const { getItem } = useCatalogue();
+  const {
+    getItem,
+    loading: catalogueLoading,
+    error: catalogueError,
+  } = useCatalogue();
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const detail = detailId ? getItem(detailId) : undefined;
   const items = [...new Set(itemIds)].flatMap((id) => {
     const i = getItem(id);
     return i ? [i] : [];
@@ -64,7 +82,14 @@ export default function LookProducts({
           pieces here. Example images are for inspiration only.
         </p>
       )}
-      {ready && !items.length && (
+      {ready && (catalogueLoading || catalogueError) && (
+        <p role="status" className="mt-5 text-sm text-clay">
+          {catalogueLoading
+            ? "Loading catalogue…"
+            : "Catalogue unavailable. Retry loading to see linked pieces."}
+        </p>
+      )}
+      {ready && !items.length && !catalogueLoading && !catalogueError && (
         <p className="mt-5 rounded-xl bg-cream p-5 text-sm text-ink/60">
           There are no currently listed catalogue pieces linked to this look.
           You can still browse the full catalogue.
@@ -92,7 +117,17 @@ export default function LookProducts({
                   </div>
                 )}
                 <div className="p-4">
+                  <p className="mb-2 text-xs text-ink/60">
+                    {imageDisclosure(i)}
+                  </p>
                   <h3 className="font-serif text-2xl">{i.name}</h3>
+                  <button
+                    type="button"
+                    onClick={() => setDetailId(i.id)}
+                    className="mt-2 min-h-11 text-xs underline"
+                  >
+                    View details and terms
+                  </button>
                   <p className="mt-1 text-xs text-ink/60">{i.supplier}</p>
                   <p className="mt-3 text-lg">
                     {formatGBP(i.unitPrice)}{" "}
@@ -107,45 +142,33 @@ export default function LookProducts({
                   <p className="mt-2 text-xs text-ink/50">
                     Availability is confirmed manually before booking.
                   </p>
-                  {line ? (
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                      <label className="text-xs">
-                        Basket quantity
-                        <input
-                          type="number"
-                          min={1}
-                          max={10000}
-                          value={line.quantity}
-                          aria-label={`Quantity of ${i.name} in this look`}
-                          onChange={(e) => {
-                            const n = Number(e.target.value);
-                            if (Number.isInteger(n) && n > 0 && n <= 10000)
-                              onQty(i.id, n);
-                          }}
-                          className="ml-2 w-16 rounded-lg border border-sand p-2"
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => onRemove(i.id)}
-                        className="text-xs underline"
-                      >
-                        Remove from basket
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => onAdd(i)}
-                      className="mt-4 w-full rounded-full bg-ink px-4 py-2.5 text-sm text-cream"
-                    >
-                      Add to basket
-                    </button>
-                  )}
+                  <ProductPurchase
+                    item={i}
+                    line={line}
+                    availability={availability.items?.[i.id]}
+                    onAdd={onAdd}
+                    onQty={onQty}
+                    onRemove={onRemove}
+                    onChangeDates={onChangeDates}
+                    onAlternatives={onBrowse}
+                  />
+                  <BoardPicker
+                    boards={boards}
+                    boardsBusy={
+                      boardsBusy || catalogueLoading || !!catalogueError
+                    }
+                    onAddToBoard={onAddToBoard}
+                    target={{ kind: "product", ref: i.id }}
+                  />
                   <button
                     type="button"
                     aria-pressed={savedIds.includes(i.id)}
-                    disabled={!savesLoaded || saving.has(i.id)}
+                    disabled={
+                      catalogueLoading ||
+                      !!catalogueError ||
+                      !savesLoaded ||
+                      saving.has(i.id)
+                    }
                     onClick={() => onSave(i.id)}
                     className="mt-3 w-full rounded-full border border-sand px-4 py-2 text-sm disabled:opacity-50"
                   >
@@ -160,6 +183,32 @@ export default function LookProducts({
             );
           })}
         </div>
+      )}
+      {detail && (
+        <ProductDetails
+          item={detail}
+          line={basket.find((line) => line.itemId === detail.id)}
+          availability={availability.items?.[detail.id]}
+          onAdd={onAdd}
+          onQty={onQty}
+          onRemove={onRemove}
+          onClose={() => setDetailId(null)}
+          onChangeDates={
+            onChangeDates
+              ? () => {
+                  setDetailId(null);
+                  onChangeDates();
+                }
+              : undefined
+          }
+          onAlternatives={() => {
+            setDetailId(null);
+            onBrowse();
+          }}
+          boards={boards}
+          boardsBusy={boardsBusy || catalogueLoading || !!catalogueError}
+          onAddToBoard={onAddToBoard}
+        />
       )}
     </section>
   );

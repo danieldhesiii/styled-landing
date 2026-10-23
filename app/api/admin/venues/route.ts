@@ -1,3 +1,4 @@
+import { validateVenueTransition } from "@/lib/venue-workflow";
 import {
   listingMissing,
   parseVenueResponse,
@@ -210,12 +211,19 @@ export async function POST(req: Request) {
     } else if (body.action === "setEnquiryStatus") {
       if (!uuid(body.id)) return fail(400, "Choose a request.");
       const value = parseVenueResponse(body, londonToday());
+      const { data: current, error: currentError } = await auth.admin.from("venue_enquiries")
+        .select("request_kind,status").eq("id", body.id).eq("venue_id", body.venueId).maybeSingle();
+      if (currentError) return fail(503, "Could not load the request status.");
+      if (!current) return fail(404, "Request not found.");
+      if (!validateVenueTransition(current.request_kind, current.status, value.status))
+        return fail(409, "This status does not match the request type or the request is already confirmed or cancelled.");
       const { error } = await auth.admin.rpc("respond_venue_enquiry", {
         p_venue_id: body.venueId,
         p_id: body.id,
         p_status: value.status,
         p_response: value.response,
         p_dates: value.alternative_dates,
+        p_viewing_time: value.viewing_time,
       });
       if (error)
         return fail(

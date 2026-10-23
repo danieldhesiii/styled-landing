@@ -132,6 +132,7 @@ export const ENQUIRY_STATUSES: Record<string, string> = {
   new: "Request received",
   contacted: "In discussion",
   booked: "Booking confirmed",
+  viewing_confirmed: "Viewing confirmed",
   declined: "Unavailable",
   cancelled: "Cancelled",
 };
@@ -151,16 +152,20 @@ export function parseVenueResponse(
   body: Record<string, unknown>,
   today: string,
 ) {
-  if (!["new", "contacted", "booked", "declined"].includes(String(body.status)))
+  if (!["new", "contacted", "booked", "viewing_confirmed", "declined"].includes(String(body.status)))
     throw Error("Choose a valid request status.");
   const response =
     typeof body.response === "string" ? body.response.trim() : "";
   if (response.length > 3000)
     throw Error("Keep your response under 3,000 characters.");
-  if (["booked", "declined"].includes(String(body.status)) && !response)
+  if (["booked", "viewing_confirmed", "declined"].includes(String(body.status)) && !response)
     throw Error(
       "Add a message for the couple, including any agreed arrangements.",
     );
+  const viewingTime = body.viewing_time;
+  if (viewingTime !== undefined && viewingTime !== null && viewingTime !== "" &&
+      (typeof viewingTime !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(viewingTime)))
+    throw Error("Use a viewing time in HH:MM format.");
   const dates = body.alternative_dates ?? [];
   if (
     !Array.isArray(dates) ||
@@ -171,6 +176,7 @@ export function parseVenueResponse(
   return {
     status: String(body.status),
     response: response || null,
+    viewing_time: typeof viewingTime === "string" && viewingTime ? viewingTime : null,
     alternative_dates: [...new Set(dates)] as string[],
   };
 }

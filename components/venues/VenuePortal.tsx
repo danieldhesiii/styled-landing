@@ -32,8 +32,62 @@ export default function VenuePortal() {
     [adding, setAdding] = useState(false),
     [retry, setRetry] = useState(0);
   const loadSequence = useRef(0);
+  const profileRef = useRef<HTMLFormElement>(null);
+  const dirtyFormRef = useRef<HTMLFormElement | null>(null);
+  const leavingRef = useRef(false);
+  const unsavedDialogRef = useRef<HTMLDialogElement>(null);
+  const stayButtonRef = useRef<HTMLButtonElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [missing, setMissing] = useState<string[] | null>(null);
+  const [onboarding, setOnboarding] = useState("new");
+  type Destination = { venueId: string } | { href: string } | { add: boolean } | { reload: true };
+  const [pending, setPending] = useState<Destination | null>(null);
+  function navigate(to: Destination) {
+    setPending(null); setDirty(false); setMissing(null);
+    if ("href" in to) { leavingRef.current = true; window.location.assign(to.href); }
+    else if ("venueId" in to) { setSelected(to.venueId); setAdding(false); setNotice(""); }
+    else if ("reload" in to) setRetry((n) => n + 1);
+    else setAdding(to.add);
+  }
+  function openUnsavedDialog(to: Destination, trigger?: HTMLElement) {
+    restoreFocusRef.current = trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    setPending(to);
+  }
+  function requestNavigation(to: Destination) {
+    if (dirty) openUnsavedDialog(to); else navigate(to);
+  }
+  useEffect(() => {
+    if (!pending) return;
+    const dialog = unsavedDialogRef.current;
+    if (!dialog) return;
+    const previousFocus = restoreFocusRef.current;
+    if (!dialog.open) dialog.showModal();
+    stayButtonRef.current?.focus();
+    return () => {
+      if (dialog.open) dialog.close();
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [pending]);
+  useEffect(() => {
+    if (!dirty) return;
+    const unload = (e: BeforeUnloadEvent) => { if (!leavingRef.current) { e.preventDefault(); e.returnValue = ""; } };
+    const click = (e: MouseEvent) => {
+      const a = (e.target as Element).closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || a.target === "_blank" || a.download || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0 || !/^https?:/.test(a.href)) return;
+      e.preventDefault(); openUnsavedDialog({ href: a.href }, a);
+    };
+    window.addEventListener("beforeunload", unload);
+    document.addEventListener("click", click, true);
+    return () => { window.removeEventListener("beforeunload", unload); document.removeEventListener("click", click, true); };
+  }, [dirty]);
+  function markDirty() {
+    dirtyFormRef.current = profileRef.current;
+    setDirty(true);
+    if (profileRef.current) setMissing(listingMissing(Object.fromEntries(new FormData(profileRef.current)) as unknown as Parameters<typeof listingMissing>[0]));
+  }
   const load = useCallback(
-    async (id = selected) => {
+    async (id = "", keepEdits = false) => {
       const sequence = ++loadSequence.current;
       const r = await fetch(
         `/api/venue-portal${id ? `?venueId=${encodeURIComponent(id)}` : ""}`,
@@ -43,18 +97,17 @@ export default function VenuePortal() {
       if (!r.ok) throw Error(d.error || "Could not load your venue.");
       if (sequence !== loadSequence.current) return;
       setVenues(d.venues);
-      setVenue(d.venue || null);
-      setDraft(d.draft || null);
+      if (!keepEdits) { setVenue(d.venue || null); setDraft(d.draft || null); setMissing(null); }
       setRequests(d.requests || []);
       setBlocks(d.blocks || []);
       if (d.venue) setSelected(d.venue.id);
       setLoading(false);
     },
-    [selected],
+    [],
   );
   useEffect(() => {
     let active = true;
-    load().catch((e) => {
+    load(selected).catch((e) => {
       if (active) {
         setError(e.message);
         setLoading(false);
@@ -63,7 +116,7 @@ export default function VenuePortal() {
     return () => {
       active = false;
     };
-  }, [load, retry]);
+  }, [load, retry, selected]);
   async function action(body: Record<string, unknown>) {
     if (busy) return;
     setBusy(true);
@@ -88,7 +141,9 @@ export default function VenuePortal() {
         setSelected(d.id);
         setAdding(false);
       }
-      await load(d.id || selected);
+      const savedProfile = ["save", "submit", "create"].includes(String(body.action));
+      if (savedProfile) { setDirty(false); setMissing(null); }
+      await load(d.id || selected, !savedProfile);
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Please try again.");
@@ -114,6 +169,10 @@ export default function VenuePortal() {
     if (file.size > 5 * 1024 * 1024) {
       setError("Choose a photo smaller than 5 MB.");
       return;
+    }
+    if (input.dataset.kind === "gallery") {
+      const gallery = profileRef.current?.elements.namedItem("gallery_images") as HTMLTextAreaElement | null;
+      if ((gallery?.value.split("\n").filter(Boolean).length || 0) >= 20) { setError("Remove a gallery photo before uploading another."); return; }
     }
     setBusy(true);
     setError("");
@@ -144,8 +203,9 @@ export default function VenuePortal() {
           );
         target.value = [...lines, d.url].join("\n");
       }
+      markDirty();
       setNotice(
-        "Photo added to this form. Save your draft to keep it, then submit for review when ready.",
+        "Photo uploaded to PUBLIC storage. Save your draft to keep the link; discarding the form does not delete the uploaded file.",
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not upload.");
@@ -189,7 +249,7 @@ export default function VenuePortal() {
           <button
             onClick={() => {
               setError("");
-              setRetry((n) => n + 1);
+              requestNavigation({ reload: true });
             }}
             type="button"
             className="ml-3 underline"
@@ -212,9 +272,7 @@ export default function VenuePortal() {
               value={selected}
               disabled={busy}
               onChange={(e) => {
-                setSelected(e.target.value);
-                setAdding(false);
-                setNotice("");
+                requestNavigation({ venueId: e.target.value });
               }}
             >
               {venues.map((v) => (
@@ -227,7 +285,7 @@ export default function VenuePortal() {
           </label>
           <button
             type="button"
-            onClick={() => setAdding((a) => !a)}
+            onClick={() => requestNavigation({ add: !adding })}
             disabled={busy}
             className="rounded-full border border-sand px-5 py-3 text-sm"
           >
@@ -238,11 +296,12 @@ export default function VenuePortal() {
       {(!venues.length || adding) && (
         <section className="my-8 max-w-2xl rounded-2xl bg-white p-6 sm:p-8">
           <h2 className="font-serif text-3xl">Start your venue listing</h2>
-          <p className="mt-3 text-sm text-ink/60">
-            Create a private draft first. You can add photography, prices,
-            facilities and walkthroughs before submitting it to Styled.
-          </p>
-          <form
+          <p className="mt-3 text-sm text-ink/60">Choose the right starting point. A new listing starts as an unpublished draft; uploaded media uses public storage.</p>
+          <label className="mt-4 block text-sm">Getting started<select value={onboarding} onChange={(e) => { if (!dirty) setOnboarding(e.target.value); }} disabled={dirty} className={field}>
+            <option value="new">New venue listing</option><option value="existing">My venue is already listed — help with access</option>
+          </select></label>
+          {onboarding === "existing" ? <p className="mt-5 text-sm">Do not create a duplicate listing. <a href="mailto:support@styleduk.com?subject=Existing%20venue%20listing%20access" className="underline">Contact support@styleduk.com</a> with your venue name and work email. Styled will verify team access.</p> : <form
+            onChangeCapture={(e) => { dirtyFormRef.current = e.currentTarget; setDirty(true); }}
             onSubmit={(e) => {
               e.preventDefault();
               void action({
@@ -266,12 +325,12 @@ export default function VenuePortal() {
               disabled={busy}
               className="self-end rounded-full bg-ink px-5 py-3 text-sm text-cream disabled:opacity-50"
             >
-              Create private listing
+              Create unpublished draft
             </button>
-          </form>
+          </form>}
         </section>
       )}
-      {venue && value && venue.id === selected && (
+      {venue && value && venue.id === selected && !adding && (
         <>
           <div className="mb-6 flex flex-wrap items-center gap-3 text-xs">
             <span className="rounded-lg bg-sand px-3 py-2">
@@ -317,18 +376,18 @@ export default function VenuePortal() {
           <section hidden={tab !== "listing" && tab !== "media"}>
             <div className="mb-6 max-w-3xl text-sm leading-relaxed text-ink/60">
               <p>
-                Save your draft before switching venues. Draft changes stay
-                private until Styled approves them; your currently published
-                page stays as it is.
+                Listing edits remain unpublished until Styled approves them. Uploaded photos are PUBLIC as soon as they upload, including when the listing is still a draft. Never upload confidential media. Discarding edits does not delete uploads.
               </p>
               <p className="mt-2">
-                {listingMissing(value).length
-                  ? `Before submitting, add: ${listingMissing(value).join(", ")}.`
+                {(missing ?? listingMissing(value)).length
+                  ? `Before submitting, add: ${(missing ?? listingMissing(value)).join(", ")}.`
                   : "Your core details are ready. Check your facilities, inclusions and media before submitting."}
               </p>
             </div>
             <form
               id="venue-profile"
+              ref={profileRef}
+              onChangeCapture={markDirty}
               key={`${venue.id}-${draft?.updated_at || "live"}`}
               onSubmit={profile}
               onInvalidCapture={() => {
@@ -391,12 +450,10 @@ export default function VenuePortal() {
                   Photos, video & 3D walkthroughs
                 </legend>
                 <p className="text-sm text-ink/60 sm:col-span-2">
-                  Use venue photography you have permission to publish. Uploads
-                  are hosted for your public listing. Save the draft after
-                  uploading.
+                  Choose JPEG, PNG or WebP photos up to 5 MB using the upload buttons below. Photos become publicly accessible immediately; saving a draft only saves their links. You can also paste existing image links.
                 </p>
                 <label className="text-sm">
-                  Main photograph URL
+                  Main photograph — upload below or paste an image link
                   <input
                     name="hero_image"
                     defaultValue={value.hero_image || ""}
@@ -412,7 +469,7 @@ export default function VenuePortal() {
                   />
                 </label>
                 <label className="text-sm">
-                  Gallery URLs (one per line, up to 20)
+                  Gallery — upload below or paste links (one per line, up to 20)
                   <textarea
                     name="gallery_images"
                     rows={4}
@@ -608,6 +665,34 @@ export default function VenuePortal() {
           </section>
         </>
       )}
+      {pending && <dialog
+        ref={unsavedDialogRef}
+        aria-labelledby="unsaved-title"
+        aria-describedby="unsaved-description"
+        className="m-auto w-[calc(100%_-_3rem)] max-w-lg rounded-2xl border-0 bg-white p-0 text-ink backdrop:bg-ink/40"
+        onCancel={(e) => {
+          e.preventDefault();
+          if (!busy) setPending(null);
+        }}
+      >
+        <div className="w-full max-w-lg rounded-2xl bg-white p-6">
+          <h2 id="unsaved-title" className="font-serif text-2xl">Save your listing edits?</h2>
+          <p id="unsaved-description" className="mt-3 text-sm">Save the draft before continuing, discard form edits, or stay here. Uploaded files remain public even if edits are discarded.</p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button disabled={busy} className="rounded-full bg-ink px-4 py-2 text-cream" onClick={async () => {
+              const form = dirtyFormRef.current;
+              if (!form) return;
+              if (!form.reportValidity()) { setPending(null); setTab("listing"); return; }
+              const f = new FormData(form);
+              if (await action({ ...Object.fromEntries(f), features: f.getAll("features"), action: form.id === "venue-profile" ? "save" : "create" })) navigate(pending);
+            }}>Save and continue</button>
+            <button disabled={busy} className="rounded-full border border-sand px-4 py-2" onClick={() => { dirtyFormRef.current?.reset(); navigate(pending); }}>Discard and continue</button>
+            <button ref={stayButtonRef} disabled={busy} className="rounded-full border border-sand px-4 py-2" onClick={() => setPending(null)}>Stay</button>
+          </div>
+          {error && <p role="alert" className="mt-4 text-sm">{error}</p>}
+        </div>
+      </dialog>}
+      {dirty && <p role="status" className="mt-4 text-sm">Unsaved listing edits</p>}
       <p className="mt-12 text-sm text-ink/60">
         Need help with an existing listing or your team’s access?{" "}
         <a href="mailto:support@styleduk.com" className="underline">

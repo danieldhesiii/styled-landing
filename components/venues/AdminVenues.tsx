@@ -600,6 +600,7 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
                 )}
                 {enquiries.map((e) => (
                   <VenueRequestCard
+                    showThread={false}
                     key={e.id}
                     request={e}
                     busy={busy}

@@ -1,41 +1,62 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { CatalogueItem, Category } from "@/lib/types";
 
 // Loads the live catalogue from /api/catalogue once and shares it with everything
 // under /design. Replaces importing the catalogue from a code file: prices and
-// availability now come from the database. Children render once it has loaded,
-// so no component ever shows a price that's about to change.
+// availability now come from the database. Non-shopping sections stay available
+// during loading or failure; purchase controls check the loading/error state.
 
 interface CatalogueContextValue {
   items: CatalogueItem[];
   getItem: (id: string) => CatalogueItem | undefined;
   itemsForCategory: (category: Category) => CatalogueItem[];
   refresh: () => Promise<void>;
+  loading: boolean;
+  error: string | null;
 }
 
 const CatalogueContext = createContext<CatalogueContextValue | null>(null);
 
 export function useCatalogue(): CatalogueContextValue {
   const ctx = useContext(CatalogueContext);
-  if (!ctx) throw new Error("useCatalogue must be used inside <CatalogueProvider>.");
+  if (!ctx)
+    throw new Error("useCatalogue must be used inside <CatalogueProvider>.");
   return ctx;
 }
 
-export default function CatalogueProvider({ children }: { children: React.ReactNode }) {
+export default function CatalogueProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [items, setItems] = useState<CatalogueItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await fetch("/api/catalogue", { cache: "no-store" });
       const data = await res.json();
-      if (!res.ok || !data?.ok) throw new Error(data?.error ?? "Couldn't load the catalogue.");
+      if (!res.ok || !data?.ok)
+        throw new Error(data?.error ?? "Couldn't load the catalogue.");
       setItems(data.items as CatalogueItem[]);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't load the catalogue.");
+      setError(
+        err instanceof Error ? err.message : "Couldn't load the catalogue.",
+      );
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -43,40 +64,23 @@ export default function CatalogueProvider({ children }: { children: React.ReactN
     load();
   }, [load]);
 
-  const value = useMemo<CatalogueContextValue | null>(() => {
-    if (!items) return null;
-    const byId = new Map(items.map((i) => [i.id, i]));
+  const value = useMemo<CatalogueContextValue>(() => {
+    const available = items || [];
+    const byId = new Map(available.map((item) => [item.id, item]));
     return {
-      items,
+      items: available,
       getItem: (id) => byId.get(id),
-      itemsForCategory: (category) => items.filter((i) => i.category === category),
+      itemsForCategory: (category) =>
+        available.filter((item) => item.category === category),
       refresh: load,
+      loading,
+      error,
     };
-  }, [items, load]);
+  }, [items, load, loading, error]);
 
-  if (!value) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-cream px-6 text-center">
-        {error ? (
-          <div>
-            <p className="text-sm text-ink/60">{error}</p>
-            <button
-              type="button"
-              onClick={() => {
-                setError(null);
-                load();
-              }}
-              className="mt-4 rounded-full bg-ink px-5 py-2 text-sm text-cream hover:bg-ink/90"
-            >
-              Try again
-            </button>
-          </div>
-        ) : (
-          <p className="text-sm text-ink/40">Loading the catalogue…</p>
-        )}
-      </div>
-    );
-  }
-
-  return <CatalogueContext.Provider value={value}>{children}</CatalogueContext.Provider>;
+  return (
+    <CatalogueContext.Provider value={value}>
+      {children}
+    </CatalogueContext.Provider>
+  );
 }

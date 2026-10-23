@@ -14,6 +14,13 @@ export default function HowItWorks({
     content = useRef<HTMLDivElement>(null),
     tabs = useRef<(HTMLButtonElement | null)[]>([]),
     id = useId();
+  const topics = HELP_TOPICS.filter((key) =>
+    initialTopic === "suppliers"
+      ? key === "suppliers"
+      : initialTopic === "venue_partners"
+        ? key === "venue_partners" || key === "venues"
+        : key !== "suppliers" && key !== "venue_partners",
+  );
   const guide = HELP_GUIDES[topic];
   useEffect(() => {
     const node = dialog.current;
@@ -36,14 +43,14 @@ export default function HowItWorks({
   function navigate(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     let next = index;
     if (event.key === "ArrowRight" || event.key === "ArrowDown")
-      next = (index + 1) % HELP_TOPICS.length;
+      next = (index + 1) % topics.length;
     else if (event.key === "ArrowLeft" || event.key === "ArrowUp")
-      next = (index + HELP_TOPICS.length - 1) % HELP_TOPICS.length;
+      next = (index + topics.length - 1) % topics.length;
     else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = HELP_TOPICS.length - 1;
+    else if (event.key === "End") next = topics.length - 1;
     else return;
     event.preventDefault();
-    select(HELP_TOPICS[next]);
+    select(topics[next]);
     tabs.current[next]?.focus();
   }
   return (
@@ -104,7 +111,7 @@ export default function HowItWorks({
           aria-label="How it works topics"
           className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3"
         >
-          {HELP_TOPICS.map((key, index) => (
+          {topics.map((key, index) => (
             <button
               key={key}
               ref={(node) => {

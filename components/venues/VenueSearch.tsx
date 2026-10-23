@@ -76,6 +76,9 @@ export default function VenueSearch({
     ...initialFilters,
   }));
   const [catalogue, setCatalogue] = useState(initialVenues || []);
+  const [collectionKnown, setCollectionKnown] = useState(
+    initialVenues !== undefined,
+  );
   const [loaded, setLoaded] = useState<{
     date: string;
     venues: VenueListing[];
@@ -145,7 +148,10 @@ export default function VenueSearch({
           (venue) => !venue.is_demo,
         );
         setLoaded({ date, venues });
-        if (!date) setCatalogue(venues);
+        if (!date) {
+          setCatalogue(venues);
+          setCollectionKnown(true);
+        }
       })
       .catch(() => {
         if (!controller.signal.aborted) {
@@ -162,6 +168,26 @@ export default function VenueSearch({
     return () => controller.abort();
   }, [active, date, invalidDate, retry]);
 
+  useEffect(() => {
+    if (!active || !date || collectionKnown) return;
+    const controller = new AbortController();
+    fetch("/api/venues", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const data = await response.json();
+        if (
+          response.ok &&
+          Array.isArray(data.venues) &&
+          !controller.signal.aborted
+        ) {
+          setCatalogue(data.venues.filter((v: VenueListing) => !v.is_demo));
+          setCollectionKnown(true);
+        }
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [active, date, collectionKnown]);
+  const collectionEmpty =
+    collectionKnown && catalogue.length === 0 && !loading && !error;
   const distances =
     result?.venues || (ignoreParentLocation ? undefined : matches);
   const counties = [
@@ -236,247 +262,251 @@ export default function VenueSearch({
   }
   return (
     <>
-      <form
-        className="my-8 rounded-2xl border border-sand bg-white p-5 sm:p-6"
-        onSubmit={(event) => {
-          event.preventDefault();
-          writeUrl(filters);
-          setRetry((value) => value + 1);
-        }}
-      >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="text-sm">
-            Venue name or location
-            <input
-              name="q"
-              value={filters.q}
-              onChange={(e) => update("q", e.target.value)}
-              placeholder="Town, county or venue"
-              maxLength={150}
-              className={field}
-            />
-          </label>
-          <label className="text-sm">
-            County
-            <select
-              name="county"
-              value={filters.county}
-              onChange={(e) => update("county", e.target.value)}
-              className={field}
-            >
-              <option value="">All counties</option>
-              {counties.map((county) => (
-                <option key={county}>{county}</option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm">
-            Wedding guests
-            <input
-              name="guests"
-              type="number"
-              min="1"
-              max="10000"
-              step="1"
-              value={filters.guests}
-              onChange={(e) => update("guests", e.target.value)}
-              className={field}
-            />
-          </label>
-          <label className="text-sm">
-            Wedding date
-            <input
-              name="date"
-              type="date"
-              value={invalidDate ? "" : date}
-              aria-invalid={invalidDate}
-              aria-describedby={
-                syncUrl ? "public-venue-date-help" : "studio-venue-date-help"
-              }
-              onChange={(e) => update("date", e.target.value)}
-              className={field}
-            />
-          </label>
-        </div>
-        <details
-          className="mt-5 border-t border-sand pt-4"
-          open={
-            !!(
-              filters.type ||
-              filters.setting ||
-              filters.budget ||
-              filters.features.length ||
-              filters.sort
-            )
-          }
+      <div hidden={collectionEmpty}>
+        <form
+          className="my-8 rounded-2xl border border-sand bg-white p-5 sm:p-6"
+          onSubmit={(event) => {
+            event.preventDefault();
+            writeUrl(filters);
+            setRetry((value) => value + 1);
+          }}
         >
-          <summary className="cursor-pointer text-sm">
-            More filters: type, hire budget, facilities & sort
-          </summary>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label className="text-sm">
-              Venue type
-              <select
-                name="type"
-                value={filters.type}
-                onChange={(e) => update("type", e.target.value)}
-                className={field}
-              >
-                <option value="">Any venue type</option>
-                {Object.entries(VENUE_TYPES).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-sm">
-              Setting
-              <select
-                name="setting"
-                value={filters.setting}
-                onChange={(e) => update("setting", e.target.value)}
-                className={field}
-              >
-                <option value="">Any setting</option>
-                <option value="indoor">Indoor</option>
-                <option value="outdoor">Outdoor</option>
-              </select>
-            </label>
-            <label className="text-sm">
-              Maximum starting hire price (£)
+              Venue name or location
               <input
-                name="budget"
-                type="number"
-                min="0"
-                max="1000000"
-                step="0.01"
-                value={filters.budget}
-                onChange={(e) => update("budget", e.target.value)}
+                name="q"
+                value={filters.q}
+                onChange={(e) => update("q", e.target.value)}
+                placeholder="Town, county or venue"
+                maxLength={150}
                 className={field}
               />
             </label>
             <label className="text-sm">
-              Sort by
+              County
               <select
-                name="sort"
-                value={filters.sort}
-                onChange={(e) => update("sort", e.target.value)}
+                name="county"
+                value={filters.county}
+                onChange={(e) => update("county", e.target.value)}
                 className={field}
               >
-                <option value="">Venue name</option>
-                <option value="price">Starting hire price</option>
-                <option value="capacity">Largest guest capacity</option>
-                <option value="distance">Nearest location</option>
+                <option value="">All counties</option>
+                {counties.map((county) => (
+                  <option key={county}>{county}</option>
+                ))}
               </select>
             </label>
+            <label className="text-sm">
+              Wedding guests
+              <input
+                name="guests"
+                type="number"
+                min="1"
+                max="10000"
+                step="1"
+                value={filters.guests}
+                onChange={(e) => update("guests", e.target.value)}
+                className={field}
+              />
+            </label>
+            <label className="text-sm">
+              Wedding date
+              <input
+                name="date"
+                type="date"
+                value={invalidDate ? "" : date}
+                aria-invalid={invalidDate}
+                aria-describedby={
+                  syncUrl ? "public-venue-date-help" : "studio-venue-date-help"
+                }
+                onChange={(e) => update("date", e.target.value)}
+                className={field}
+              />
+            </label>
           </div>
-          <fieldset className="mt-5 border-t border-sand pt-5">
-            <legend className="text-sm">Facilities that matter to you</legend>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {Object.entries(VENUE_FEATURES).map(([key, label]) => (
-                <label key={key} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    name="feature"
-                    value={key}
-                    checked={filters.features.includes(key)}
-                    onChange={(e) =>
-                      update(
-                        "features",
-                        e.target.checked
-                          ? [...filters.features, key]
-                          : filters.features.filter(
-                              (feature) => feature !== key,
-                            ),
-                      )
-                    }
-                  />
-                  {label}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <p className="mt-4 text-xs leading-relaxed text-ink/60">
-            Starting hire prices exclude styling unless stated. Budget searches
-            require a published starting price. Confirm inclusions and access
-            with the venue.
-          </p>
-        </details>
-        <p
-          id={syncUrl ? "public-venue-date-help" : "studio-venue-date-help"}
-          className="mt-3 text-xs text-ink/60"
-        >
-          Date searches exclude known booked and blocked dates. Every date still
-          needs venue confirmation.
-        </p>
-        <div className="mt-5 flex flex-wrap items-center gap-5">
-          <button className="rounded-full bg-ink px-6 py-3 text-sm text-cream">
-            Find venues
-          </button>
-          <button
-            type="button"
-            className="text-sm underline"
-            onClick={() => {
-              setFilters({ ...emptyFilters });
-              setShortlistOnly(false);
-              setResult(null);
-              setLocationPostcode("");
-              setIgnoreParentLocation(true);
-              setRadius(50);
-              setLocationRevision((value) => value + 1);
-              writeUrl(emptyFilters);
-            }}
+          <details
+            className="mt-5 border-t border-sand pt-4"
+            open={
+              !!(
+                filters.type ||
+                filters.setting ||
+                filters.budget ||
+                filters.features.length ||
+                filters.sort
+              )
+            }
           >
-            Clear filters
-          </button>
-          {invalidDate && (
+            <summary className="cursor-pointer text-sm">
+              More filters: type, hire budget, facilities & sort
+            </summary>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <label className="text-sm">
+                Venue type
+                <select
+                  name="type"
+                  value={filters.type}
+                  onChange={(e) => update("type", e.target.value)}
+                  className={field}
+                >
+                  <option value="">Any venue type</option>
+                  {Object.entries(VENUE_TYPES).map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm">
+                Setting
+                <select
+                  name="setting"
+                  value={filters.setting}
+                  onChange={(e) => update("setting", e.target.value)}
+                  className={field}
+                >
+                  <option value="">Any setting</option>
+                  <option value="indoor">Indoor</option>
+                  <option value="outdoor">Outdoor</option>
+                </select>
+              </label>
+              <label className="text-sm">
+                Maximum starting hire price (£)
+                <input
+                  name="budget"
+                  type="number"
+                  min="0"
+                  max="1000000"
+                  step="0.01"
+                  value={filters.budget}
+                  onChange={(e) => update("budget", e.target.value)}
+                  className={field}
+                />
+              </label>
+              <label className="text-sm">
+                Sort by
+                <select
+                  name="sort"
+                  value={filters.sort}
+                  onChange={(e) => update("sort", e.target.value)}
+                  className={field}
+                >
+                  <option value="">Venue name</option>
+                  <option value="price">Starting hire price</option>
+                  <option value="capacity">Largest guest capacity</option>
+                  <option value="distance">Nearest location</option>
+                </select>
+              </label>
+            </div>
+            <fieldset className="mt-5 border-t border-sand pt-5">
+              <legend className="text-sm">Facilities that matter to you</legend>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {Object.entries(VENUE_FEATURES).map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      name="feature"
+                      value={key}
+                      checked={filters.features.includes(key)}
+                      onChange={(e) =>
+                        update(
+                          "features",
+                          e.target.checked
+                            ? [...filters.features, key]
+                            : filters.features.filter(
+                                (feature) => feature !== key,
+                              ),
+                        )
+                      }
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <p className="mt-4 text-xs leading-relaxed text-ink/60">
+              Starting hire prices exclude styling unless stated. Budget
+              searches require a published starting price. Confirm inclusions
+              and access with the venue.
+            </p>
+          </details>
+          <p
+            id={syncUrl ? "public-venue-date-help" : "studio-venue-date-help"}
+            className="mt-3 text-xs text-ink/60"
+          >
+            Date searches exclude known booked and blocked dates. Every date
+            still needs venue confirmation.
+          </p>
+          <div className="mt-5 flex flex-wrap items-center gap-5">
+            <button className="rounded-full bg-ink px-6 py-3 text-sm text-cream">
+              Find venues
+            </button>
             <button
               type="button"
               className="text-sm underline"
-              onClick={() => update("date", "")}
+              onClick={() => {
+                setFilters({ ...emptyFilters });
+                setShortlistOnly(false);
+                setResult(null);
+                setLocationPostcode("");
+                setIgnoreParentLocation(true);
+                setRadius(50);
+                setLocationRevision((value) => value + 1);
+                writeUrl(emptyFilters);
+              }}
             >
-              Clear invalid date
+              Clear filters
             </button>
-          )}
+            {invalidDate && (
+              <button
+                type="button"
+                className="text-sm underline"
+                onClick={() => update("date", "")}
+              >
+                Clear invalid date
+              </button>
+            )}
+          </div>
+        </form>
+        <LocationFilter
+          key={locationRevision}
+          postcode={locationPostcode}
+          result={result}
+          onResult={setResult}
+          radius={radius}
+          onRadius={setRadius}
+        />
+        {matches && !result && !ignoreParentLocation && (
+          <button
+            type="button"
+            onClick={() => setIgnoreParentLocation(true)}
+            className="mb-5 text-sm underline"
+          >
+            Clear wedding location filter
+          </button>
+        )}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 text-sm">
+          <p role="status">
+            {collectionEmpty
+              ? "No published venues yet"
+              : invalidDate
+                ? "Choose a valid wedding date."
+                : loading
+                  ? "Finding venues…"
+                  : error
+                    ? "Venue search unavailable"
+                    : `${visible.length} ${visible.length === 1 ? "venue matches" : "venues match"} your search`}
+          </p>
+          <label className="flex flex-wrap items-center gap-2">
+            <input
+              type="checkbox"
+              checked={shortlistOnly}
+              onChange={(e) => setShortlistOnly(e.target.checked)}
+            />
+            My shortlist{" "}
+            <span className="text-xs text-ink/50">(saved on this device)</span>
+          </label>
         </div>
-      </form>
-      <LocationFilter
-        key={locationRevision}
-        postcode={locationPostcode}
-        result={result}
-        onResult={setResult}
-        radius={radius}
-        onRadius={setRadius}
-      />
-      {matches && !result && !ignoreParentLocation && (
-        <button
-          type="button"
-          onClick={() => setIgnoreParentLocation(true)}
-          className="mb-5 text-sm underline"
-        >
-          Clear wedding location filter
-        </button>
-      )}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 text-sm">
-        <p role="status">
-          {invalidDate
-            ? "Choose a valid wedding date."
-            : loading
-              ? "Finding venues…"
-              : error
-                ? "Venue search unavailable"
-                : `${visible.length} ${visible.length === 1 ? "venue matches" : "venues match"} your search`}
-        </p>
-        <label className="flex flex-wrap items-center gap-2">
-          <input
-            type="checkbox"
-            checked={shortlistOnly}
-            onChange={(e) => setShortlistOnly(e.target.checked)}
-          />
-          My shortlist{" "}
-          <span className="text-xs text-ink/50">(saved on this device)</span>
-        </label>
       </div>
       {invalidDate && (
         <p
@@ -516,11 +546,14 @@ export default function VenueSearch({
         ) : (
           <div role="status" className="rounded-xl bg-cream p-6">
             <h2 className="font-serif text-2xl">
-              No venues match these plans yet
+              {collectionEmpty
+                ? "Venue listings are coming soon"
+                : "No venues match these plans yet"}
             </h2>
             <p className="mt-3 text-sm text-ink/60">
-              Try a nearby county, another date, a wider distance or fewer
-              filters. You can also keep planning with your own venue.
+              {collectionEmpty
+                ? "We are onboarding venue partners. Explore the clearly marked demos below, or keep planning with your own venue. Demo venues cannot be booked."
+                : "Try a nearby county, another date, a wider distance or fewer filters. You can also keep planning with your own venue."}
             </p>
           </div>
         ))}

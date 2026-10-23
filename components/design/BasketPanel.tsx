@@ -1,12 +1,14 @@
 "use client";
 
 import HelpButton from "@/components/help/HelpButton";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { BasketLine } from "@/lib/types";
 import { buildQuote, formatGBP, DEPOSIT_RATE } from "@/lib/quote";
 import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 import { useBasketAvailability } from "@/components/availability/useAvailability";
 import { availabilityLabel } from "@/lib/availability";
+import { deliveryError } from "@/lib/wedding";
+import { basketBlocker, quantityLimit } from "@/lib/shopping";
 
 interface Props {
   basket: BasketLine[];
@@ -17,6 +19,8 @@ interface Props {
   onQty: (itemId: string, quantity: number) => void;
   onRemove: (itemId: string) => void;
   onCheckout: () => void;
+  onChangeDates?: () => void;
+  onBrowse?: () => void;
 }
 
 export default function BasketPanel({
@@ -28,19 +32,55 @@ export default function BasketPanel({
   onQty,
   onRemove,
   onCheckout,
+  onChangeDates,
+  onBrowse,
 }: Props) {
-  const { getItem } = useCatalogue();
+  const {
+    getItem,
+    loading: catalogueLoading,
+    error: catalogueError,
+  } = useCatalogue();
+  const [refreshKey, setRefreshKey] = useState(0);
   // Instant preview while editing; checkout asks the server for the exact quote.
   const quote = useMemo(() => buildQuote(basket, getItem), [basket, getItem]);
   // Does everything in the basket fit on the wedding date, at these quantities?
   const availability = useBasketAvailability(
     weddingDate,
     basket,
-    0,
+    refreshKey,
     deliveryDate ?? weddingDate,
   );
+  const dateProblem = deliveryError(weddingDate, deliveryDate ?? weddingDate);
+  const missing = basket.filter((line) => !getItem(line.itemId));
+  const invalid = basket.some(
+    (line) =>
+      !Number.isInteger(line.quantity) ||
+      line.quantity < 1 ||
+      line.quantity > 10000,
+  );
+  const stockBlocked =
+    !availability.allAvailable ||
+    basket.some((line) => {
+      const a = availability.lines[line.itemId];
+      return (
+        !a || a.status === "unavailable" || line.quantity > quantityLimit(a)
+      );
+    });
+  const blocker = basketBlocker({
+    count: basket.length,
+    catalogueLoading,
+    catalogueError,
+    dateProblem,
+    missing: missing.length > 0,
+    invalid,
+    availabilityError: availability.error,
+    availabilityLoading: availability.loading,
+    checked: availability.checked,
+    stockBlocked,
+  });
   const tables = Math.max(1, Math.ceil(guestCount / 10));
-  const overBudget = budget != null && quote.subtotal > budget;
+  const hasBudget = budget != null && budget > 0;
+  const overBudget = hasBudget && quote.subtotal > budget;
 
   return (
     <div className="flex h-full flex-col">
@@ -62,7 +102,7 @@ export default function BasketPanel({
             className="text-xs text-ink/60 underline"
           />
         </div>
-        {budget != null && (
+        {hasBudget && (
           <div className="mt-3">
             <div className="flex items-center justify-between text-xs">
               <span className="text-ink/50">Budget {formatGBP(budget)}</span>
@@ -84,6 +124,22 @@ export default function BasketPanel({
         )}
       </div>
 
+      {!catalogueLoading && !catalogueError && missing.length > 0 && (
+        <div role="alert" className="px-5 py-3 text-sm text-clay">
+          {missing.map((line) => (
+            <p key={line.itemId}>
+              Piece no longer listed{" "}
+              <button
+                type="button"
+                onClick={() => onRemove(line.itemId)}
+                className="min-h-11 underline"
+              >
+                Remove missing piece
+              </button>
+            </p>
+          ))}
+        </div>
+      )}
       {/* Lines grouped by supplier */}
       <div className="flex-1 overflow-y-auto px-5 py-4">
         {quote.lines.length === 0 ? (
@@ -130,7 +186,7 @@ export default function BasketPanel({
                                 Math.max(1, line.quantity - 1),
                               )
                             }
-                            className="h-6 w-6 rounded-full border border-sand text-ink/60 hover:border-clay hover:text-clay"
+                            className="h-11 w-11 rounded-full border border-sand text-ink/60 hover:border-clay hover:text-clay"
                             aria-label="Decrease quantity"
                           >
                             −
@@ -140,10 +196,16 @@ export default function BasketPanel({
                           </span>
                           <button
                             type="button"
+                            disabled={
+                              catalogueLoading ||
+                              !!catalogueError ||
+                              line.quantity >=
+                                quantityLimit(availability.lines[line.item.id])
+                            }
                             onClick={() =>
                               onQty(line.item.id, line.quantity + 1)
                             }
-                            className="h-6 w-6 rounded-full border border-sand text-ink/60 hover:border-clay hover:text-clay"
+                            className="h-11 w-11 rounded-full border border-sand text-ink/60 hover:border-clay hover:text-clay"
                             aria-label="Increase quantity"
                           >
                             +
@@ -155,8 +217,8 @@ export default function BasketPanel({
                         <button
                           type="button"
                           onClick={() => onRemove(line.item.id)}
-                          className="text-ink/30 hover:text-clay"
-                          aria-label="Remove"
+                          className="min-h-11 min-w-11 text-ink/30 hover:text-clay"
+                          aria-label={`Remove ${line.item.name}`}
                         >
                           ×
                         </button>
@@ -171,14 +233,26 @@ export default function BasketPanel({
                           return null;
                         const { label } = availabilityLabel(a);
                         return (
-                          <p
-                            className={`-mt-1 pl-3 text-[11px] ${a.status === "unavailable" ? "text-red-700" : "text-clay"}`}
+                          <div
+                            className={`mt-2 pl-3 text-[11px] ${a.status === "unavailable" ? "text-red-700" : "text-clay"}`}
                           >
                             {label}
                             {a.status === "unavailable"
                               ? ". Lower the quantity, remove it, or change your date."
                               : ""}
-                          </p>
+                            {a.status === "unavailable" &&
+                              quantityLimit(a) > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    onQty(line.item.id, quantityLimit(a))
+                                  }
+                                  className="ml-2 min-h-11 underline"
+                                >
+                                  Use available quantity: {quantityLimit(a)}
+                                </button>
+                              )}
+                          </div>
                         );
                       })()}
                     </div>
@@ -204,16 +278,58 @@ export default function BasketPanel({
           </span>
           <span className="text-sm text-clay">{formatGBP(quote.deposit)}</span>
         </div>
+        {blocker && (
+          <div
+            id="basket-blocker"
+            role="status"
+            className="mt-3 text-xs text-clay"
+          >
+            {blocker}
+          </div>
+        )}
+        <div className="mt-2 flex flex-wrap gap-3 text-xs">
+          {onChangeDates && (
+            <button
+              type="button"
+              onClick={onChangeDates}
+              className="min-h-11 underline"
+            >
+              Change dates
+            </button>
+          )}
+          {onBrowse && (
+            <button
+              type="button"
+              onClick={onBrowse}
+              className="min-h-11 underline"
+            >
+              Find alternatives
+            </button>
+          )}
+          {availability.error && (
+            <button
+              type="button"
+              onClick={() => setRefreshKey((key) => key + 1)}
+              className="min-h-11 underline"
+            >
+              Retry availability check
+            </button>
+          )}
+        </div>
         <button
           type="button"
-          onClick={onCheckout}
-          disabled={quote.lines.length === 0}
+          onClick={() => {
+            if (!blocker) onCheckout();
+          }}
+          aria-describedby={blocker ? "basket-blocker" : undefined}
+          disabled={!!blocker}
           className="mt-4 w-full rounded-full bg-ink px-5 py-3 text-sm text-cream transition-colors hover:bg-ink/90 disabled:cursor-not-allowed disabled:bg-ink/30"
         >
           Request supplier confirmation
         </button>
         <p className="mt-2 text-center text-[11px] text-ink/40">
-          No card charged until a stylist confirms every supplier for your date.
+          The server rechecks pricing and availability at submission. No booking
+          is confirmed here.
         </p>
       </div>
     </div>

@@ -1,7 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  Suspense,
+} from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { studioRoute, studioDestination } from "@/lib/studio-route";
+import type { BoardTarget } from "@/components/wedding/BoardPicker";
 import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 import { createClient } from "@/lib/supabase/client";
 import type { BasketLine, CatalogueItem, SampleVenue } from "@/lib/types";
@@ -42,32 +52,44 @@ import { prepareBoard, type BoardInspiration } from "@/lib/board-inspiration";
 type Step = "studio" | "checkout";
 
 export default function DesignPage() {
-  const { getItem } = useCatalogue();
+  return (
+    <Suspense
+      fallback={
+        <p role="status" className="p-8 text-sm">
+          Opening your wedding workspace…
+        </p>
+      }
+    >
+      <DesignStudio />
+    </Suspense>
+  );
+}
+function DesignStudio() {
+  const {
+    getItem,
+    loading: catalogueLoading,
+    error: catalogueError,
+    refresh: refreshCatalogue,
+  } = useCatalogue();
+  const params = useSearchParams();
+  const { tab: studioTab, bookings: bookingSection } = studioRoute(params);
   const [partnerVenue, setPartnerVenue] = useState<SampleVenue | null>(null);
   const [partnerError, setPartnerError] = useState("");
-  const [studioTab, setStudioTab] = useState<StudioTab>("wedding");
-  const [bookingSection, setBookingSection] = useState<"suppliers" | "venues">(
-    "suppliers",
-  );
   const savedItems = useSavedItems();
   const [discovery, setDiscovery] = useState<DiscoveryResults | null>(null),
     [searchRadius, setSearchRadius] = useState(50);
-  function switchStudioTab(tab: StudioTab) {
-    setStudioTab(tab);
+  function switchStudioTab(
+    tab: StudioTab,
+    bookings: "suppliers" | "venues" = "suppliers",
+  ) {
     setStep("studio");
+    const destination = studioDestination(window.location.href, tab, bookings);
+    if (destination.href !== window.location.href)
+      window.history.pushState(null, "", destination);
     window.scrollTo(0, 0);
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", tab);
-    url.searchParams.delete("render");
-    if (tab !== "orders") url.searchParams.delete("bookings");
-    window.history.replaceState(null, "", url);
   }
   function openBookings(section: "suppliers" | "venues" = "suppliers") {
-    setBookingSection(section);
-    switchStudioTab("orders");
-    const url = new URL(window.location.href);
-    url.searchParams.set("bookings", section);
-    window.history.replaceState(null, "", url);
+    switchStudioTab("orders", section);
   }
   const [mobileBasketOpen, setMobileBasketOpen] = useState(false);
   const basketDialog = useRef<HTMLDialogElement>(null);
@@ -80,6 +102,10 @@ export default function DesignPage() {
   const [boardInspiration, setBoardInspiration] =
     useState<BoardInspiration | null>(null);
   const [savedLooks, setSavedLooks] = useState<SavedLook[]>([]);
+  const [lookError, setLookError] = useState("");
+  const [busyLooks, setBusyLooks] = useState<Set<string>>(new Set());
+  const lookLocks = useRef(new Set<string>());
+  const [actionNotice, setActionNotice] = useState("");
 
   const [brief, setBrief] = useState<Brief>({
     venueId: "manor_orangery",
@@ -100,6 +126,7 @@ export default function DesignPage() {
   const workspaceRevision = useRef(0),
     workspaceLock = useRef(false),
     designKey = useRef("");
+  const accountId = useRef<string | null>(null);
   const [basket, setBasket] = useState<BasketLine[]>([]);
 
   // Renders made for the current look (oldest first) and which one is showing.
@@ -151,30 +178,20 @@ export default function DesignPage() {
   // re-fetched fresh by id, since signed URLs expire.
   useEffect(() => {
     const entryParams = new URLSearchParams(window.location.search);
-    const incomingTab = entryParams.get("tab");
-    if (
-      [
-        "catalogue",
-        "venues",
-        "boards",
-        "saved",
-        "looks",
-        "visualiser",
-        "wedding",
-        "orders",
-      ].includes(incomingTab || "")
-    )
-      setStudioTab(incomingTab as StudioTab);
-    else if (entryParams.get("render") === "true") setStudioTab("visualiser");
-    setBookingSection(
-      entryParams.get("bookings") === "venues" ? "venues" : "suppliers",
-    );
     let cancelled = false;
     void (async () => {
       const {
         data: { user },
+        error: sessionError,
       } = await createClient().auth.getUser();
-      if (!user || cancelled) return;
+      if (cancelled) return;
+      if (sessionError || !user || user.is_anonymous) {
+        setWorkspaceError(
+          "Your account could not be verified. Reload or sign in again before editing.",
+        );
+        return;
+      }
+      accountId.current = user.id;
       designKey.current = `styled:design:${user.id}`;
       let localDraft: {
         brief?: Partial<Brief>;
@@ -217,6 +234,7 @@ export default function DesignPage() {
               .then((r) => r.json())
               .then((data) => {
                 if (
+                  !cancelled &&
                   data.status === "succeeded" &&
                   data.imageUrl &&
                   saved.renderId
@@ -265,6 +283,12 @@ export default function DesignPage() {
           setBoards(stored.boards);
           setSavedWorkspace(workspaceFingerprint(stored));
         }
+        if (!data.data)
+          setSavedWorkspace(
+            workspaceFingerprint(
+              workspaceData({ ...brief, planSetupComplete: false }, []),
+            ),
+          );
         setWorkspaceLoaded(true);
       } catch (e) {
         if (!cancelled)
@@ -331,10 +355,15 @@ export default function DesignPage() {
   const supabase = useMemo(() => createClient(), []);
 
   const refreshSavedLooks = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("saved_looks")
       .select("render_id, style_id, style_name, original_url, created_at")
       .order("created_at", { ascending: false });
+    if (error) {
+      setLookError("Your saved looks could not be loaded. Try again.");
+      return;
+    }
+    setLookError("");
     if (data) {
       setSavedLooks(
         data.map((r) => ({
@@ -361,16 +390,19 @@ export default function DesignPage() {
         if (raw) {
           const old = JSON.parse(raw) as SavedLook[];
           if (Array.isArray(old) && old.length) {
-            await supabase.from("saved_looks").upsert(
-              old.map((l) => ({
-                owner_id: user.id,
-                render_id: l.id,
-                style_id: l.styleId,
-                style_name: l.styleName,
-                original_url: l.originalUrl ?? null,
-              })),
-              { onConflict: "owner_id,render_id", ignoreDuplicates: true },
-            );
+            const { error: migrationError } = await supabase
+              .from("saved_looks")
+              .upsert(
+                old.map((l) => ({
+                  owner_id: user.id,
+                  render_id: l.id,
+                  style_id: l.styleId,
+                  style_name: l.styleName,
+                  original_url: l.originalUrl ?? null,
+                })),
+                { onConflict: "owner_id,render_id", ignoreDuplicates: true },
+              );
+            if (migrationError) throw migrationError;
           }
           localStorage.removeItem("styled:savedLooks");
         }
@@ -380,41 +412,88 @@ export default function DesignPage() {
       await refreshSavedLooks();
     };
     sync();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => sync());
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (accountId.current && session?.user.id !== accountId.current) {
+        setWorkspaceLoaded(false);
+        setRestored(false);
+        setBoards([]);
+        setSavedLooks([]);
+        setWorkspacePhotos({});
+        window.location.assign(
+          session?.user ? window.location.href : "/login?mode=login",
+        );
+        return;
+      }
+      // Defer database work until the auth client has released its session lock.
+      setTimeout(() => void sync(), 0);
+    });
     return () => sub.subscription.unsubscribe();
   }, [supabase, refreshSavedLooks]);
 
   const isCurrentSaved =
     renderId !== null && savedLooks.some((l) => l.id === renderId);
 
-  async function toggleSaveCurrent() {
-    if (!renderId) return;
-    if (savedLooks.some((l) => l.id === renderId)) {
-      setSavedLooks((looks) => looks.filter((l) => l.id !== renderId));
-      await supabase.from("saved_looks").delete().eq("render_id", renderId);
-    } else {
-      setSavedLooks((looks) => [
-        {
-          id: renderId,
-          styleId: brief.styleId,
-          styleName,
-          originalUrl: originalImage ?? undefined,
-          savedAt: Date.now(),
-        },
-        ...looks,
-      ]);
-      await supabase.from("saved_looks").insert({
-        render_id: renderId,
-        style_id: brief.styleId,
-        style_name: styleName,
-        original_url: originalImage ?? null,
-      });
+  async function changeSavedLook(id: string, remove: boolean) {
+    if (lookLocks.current.has(id)) return;
+    lookLocks.current.add(id);
+    setBusyLooks(new Set(lookLocks.current));
+    setLookError("");
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError || !user || user.is_anonymous)
+        throw Error("Please sign in again to save looks.");
+      if (remove) {
+        const { error } = await supabase
+          .from("saved_looks")
+          .delete()
+          .eq("owner_id", user.id)
+          .eq("render_id", id);
+        if (error) throw error;
+        setSavedLooks((current) => current.filter((look) => look.id !== id));
+      } else {
+        const { error } = await supabase.from("saved_looks").upsert(
+          {
+            owner_id: user.id,
+            render_id: id,
+            style_id: brief.styleId,
+            style_name: styleName,
+            original_url: originalImage ?? null,
+          },
+          { onConflict: "owner_id,render_id" },
+        );
+        if (error) throw error;
+        setSavedLooks((current) =>
+          current.some((look) => look.id === id)
+            ? current
+            : [
+                {
+                  id,
+                  styleId: brief.styleId,
+                  styleName,
+                  originalUrl: originalImage ?? undefined,
+                  savedAt: Date.now(),
+                },
+                ...current,
+              ],
+        );
+      }
+    } catch {
+      setLookError(
+        "This change could not be saved. Your previous saved looks are unchanged. Please try again.",
+      );
+    } finally {
+      lookLocks.current.delete(id);
+      setBusyLooks(new Set(lookLocks.current));
     }
   }
-
+  async function toggleSaveCurrent() {
+    if (renderId) await changeSavedLook(renderId, isCurrentSaved);
+  }
   async function unsaveLook(id: string) {
-    setSavedLooks((looks) => looks.filter((l) => l.id !== id));
-    await supabase.from("saved_looks").delete().eq("render_id", id);
+    await changeSavedLook(id, true);
   }
 
   function loadSavedLook(look: SavedLook, url: string, itemIds?: string[]) {
@@ -457,14 +536,18 @@ export default function DesignPage() {
       });
     return () => controller.abort();
   }, [brief.venueId]);
-  const addedFromLink = useRef(false);
+  const addedFromLink = useRef<string | null>(null);
   useEffect(() => {
-    if (!restored || addedFromLink.current) return;
-    const id = new URLSearchParams(window.location.search).get("add");
-    if (!id) return;
+    if (!restored || catalogueLoading || catalogueError) return;
+    const id = params.get("add");
+    if (!id) {
+      addedFromLink.current = null;
+      return;
+    }
+    if (addedFromLink.current === id) return;
     const item = getItem(id);
     if (item) {
-      addedFromLink.current = true;
+      addedFromLink.current = id;
       setBasket((lines) =>
         lines.some((l) => l.itemId === id)
           ? lines
@@ -473,8 +556,22 @@ export default function DesignPage() {
               { itemId: id, quantity: suggestedQty(item, brief.guestCount) },
             ],
       );
+      setActionNotice(
+        "Your supplier selection is ready. Review quantities in your basket.",
+      );
+      const consumed = new URL(window.location.href);
+      consumed.searchParams.delete("add");
+      consumed.searchParams.set("tab", "catalogue");
+      window.history.replaceState(null, "", consumed);
     }
-  }, [restored, getItem, brief.guestCount]);
+  }, [
+    restored,
+    getItem,
+    brief.guestCount,
+    params,
+    catalogueLoading,
+    catalogueError,
+  ]);
 
   // Availability per supplier for the couple's wedding date.
   const shopAvailability = useShopAvailability(
@@ -531,12 +628,12 @@ export default function DesignPage() {
     setBrief((b) => ({ ...b, ...patch }));
   };
 
-  async function saveWorkspace(nextBoards = boards) {
+  async function saveWorkspace(nextBoards = boards, patch?: Partial<Brief>) {
     if (!workspaceLoaded || workspaceLock.current) return false;
     workspaceLock.current = true;
     setWorkspaceSaving(true);
     setWorkspaceError("");
-    const value = workspaceData(brief, nextBoards);
+    const value = workspaceData({ ...brief, ...patch }, nextBoards);
     try {
       const res = await fetch("/api/wedding", {
         method: "PUT",
@@ -551,6 +648,7 @@ export default function DesignPage() {
         throw Error(d.error || "Could not save your wedding.");
       workspaceRevision.current = d.revision;
       setBoards(nextBoards);
+      if (patch) setBrief((current) => ({ ...current, ...patch }));
       setSavedWorkspace(workspaceFingerprint(value));
       return true;
     } catch (e) {
@@ -563,6 +661,66 @@ export default function DesignPage() {
       setWorkspaceSaving(false);
     }
   }
+
+  async function addToBoard(boardId: string, target: BoardTarget) {
+    const board = boards.find((b) => b.id === boardId);
+    if (!board || !workspaceLoaded || workspaceLock.current) return false;
+    if (
+      board.pins.some(
+        (pin) => pin.kind === target.kind && pin.ref === target.ref,
+      )
+    ) {
+      setActionNotice("Already on this board.");
+      return true;
+    }
+    if (board.pins.length >= 100) {
+      setWorkspaceError(
+        "This board has 100 ideas. Create another board to keep collecting.",
+      );
+      return false;
+    }
+    const next = boards.map((b) =>
+      b.id === boardId
+        ? {
+            ...b,
+            pins: [
+              ...b.pins,
+              {
+                id: crypto.randomUUID(),
+                kind: target.kind,
+                ref: target.ref,
+                text: target.text || "",
+              },
+            ],
+          }
+        : b,
+    );
+    const ok = await saveWorkspace(next);
+    if (ok) setActionNotice("Added to your board and saved to your account.");
+    return ok;
+  }
+  const workspaceDirty =
+    workspaceLoaded &&
+    workspaceFingerprint(workspaceData(brief, boards)) !== savedWorkspace;
+  useEffect(() => {
+    if (!workspaceDirty) return;
+    const protect = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", protect);
+    return () => window.removeEventListener("beforeunload", protect);
+  }, [workspaceDirty]);
+  useEffect(() => {
+    const back = () => setStep("studio");
+    window.addEventListener("popstate", back);
+    return () => window.removeEventListener("popstate", back);
+  }, []);
+  useEffect(() => {
+    if (!actionNotice) return;
+    const timer = setTimeout(() => setActionNotice(""), 6000);
+    return () => clearTimeout(timer);
+  }, [actionNotice]);
 
   function addItem(item: CatalogueItem) {
     setBasket((b) => {
@@ -598,17 +756,17 @@ export default function DesignPage() {
     <div className="min-h-screen bg-cream">
       {/* Slim app header */}
       <header className="sticky top-0 z-30 border-b border-sand bg-cream/80 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-3 sm:px-5">
           <Link href="/" className="font-serif text-xl tracking-wide text-ink">
             Styled<span className="text-clay">.</span>
           </Link>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
             {step === "studio" && (
               <button
                 type="button"
                 onClick={() => setMobileBasketOpen(true)}
                 aria-label={`Open basket, ${basket.reduce((n, line) => n + line.quantity, 0)} items`}
-                className="flex min-h-10 items-center gap-2 rounded-full border border-sand px-3 text-xs text-ink"
+                className="flex min-h-11 items-center gap-1 rounded-full border border-sand px-2 text-xs text-ink sm:gap-2 sm:px-3"
               >
                 <svg
                   aria-hidden="true"
@@ -631,7 +789,7 @@ export default function DesignPage() {
               onClick={() => {
                 setShowHowTo(true);
               }}
-              className="flex items-center gap-1.5 rounded-full border border-sand px-3 py-2 text-xs text-ink/70 hover:border-clay/50 hover:text-ink transition-colors"
+              className="hidden sm:flex items-center gap-1.5 rounded-full border border-sand px-3 py-2 text-xs text-ink/70 hover:border-clay/50 hover:text-ink transition-colors"
             >
               <span className="text-[11px]">?</span>{" "}
               <span className="hidden sm:inline">How it works</span>
@@ -646,7 +804,16 @@ export default function DesignPage() {
                 ← Back to design
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => openBookings()}
+              aria-current={studioTab === "orders" ? "page" : undefined}
+              className="min-h-11 rounded-full border border-sand px-2 py-2 text-xs sm:px-3"
+            >
+              My bookings
+            </button>
             <AccountMenu
+              onOpenHelp={() => setShowHowTo(true)}
               onOpenOrders={() => {
                 openBookings();
               }}
@@ -666,8 +833,38 @@ export default function DesignPage() {
         id="studio-content"
         className="mx-auto max-w-7xl px-4 pb-24 sm:px-5 md:pb-8"
       >
+        {actionNotice && (
+          <p
+            role="status"
+            className="mt-4 rounded-xl border border-sand bg-white p-4 text-sm"
+          >
+            {actionNotice}
+          </p>
+        )}
         {step === "studio" && (
           <div className="py-6 sm:py-8">
+            {(["catalogue", "saved", "visualiser"] as StudioTab[]).includes(
+              studioTab,
+            ) &&
+              (catalogueLoading || catalogueError) && (
+                <div
+                  role={catalogueError ? "alert" : "status"}
+                  className="mb-5 rounded-xl border border-sand bg-white p-4 text-sm"
+                >
+                  {catalogueError
+                    ? "The catalogue could not be loaded. Your wedding plan, boards and bookings are still available."
+                    : "Loading catalogue pieces…"}
+                  {catalogueError && (
+                    <button
+                      type="button"
+                      onClick={() => void refreshCatalogue()}
+                      className="ml-3 underline"
+                    >
+                      Retry catalogue
+                    </button>
+                  )}
+                </div>
+              )}
             {(studioTab === "catalogue" || studioTab === "venues") && (
               <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                 <p className="text-xs text-ink/60">
@@ -766,6 +963,11 @@ export default function DesignPage() {
                 onClose={() => switchStudioTab("catalogue")}
                 onLoad={loadSavedLook}
                 onUnsave={unsaveLook}
+                busyIds={busyLooks}
+                error={lookError}
+                boards={boards}
+                boardsBusy={workspaceSaving || !workspaceLoaded}
+                onAddToBoard={addToBoard}
               />
             )}
             {studioTab === "orders" && (
@@ -781,9 +983,9 @@ export default function DesignPage() {
                 photos={workspacePhotos}
                 brief={brief}
                 onChange={patchBrief}
-                onSave={() => void saveWorkspace()}
+                onSave={(patch) => saveWorkspace(boards, patch)}
                 saving={workspaceSaving}
-                loaded={workspaceLoaded}
+                loaded={workspaceLoaded && restored}
                 status={
                   !workspaceLoaded
                     ? "Loading saved details…"
@@ -812,6 +1014,12 @@ export default function DesignPage() {
                 savedIds={savedItems.ids}
                 looks={savedLooks}
                 onAdd={addItem}
+                availability={shopAvailability}
+                basket={basket}
+                onQty={setQty}
+                onRemove={removeItem}
+                onChangeDates={() => switchStudioTab("wedding")}
+                onAlternatives={() => switchStudioTab("catalogue")}
                 savedError={savedItems.error || undefined}
                 savingItems={savedItems.busy}
                 onOpenSaved={() => switchStudioTab("saved")}
@@ -826,12 +1034,22 @@ export default function DesignPage() {
                 }}
                 onOpenLook={async (id) => {
                   const look = savedLooks.find((l) => l.id === id);
-                  if (!look) throw Error("This look is no longer saved.");
+
                   const response = await fetch(`/api/renders/${id}`);
                   const data = await response.json();
                   if (!response.ok || !data.imageUrl)
                     throw Error("This look is no longer available.");
-                  loadSavedLook(look, data.imageUrl, data.itemIds);
+                  loadSavedLook(
+                    look || {
+                      id,
+                      styleId: "none",
+                      styleName: "Board look",
+                      originalUrl: data.originalUrl || undefined,
+                      savedAt: Date.now(),
+                    },
+                    data.imageUrl,
+                    data.itemIds,
+                  );
                 }}
               />
             </div>
@@ -869,12 +1087,10 @@ export default function DesignPage() {
                     switchStudioTab("wedding");
                     setTimeout(
                       () =>
-                        document
-                          .getElementById("plan-venue")
-                          ?.scrollIntoView({
-                            behavior: "smooth",
-                            block: "start",
-                          }),
+                        document.getElementById("plan-venue")?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        }),
                       0,
                     );
                   }}
@@ -953,6 +1169,9 @@ export default function DesignPage() {
                     savesLoaded={savedItems.loaded}
                     savingItems={savedItems.busy}
                     onToggleSave={(id) => void savedItems.toggle(id)}
+                    boards={boards}
+                    boardsBusy={workspaceSaving || !workspaceLoaded}
+                    onAddToBoard={addToBoard}
                   />
                 </div>
                 <div
@@ -1083,6 +1302,8 @@ export default function DesignPage() {
                       }}
                       isSaved={isCurrentSaved}
                       onToggleSave={toggleSaveCurrent}
+                      saveBusy={!!renderId && busyLooks.has(renderId)}
+                      saveError={lookError}
                     />
                   </div>
                   <div ref={lookProductsRef} className="scroll-mt-24">
@@ -1099,6 +1320,10 @@ export default function DesignPage() {
                       saving={savedItems.busy}
                       savesLoaded={savedItems.loaded}
                       availability={shopAvailability}
+                      boards={boards}
+                      boardsBusy={workspaceSaving || !workspaceLoaded}
+                      onAddToBoard={addToBoard}
+                      onChangeDates={() => switchStudioTab("wedding")}
                     />
                   </div>
                 </div>
@@ -1110,11 +1335,13 @@ export default function DesignPage() {
                   <BasketPanel
                     basket={basket}
                     guestCount={brief.guestCount}
-                    budget={brief.budget}
+                    budget={brief.budgetUnknown ? null : brief.budget}
                     weddingDate={brief.weddingDate}
                     deliveryDate={deliveryDay(brief)}
                     onQty={setQty}
                     onRemove={removeItem}
+                    onChangeDates={() => switchStudioTab("wedding")}
+                    onBrowse={() => switchStudioTab("catalogue")}
                     onCheckout={() => setStep("checkout")}
                   />
                 </div>
@@ -1166,11 +1393,19 @@ export default function DesignPage() {
           <BasketPanel
             basket={basket}
             guestCount={brief.guestCount}
-            budget={brief.budget}
+            budget={brief.budgetUnknown ? null : brief.budget}
             weddingDate={brief.weddingDate}
             deliveryDate={deliveryDay(brief)}
             onQty={setQty}
             onRemove={removeItem}
+            onChangeDates={() => {
+              setMobileBasketOpen(false);
+              switchStudioTab("wedding");
+            }}
+            onBrowse={() => {
+              setMobileBasketOpen(false);
+              switchStudioTab("catalogue");
+            }}
             onCheckout={() => {
               setMobileBasketOpen(false);
               setStep("checkout");
