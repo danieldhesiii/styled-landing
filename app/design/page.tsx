@@ -124,6 +124,7 @@ function DesignStudio() {
   >({});
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
   const [workspaceSaving, setWorkspaceSaving] = useState(false);
+  const [workspaceTouched, setWorkspaceTouched] = useState(false);
   const [workspaceError, setWorkspaceError] = useState("");
   const [savedWorkspace, setSavedWorkspace] = useState("");
   const workspaceRevision = useRef(0),
@@ -615,6 +616,7 @@ function DesignStudio() {
   const originalImage = brief.uploadedImages[0]?.url ?? venue.image ?? null;
 
   const patchBrief = (patch: Partial<Brief>) => {
+    setWorkspaceTouched(true);
     if (patch.venueId !== undefined) {
       const url = new URL(window.location.href);
       if (patch.venueId.startsWith("listing:"))
@@ -709,14 +711,14 @@ function DesignStudio() {
     workspaceLoaded &&
     workspaceFingerprint(workspaceData(brief, boards)) !== savedWorkspace;
   useEffect(() => {
-    if (!workspaceDirty) return;
+    if (!workspaceDirty || (!savedWorkspace && !workspaceTouched)) return;
     const protect = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", protect);
     return () => window.removeEventListener("beforeunload", protect);
-  }, [workspaceDirty]);
+  }, [workspaceDirty, savedWorkspace, workspaceTouched]);
   useEffect(() => {
     const back = () => setStep("studio");
     window.addEventListener("popstate", back);
@@ -1293,12 +1295,13 @@ function DesignStudio() {
                       onVenue={(id) =>
                         patchBrief({ venueId: id, venueChoice: "exploring" })
                       }
-                      onAddAngle={(photo) =>
+                      onAddAngle={(photo) => {
+                        setWorkspaceTouched(true);
                         setBrief((b) => ({
                           ...b,
                           uploadedImages: [...b.uploadedImages, photo],
-                        }))
-                      }
+                        }));
+                      }}
                       onRemoveAngle={removeAngle}
                       onShopLook={() => {
                         lookProductsRef.current?.scrollIntoView({
