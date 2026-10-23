@@ -240,7 +240,7 @@ export default function RenderStage({
   // fresh look from the venue photo, which replaces the current render.
   async function generate(
     useStyleId: string,
-    opts?: { parentRenderId?: string },
+    opts?: { parentRenderId?: string; draft?: boolean },
   ) {
     if (sending) return;
     const refining = !!opts?.parentRenderId;
@@ -279,6 +279,7 @@ export default function RenderStage({
           ...(opts?.parentRenderId
             ? { parentRenderId: opts.parentRenderId }
             : {}),
+          ...(opts?.draft ? { draft: true } : {}),
         }),
       });
       const data = await res.json().catch(() => null);
@@ -1108,6 +1109,18 @@ export default function RenderStage({
                     : renderUrl
                       ? `Generate ${getStyle(draftStyleId).name} →`
                       : "Generate →"}
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  generate(draftStyleId || "none", { draft: true })
+                }
+                disabled={
+                  sending || (draftStyleId === "" && !description.trim())
+                }
+                className="mt-2 w-full text-center text-xs text-ink/45 hover:text-ink/70 disabled:pointer-events-none transition-colors"
+              >
+                Quick preview — faster, lower quality
               </button>
             </>
           )}

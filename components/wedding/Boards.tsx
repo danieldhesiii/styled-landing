@@ -178,8 +178,11 @@ export default function Boards({
       <BoardImports
         disabled={disabled || !board}
         onUpload={() => file.current?.click()}
-        onLink={async (url) => {
-          if (!(await pin("note", undefined, `Pinterest: ${url}`)))
+        onLink={async (url, linkName) => {
+          const text = linkName
+            ? `Pinterest: ${url} ${linkName}`
+            : `Pinterest: ${url}`;
+          if (!(await pin("note", undefined, text)))
             throw Error("Could not save link");
         }}
       />
@@ -402,10 +405,19 @@ export default function Boards({
           )}
           <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {board.pins.map((p) => {
-              const sourceLink =
+              const pinterest =
                 p.kind === "note" && p.text.startsWith("Pinterest: ")
-                  ? pinterestLink(p.text.slice(11))
+                  ? (() => {
+                      const rest = p.text.slice(11);
+                      const sp = rest.indexOf(" ");
+                      const rawUrl = sp === -1 ? rest : rest.slice(0, sp);
+                      return {
+                        link: pinterestLink(rawUrl),
+                        name: sp === -1 ? "" : rest.slice(sp + 1).trim(),
+                      };
+                    })()
                   : null;
+              const sourceLink = pinterest?.link ?? null;
               const item = p.kind === "product" ? getItem(p.ref || "") : null;
               return (
                 <article
@@ -446,7 +458,7 @@ export default function Boards({
                       {item?.name ||
                         (p.kind === "note"
                           ? sourceLink
-                            ? "Pinterest board or Pin"
+                            ? pinterest?.name || "Pinterest board or Pin"
                             : p.text
                           : p.kind === "product"
                             ? "Piece no longer listed"

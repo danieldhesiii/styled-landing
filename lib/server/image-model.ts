@@ -33,6 +33,7 @@ export async function editImage(opts: {
   images: Buffer[];
   prompt: string;
   size: string;
+  quality?: string; // override env.renderQuality (e.g. "low" for draft renders)
 }): Promise<EditResult> {
   const key = env.openaiApiKey;
 
@@ -44,7 +45,7 @@ export async function editImage(opts: {
   );
   form.append("prompt", opts.prompt);
   form.append("size", opts.size);
-  form.append("quality", env.renderQuality);
+  form.append("quality", opts.quality ?? env.renderQuality);
   form.append("output_format", "jpeg");
   form.append("n", "1");
 
@@ -89,4 +90,94 @@ export async function editImage(opts: {
     throw new ImageModelError("failed", "Image model returned no image");
   }
   return { image: Buffer.from(b64, "base64"), usage: json?.usage ?? null };
+}
+
+// Gemini image-editing path. Uses Google AI Studio API with an API key.
+// images[0] is the venue photo to edit; additional images are references.
+async function editImageGemini(opts: {
+  images: Buffer[];
+  prompt: string;
+}): Promise<EditResult> {
+  const key = env.googleAiApiKeyIfSet;
+  if (!key) throw new ImageModelError("auth", "GOOGLE_AI_API_KEY is not configured");
+
+  // Build parts array: all images first (inlineData), then the text prompt.
+  const parts: unknown[] = opts.images.map((img) => ({
+    inlineData: { mimeType: "image/jpeg", data: img.toString("base64") },
+  }));
+  parts.push({ text: opts.prompt });
+
+  let res: Response;
+  try {
+    res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(env.geminiImageModel)}:generateContent?key=${encodeURIComponent(key)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts }],
+          generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
+        }),
+        signal: AbortSignal.timeout(240_000),
+      },
+    );
+  } catch (err) {
+    const timedOut =
+      err instanceof Error &&
+      (err.name === "TimeoutError" || err.name === "AbortError");
+    throw new ImageModelError(
+      timedOut ? "busy" : "failed",
+      timedOut ? "Image model timed out" : `Image model unreachable: ${String(err)}`,
+    );
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    let message = text.slice(0, 300);
+    try {
+      const j = JSON.parse(text);
+      message = j?.error?.message ?? message;
+    } catch { /* keep raw text */ }
+    if (res.status === 401 || res.status === 403)
+      throw new ImageModelError("auth", message);
+    if (res.status === 429 || res.status >= 500)
+      throw new ImageModelError("busy", `${res.status}: ${message}`);
+    throw new ImageModelError("failed", `${res.status}: ${message}`);
+  }
+
+  const json = await res.json().catch(() => null);
+  type GeminiPart = { inlineData?: { data?: string; mimeType?: string }; text?: string };
+  const candidate = json?.candidates?.[0];
+  const imagePart = (candidate?.content?.parts as GeminiPart[] | undefined)?.find(
+    (p) => p.inlineData?.data,
+  );
+  if (!imagePart?.inlineData?.data) {
+    throw new ImageModelError("failed", "Gemini returned no image");
+  }
+  return {
+    image: Buffer.from(imagePart.inlineData.data, "base64"),
+    usage: json?.usageMetadata ?? null,
+  };
+}
+
+// Top-level router: picks the right provider based on whether it's a draft or
+// hero render. Draft and refinements always use gpt-image-1 (fast/cheap). New
+// hero renders use Gemini when HERO_IMAGE_PROVIDER=gemini is set.
+export async function renderImage(opts: {
+  images: Buffer[];
+  prompt: string;
+  size: string;
+  provider?: "openai" | "gemini";
+  draft?: boolean;
+}): Promise<EditResult> {
+  if (!opts.draft && opts.provider === "gemini") {
+    return editImageGemini({ images: opts.images, prompt: opts.prompt });
+  }
+  // Draft mode uses low quality for speed; refinements/hero-openai use the env default.
+  return editImage({
+    images: opts.images,
+    prompt: opts.prompt,
+    size: opts.size,
+    quality: opts.draft ? "low" : undefined,
+  });
 }

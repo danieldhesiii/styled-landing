@@ -61,6 +61,18 @@ export const env = {
   get renderQuality() {
     return process.env.RENDER_QUALITY || "medium"; // low | medium | high
   },
+  // Hero renders use this provider for new looks (not drafts or refinements).
+  // "gemini" routes to Google AI (set GOOGLE_AI_API_KEY). Default "openai".
+  get heroImageProvider(): "openai" | "gemini" {
+    return process.env.HERO_IMAGE_PROVIDER === "gemini" ? "gemini" : "openai";
+  },
+  get googleAiApiKeyIfSet() {
+    return process.env.GOOGLE_AI_API_KEY || undefined;
+  },
+  // Override the Gemini model — defaults to the Flash image-gen model.
+  get geminiImageModel() {
+    return process.env.GEMINI_IMAGE_MODEL || "gemini-2.0-flash-preview-image-generation";
+  },
   get maxRendersPerDay() {
     return Number(process.env.MAX_RENDERS_PER_DAY) || 100;
   },

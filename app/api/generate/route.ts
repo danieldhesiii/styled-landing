@@ -65,6 +65,7 @@ interface GenerateRequest {
   setting?: unknown;
   weddingDate?: unknown;
   deliveryDate?: unknown;
+  draft?: unknown; // true = fast low-quality preview (gpt-image-1 low)
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -147,6 +148,15 @@ export async function POST(req: Request) {
     );
   if (parentRenderId && !UUID.test(parentRenderId))
     return fail(400, "Invalid render id.");
+
+  // Draft = fast low-quality preview (always gpt-image-1 low).
+  // Refinements (parentRenderId) = gpt-image-1 (quick edit of an existing render).
+  // New hero renders = env.heroImageProvider (Gemini when configured, else gpt-image-1).
+  const draft = body.draft === true;
+  const provider: "openai" | "gemini" =
+    draft || parentRenderId ? "openai" : env.heroImageProvider;
+  const resolvedModel =
+    provider === "gemini" ? env.geminiImageModel : env.imageModel;
 
   // Which wedding scene to set the room for (reception, ceremony, party, drinks,
   // proposal). Drives the layout instruction and which catalogue categories
@@ -358,7 +368,7 @@ export async function POST(req: Request) {
     parent_render_id: parentId,
     prompt,
     status: "running",
-    model: env.imageModel,
+    model: resolvedModel,
     style_id: renderStyleId,
     sample_venue_id: renderSampleVenueId,
     input_photo_ids: base.photoIds,
@@ -394,6 +404,8 @@ export async function POST(req: Request) {
       ],
       prompt,
       size,
+      draft,
+      provider,
     }),
   );
 

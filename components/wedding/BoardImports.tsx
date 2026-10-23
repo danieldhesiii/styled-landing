@@ -39,10 +39,11 @@ export default function BoardImports({
 }: {
   disabled: boolean;
   onUpload: () => void;
-  onLink: (url: string) => Promise<void>;
+  onLink: (url: string, name: string) => Promise<void>;
 }) {
   const [source, setSource] = useState<"google" | "pinterest" | null>(null),
     [link, setLink] = useState(""),
+    [linkName, setLinkName] = useState(""),
     [error, setError] = useState("");
   return (
     <section
@@ -153,13 +154,25 @@ export default function BoardImports({
                 }
                 setError("");
                 try {
-                  await onLink(url);
+                  await onLink(url, linkName.trim());
                   setLink("");
+                  setLinkName("");
                 } catch {
                   setError("Could not save the link. Please try again.");
                 }
               }}
             >
+              <label className="min-w-0 flex-1 basis-full text-xs">
+                Name this link
+                <input
+                  type="text"
+                  maxLength={80}
+                  value={linkName}
+                  onChange={(e) => setLinkName(e.target.value)}
+                  placeholder="e.g. Ceremony arch ideas"
+                  className="mt-2 block w-full rounded-lg border border-sand bg-white px-3 py-2.5 text-sm"
+                />
+              </label>
               <label className="min-w-0 flex-1 text-xs">
                 Pinterest board or Pin link
                 <input
