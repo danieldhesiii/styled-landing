@@ -26,7 +26,7 @@ export default function SiteHeader() {
           aria-label="Primary"
           className="hidden items-center gap-6 text-sm lg:flex"
         >
-          <HelpButton className="text-ink/70 hover:text-ink" />
+          <HelpButton hideOnHome className="text-ink/70 hover:text-ink" />
           {NAV_LINKS.map((l) => (
             <a
               key={l.href}
@@ -86,7 +86,10 @@ export default function SiteHeader() {
           className="border-t border-sand bg-cream/95 px-5 py-4 lg:hidden"
         >
           <div className="mx-auto flex max-w-6xl flex-col gap-1">
-            <HelpButton className="rounded-xl px-3 py-3 text-left text-ink/80 hover:bg-sand/60" />
+            <HelpButton
+              hideOnHome
+              className="rounded-xl px-3 py-3 text-left text-ink/80 hover:bg-sand/60"
+            />
             {NAV_LINKS.map((l) => (
               <a
                 key={l.href}

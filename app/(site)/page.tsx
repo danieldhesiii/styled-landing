@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import HelpButton from "@/components/help/HelpButton";
 import CtaEmailForm from "@/components/CtaEmailForm";
 import VisualizerPreview from "@/components/VisualizerPreview";
 
@@ -9,24 +8,6 @@ import VisualizerPreview from "@/components/VisualizerPreview";
  * Product: wedding visualiser + marketplace
  * Audience: couples planning their wedding
  * ------------------------------------------------------------------ */
-
-const HOW_IT_WORKS = [
-  {
-    n: "01",
-    title: "Find your pieces",
-    body: "Browse the catalogue, filter by supplier or style, and save favourites to your own shortlist. Add pieces to your basket when you’re ready.",
-  },
-  {
-    n: "02",
-    title: "Explore your setting",
-    body: "Choose a venue or use your own photograph. The separate AI visualiser lets you explore an illustrative preview whenever you want to.",
-  },
-  {
-    n: "03",
-    title: "Review your plans",
-    body: "Check your date, quantities and quote before submitting a reservation request. Track progress while Styled coordinates supplier confirmation.",
-  },
-];
 
 const FEATURES = [
   {
@@ -119,12 +100,6 @@ export default function Page() {
               >
                 Get started
               </Link>
-              <a
-                href="/#how"
-                className="rounded-full border border-ink/20 px-6 py-3 text-sm text-ink hover:border-ink/40 sm:text-base"
-              >
-                See how it works
-              </a>
             </div>
           </div>
           <VisualizerPreview />
@@ -148,33 +123,8 @@ export default function Page() {
         </div>
       </section>
 
-      {/* ------------------------------------------------- How it works */}
-      <section id="how" className="py-20">
-        <h2 className="font-serif text-4xl text-ink sm:text-5xl">
-          Build your wedding, one piece at a time.
-        </h2>
-        <p className="mt-3 max-w-lg text-ink/60">
-          Browse at your pace, save favourites and visualise when you want to.
-        </p>
-        <div className="mt-12 grid gap-10 sm:grid-cols-3">
-          {HOW_IT_WORKS.map((s) => (
-            <div key={s.n} className="flex flex-col gap-4">
-              <span className="font-serif text-5xl text-clay/50">{s.n}</span>
-              <h3 className="font-serif text-2xl text-ink">{s.title}</h3>
-              <p className="text-ink/60">{s.body}</p>
-            </div>
-          ))}
-        </div>
-        <div className="mt-8">
-          <HelpButton
-            label="Explore the website guides"
-            className="rounded-full border border-ink px-5 py-3 text-sm"
-          />
-        </div>
-      </section>
-
       {/* ------------------------------------------------- Style demo */}
-      <section className="rounded-3xl border border-sand bg-sand/30 px-6 py-14 sm:px-10">
+      <section className="mt-16 rounded-3xl border border-sand bg-sand/30 px-6 py-14 sm:px-10">
         <div className="mb-8 text-center">
           <h2 className="font-serif text-4xl text-ink sm:text-5xl">
             Try every style before you commit.

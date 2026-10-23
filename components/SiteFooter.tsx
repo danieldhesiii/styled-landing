@@ -23,7 +23,10 @@ export default function SiteFooter() {
             <span className="text-xs uppercase tracking-wide text-ink/40">
               Product
             </span>
-            <HelpButton className="text-left text-ink/70 hover:text-ink" />
+            <HelpButton
+              hideOnHome
+              className="text-left text-ink/70 hover:text-ink"
+            />
             <a href="/#features" className="text-ink/70 hover:text-ink">
               Features
             </a>
