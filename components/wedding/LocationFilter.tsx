@@ -90,13 +90,13 @@ export default function LocationFilter({
     >
       <div className="flex flex-wrap items-end gap-3">
         <form
-          className="flex min-w-0 flex-1 flex-wrap items-end gap-3"
+          className="grid w-full min-w-0 grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto] lg:w-auto lg:flex-1"
           onSubmit={(e) => {
             e.preventDefault();
             void search({ postcode: query });
           }}
         >
-          <label className="min-w-0 flex-1 text-sm">
+          <label className="min-w-0 text-sm">
             Wedding location
             <input
               maxLength={10}
@@ -108,7 +108,7 @@ export default function LocationFilter({
           </label>
           <button
             disabled={busy}
-            className="rounded-full bg-ink px-4 py-2 text-sm text-cream disabled:opacity-50"
+            className="shrink-0 whitespace-nowrap rounded-full bg-ink px-4 py-2 text-sm text-cream disabled:opacity-50"
           >
             {busy ? "Finding matches…" : "Apply location"}
           </button>
