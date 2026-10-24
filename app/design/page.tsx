@@ -1326,6 +1326,9 @@ function DesignStudio() {
                   <div ref={lookProductsRef} className="scroll-mt-24">
                     <LookProducts
                       itemIds={currentRender?.itemIds || []}
+                      report={currentRender?.look}
+                      illustrative={currentRender?.id === "placeholder"}
+                      styleId={currentRender?.demoStyleId || style.id}
                       ready={!!currentRender}
                       basket={basket}
                       onAdd={addItem}

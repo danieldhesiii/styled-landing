@@ -10,6 +10,8 @@ import BoardPicker, {
   type BoardPickerProps,
 } from "@/components/wedding/BoardPicker";
 import { imageDisclosure } from "@/lib/shopping";
+import { productsForLook } from "@/lib/look-products";
+import type { LookReport } from "@/lib/look";
 import { formatGBP } from "@/lib/quote";
 export default function LookProducts({
   boards,
@@ -17,6 +19,9 @@ export default function LookProducts({
   onAddToBoard,
   onChangeDates,
   itemIds,
+  report,
+  illustrative = false,
+  styleId,
   ready,
   basket,
   onAdd,
@@ -31,6 +36,9 @@ export default function LookProducts({
 }: BoardPickerProps & {
   onChangeDates?: () => void;
   itemIds: string[];
+  report?: LookReport;
+  illustrative?: boolean;
+  styleId?: string;
   ready: boolean;
   basket: BasketLine[];
   onAdd: (i: CatalogueItem) => void;
@@ -45,14 +53,14 @@ export default function LookProducts({
 }) {
   const {
     getItem,
+    items: catalogue,
     loading: catalogueLoading,
     error: catalogueError,
   } = useCatalogue();
   const [detailId, setDetailId] = useState<string | null>(null);
   const detail = detailId ? getItem(detailId) : undefined;
-  const items = [...new Set(itemIds)].flatMap((id) => {
-    const i = getItem(id);
-    return i ? [i] : [];
+  const { items, suggested, missing } = productsForLook({
+    catalogue, itemIds, report, illustrative, styleId,
   });
   return (
     <section
@@ -61,11 +69,12 @@ export default function LookProducts({
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="font-serif text-3xl">Pieces from this look</h2>
+          <h2 className="font-serif text-3xl">{suggested ? "Create this look" : "Pieces from this look"}</h2>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/60">
-            Explore the real catalogue pieces used to create this preview. Add
-            them here without leaving the visualiser. The image is illustrative;
-            exact details and availability need supplier confirmation.
+            {suggested
+              ? "This is an example image. These catalogue pieces match its style, rather than being the exact items pictured. Add them to your basket here without leaving the visualiser."
+              : "Explore the catalogue pieces used as references for this look. Add them here without leaving the visualiser. Generated details may vary from the actual products."}
+            {" "}Availability needs supplier confirmation.
           </p>
         </div>
         <button
@@ -91,8 +100,14 @@ export default function LookProducts({
       )}
       {ready && !items.length && !catalogueLoading && !catalogueError && (
         <p className="mt-5 rounded-xl bg-cream p-5 text-sm text-ink/60">
-          There are no currently listed catalogue pieces linked to this look.
-          You can still browse the full catalogue.
+          {suggested
+            ? "No matching pieces are currently listed for this style. Browse the full catalogue for more ideas."
+            : "This look has no currently listed product references. Generate a new look with catalogue pieces, or browse the full catalogue."}
+        </p>
+      )}
+      {ready && missing > 0 && !catalogueLoading && !catalogueError && (
+        <p className="mt-4 text-sm text-ink/60">
+          {missing} linked {missing === 1 ? "piece is" : "pieces are"} no longer listed. Available pieces are shown below.
         </p>
       )}
       {ready && items.length > 0 && (

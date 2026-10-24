@@ -13,6 +13,7 @@ export interface RenderRef {
   url: string;
   /** Catalogue item ids that make up this render — the "what's in the picture" list. */
   itemIds?: string[];
+  demoStyleId?: string;
   /** What the picture was built from: pieces in it, pieces left out and why. */
   look?: LookReport;
 }
@@ -306,7 +307,11 @@ export default function RenderStage({
           setShowShopPrompt(true);
         }
       } else if (data?.imageUrl) {
-        onRender({ id: data.renderId ?? "placeholder", url: data.imageUrl });
+        onRender({
+          id: data.renderId ?? "placeholder", url: data.imageUrl,
+          itemIds: data.itemIds, look: data.look,
+          ...(!data.renderId ? { demoStyleId: useStyleId } : {}),
+        });
         setShowShopPrompt(true);
       } else {
         // The server declined (e.g. a render is still in flight, a daily limit,
