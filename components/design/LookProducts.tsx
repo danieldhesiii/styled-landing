@@ -6,9 +6,7 @@ import type { BasketLine, CatalogueItem } from "@/lib/types";
 import { useState } from "react";
 import ProductDetails from "./ProductDetails";
 import ProductPurchase from "./ProductPurchase";
-import BoardPicker, {
-  type BoardPickerProps,
-} from "@/components/wedding/BoardPicker";
+import type { BoardPickerProps } from "@/components/wedding/BoardPicker";
 import { imageDisclosure } from "@/lib/shopping";
 import { productsForLook } from "@/lib/look-products";
 import type { LookReport } from "@/lib/look";
@@ -111,40 +109,40 @@ export default function LookProducts({
         </p>
       )}
       {ready && items.length > 0 && (
-        <div className="mt-6 grid gap-5 sm:grid-cols-2">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((i) => {
             const line = basket.find((l) => l.itemId === i.id);
             return (
               <article
                 key={i.id}
-                className="overflow-hidden rounded-xl border border-sand"
+                className="relative flex flex-col overflow-hidden rounded-xl border border-sand"
               >
                 {i.image ? (
                   <img
                     src={i.image}
                     alt={i.name}
-                    className="aspect-[16/10] w-full object-cover"
+                    className="aspect-[2/1] w-full object-cover"
                     loading="lazy"
                   />
                 ) : (
-                  <div className="flex aspect-[16/10] items-center justify-center bg-cream text-4xl">
+                  <div className="flex aspect-[2/1] items-center justify-center bg-cream text-4xl">
                     {i.icon}
                   </div>
                 )}
-                <div className="p-4">
+                <div className="flex flex-1 flex-col p-3">
                   <p className="mb-2 text-xs text-ink/60">
                     {imageDisclosure(i)}
                   </p>
-                  <h3 className="font-serif text-2xl">{i.name}</h3>
+                  <h3 className="font-serif text-xl">{i.name}</h3>
                   <button
                     type="button"
                     onClick={() => setDetailId(i.id)}
                     className="mt-2 min-h-11 text-xs underline"
                   >
-                    View details and terms
+                    Details, terms and boards
                   </button>
                   <p className="mt-1 text-xs text-ink/60">{i.supplier}</p>
-                  <p className="mt-3 text-lg">
+                  <p className="mt-2 text-base">
                     {formatGBP(i.unitPrice)}{" "}
                     <span className="text-xs text-ink/60">{i.unit}</span>
                   </p>
@@ -154,9 +152,6 @@ export default function LookProducts({
                       madeToOrder={i.stock === "made_to_order"}
                     />
                   </div>
-                  <p className="mt-2 text-xs text-ink/50">
-                    Availability is confirmed manually before booking.
-                  </p>
                   <ProductPurchase
                     item={i}
                     line={line}
@@ -167,16 +162,9 @@ export default function LookProducts({
                     onChangeDates={onChangeDates}
                     onAlternatives={onBrowse}
                   />
-                  <BoardPicker
-                    boards={boards}
-                    boardsBusy={
-                      boardsBusy || catalogueLoading || !!catalogueError
-                    }
-                    onAddToBoard={onAddToBoard}
-                    target={{ kind: "product", ref: i.id }}
-                  />
                   <button
                     type="button"
+                    aria-label={savedIds.includes(i.id) ? `Unsave ${i.name}` : `Save ${i.name}`}
                     aria-pressed={savedIds.includes(i.id)}
                     disabled={
                       catalogueLoading ||
@@ -185,13 +173,13 @@ export default function LookProducts({
                       saving.has(i.id)
                     }
                     onClick={() => onSave(i.id)}
-                    className="mt-3 w-full rounded-full border border-sand px-4 py-2 text-sm disabled:opacity-50"
+                    className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full border border-sand bg-white text-lg shadow-sm disabled:opacity-50"
                   >
                     {saving.has(i.id)
-                      ? "Saving…"
+                      ? "…"
                       : savedIds.includes(i.id)
-                        ? "♥ Saved"
-                        : "♡ Save item"}
+                        ? "♥"
+                        : "♡"}
                   </button>
                 </div>
               </article>
