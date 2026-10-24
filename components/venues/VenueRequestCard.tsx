@@ -1,4 +1,5 @@
 "use client";
+import { dateRangeLabel } from "@/lib/booking-dates";
 import VenueMessageThread from "./VenueMessageThread";
 import { ENQUIRY_STATUSES } from "@/lib/venue-details";
 export interface VenueRequest {
@@ -7,6 +8,8 @@ export interface VenueRequest {
   email: string;
   phone: string | null;
   guest_count: number | null;
+  booking_start?: string | null;
+  booking_end?: string | null;
   preferred_date: string | null;
   viewing_time?: string | null;
   next_actor?: string;
@@ -47,6 +50,7 @@ export default function VenueRequestCard({
         </span>
       </div>
       <p className="mt-3 text-sm">
+        {r.request_kind !== "viewing" && <span className="mb-1 block text-clay">Requested venue hire: {dateRangeLabel(r.booking_start || r.preferred_date, r.booking_end || r.preferred_date)}</span>}
         {r.preferred_date}{r.viewing_time ? ` at ${r.viewing_time.slice(0, 5)} UK time` : ""} · {r.guest_count} wedding guests
         {r.phone ? ` · ${r.phone}` : ""}
       </p>

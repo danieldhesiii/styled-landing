@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import type { WeddingBrief } from "@/lib/wedding";
+import { dateRangeLabel } from "@/lib/booking-dates";
 import { deliveryDay } from "@/lib/wedding";
 import DeliveryDates from "./DeliveryDates";
 import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
@@ -129,7 +130,7 @@ export default function MyWedding({
                     [
                       "Your day",
                       dateLabel,
-                      `${estimated ? "Estimated " : ""}${brief.guestCount} guests${brief.deliverySameDay === false ? " · Delivery: " + (brief.deliveryDate ? new Date(brief.deliveryDate + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "undecided") : ""}`,
+                      `${estimated ? "Estimated " : ""}${brief.guestCount} guests · Default hire: ${dateRangeLabel(deliveryDay(brief), brief.returnDate || brief.weddingDate)}`,
                       "day",
                     ],
                     [

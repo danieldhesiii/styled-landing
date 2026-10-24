@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/server/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { validateBasket } from "@/lib/server/quote";
 import { checkQuantities } from "@/lib/server/availability";
+import { resolveHireDates } from "@/lib/booking-dates";
 import { deliveryError } from "@/lib/wedding";
 import { isValidDay, todayUtc } from "@/lib/availability";
 
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
 
-  let body: { date?: unknown; basket?: unknown; delivery?: unknown };
+  let body: { date?: unknown; basket?: unknown; delivery?: unknown; returnDate?: unknown; itemDates?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -52,13 +53,20 @@ export async function POST(req: Request) {
     );
 
   try {
-    const checks = await checkQuantities(
-      createAdminClient(),
-      basket.lines,
-      body.date,
-      undefined,
-      start,
-    );
+    let ranges;
+    try {
+      ranges = resolveHireDates(body.itemDates, basket.lines.map(l => l.itemId), {
+        start, end: (body.returnDate === undefined ? body.date : body.returnDate) as string,
+      });
+    } catch (error) {
+      return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Invalid hire dates." }, { status: 400 });
+    }
+    const admin = createAdminClient();
+    const results = await Promise.all(basket.lines.map(line => {
+      const dates = ranges.get(line.itemId)!;
+      return checkQuantities(admin, [line], dates.end, undefined, dates.start);
+    }));
+    const checks = new Map(results.flatMap(r => [...r]));
     return NextResponse.json({
       ok: true,
       date: body.date,

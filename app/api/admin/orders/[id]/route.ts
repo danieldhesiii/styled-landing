@@ -101,7 +101,7 @@ export async function PATCH(
       const { data: lines } = await admin
         .from("order_lines")
         .select(
-          "id, product_id, product_name, supplier_name, quantity, supplier_status, needed_date",
+          "id, product_id, product_name, supplier_name, quantity, supplier_status, needed_date, return_date",
         )
         .eq("order_id", id);
       const blocking = blockingLines(lines ?? []);
@@ -133,7 +133,7 @@ export async function PATCH(
             return checkQuantities(
               admin,
               [w],
-              order.wedding_date as string,
+              (line?.return_date || order.wedding_date) as string,
               id,
               line?.needed_date || order.wedding_date,
             );

@@ -76,7 +76,8 @@ export async function checkQuantities(
   const out = new Map<string, ItemAvailability>();
   for (const w of wanted) {
     const a = raw.get(w.itemId);
-    if (a) out.set(w.itemId, classifyAvailability(a, w.quantity));
+    if (!a) throw new Error("Availability is missing for a requested item.");
+    out.set(w.itemId, classifyAvailability(a, w.quantity));
   }
   return out;
 }

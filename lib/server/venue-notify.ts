@@ -14,7 +14,7 @@ export async function notifyVenueRequest(id: string, kind: "new" | "response") {
     const { data: r, error } = await admin
       .from("venue_enquiries")
       .select(
-        "id,venue_id,email,name,preferred_date,request_kind,status,response,alternative_dates",
+        "id,venue_id,email,name,preferred_date,booking_start,booking_end,request_kind,status,response,alternative_dates",
       )
       .eq("id", id)
       .single();
@@ -24,6 +24,7 @@ export async function notifyVenueRequest(id: string, kind: "new" | "response") {
       .select("name")
       .eq("id", r.venue_id)
       .single();
+    const requestedDates = r.request_kind === "booking" ? `${r.booking_start || r.preferred_date} to ${r.booking_end || r.preferred_date} (wedding ${r.preferred_date})` : r.preferred_date;
     const subject =
       kind === "new"
         ? `Styled: your ${r.request_kind} request for ${v?.name || "your venue"}`
@@ -32,7 +33,7 @@ export async function notifyVenueRequest(id: string, kind: "new" | "response") {
       `Hi ${r.name},`,
       "",
       kind === "new"
-        ? `We received your ${r.request_kind} request for ${r.preferred_date}. The venue will review your plans. This does not reserve the date and no payment has been taken.`
+        ? `We received your ${r.request_kind} request for ${requestedDates}. The venue will review your plans. This does not reserve the date and no payment has been taken.`
         : `Your request is now: ${ENQUIRY_STATUSES[r.status] || r.status}.`,
       r.response || "",
       r.alternative_dates?.length
@@ -66,7 +67,7 @@ export async function notifyVenueRequest(id: string, kind: "new" | "response") {
       const to = users.flatMap((u) =>
         u.data.user?.email ? [u.data.user.email] : [],
       );
-      const notice = `New ${r.request_kind} request for ${v?.name || "your venue"}, ${r.preferred_date}. Review and respond in your venue dashboard: ${env.siteUrl}/venue-portal. Styled staff can also review it in the admin venue area. No payment has been taken.`;
+      const notice = `New ${r.request_kind} request for ${v?.name || "your venue"}, ${requestedDates}. Review and respond in your venue dashboard: ${env.siteUrl}/venue-portal. Styled staff can also review it in the admin venue area. No payment has been taken.`;
       await sendEmail({
         to,
         subject: "New Styled venue request to review",

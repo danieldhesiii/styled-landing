@@ -98,6 +98,7 @@ export interface SampleVenue {
 export interface BasketLine {
   itemId: string;
   quantity: number;
+  hireDates?: import("./booking-dates").HireDates;
 }
 
 export interface QuoteLine {

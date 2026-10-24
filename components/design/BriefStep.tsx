@@ -20,6 +20,7 @@ export interface Brief {
   venuePostcode?: string;
   deliverySameDay?: boolean;
   deliveryDate?: string;
+  returnDate?: string;
   venueId: string;
   uploadedImages: UploadedPhoto[];
   styleId: string;

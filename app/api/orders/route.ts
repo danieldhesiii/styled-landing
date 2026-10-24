@@ -6,10 +6,10 @@ import { clientIpHash } from "@/lib/server/limits";
 import { priceBasket, publicQuote } from "@/lib/server/quote";
 import {
   itemsBookedTooLate,
-  isValidDeliveryDate,
   loadOrderView,
   validateOrderFields,
 } from "@/lib/server/orders";
+import { resolveHireDates, type HireDates } from "@/lib/booking-dates";
 import { deliveryError } from "@/lib/wedding";
 import { checkQuantities } from "@/lib/server/availability";
 import {
@@ -157,6 +157,22 @@ export async function POST(req: Request) {
   }
   if (!priced.ok) return fail(priced.status, priced.error, priced.extra);
 
+  let itemDates: Map<string, HireDates>;
+  try {
+    itemDates = resolveHireDates(body.itemDates, priced.lines.map(l => l.itemId), {
+      start: defaultDelivery, end: (body.returnDate === undefined ? f.weddingDate : body.returnDate) as string,
+    });
+    // Older callers may still specify a date for an entire supplier.
+    if (body.itemDates === undefined && deliveryBySupplier.size) {
+      for (const line of priced.quote.lines) {
+        const dates = resolveHireDates(undefined, [line.item.id], { start: deliveryDateFor(line.item.supplier), end: f.weddingDate });
+        itemDates.set(line.item.id, dates.get(line.item.id)!);
+      }
+    }
+  } catch (error) {
+    return fail(400, error instanceof Error ? error.message : "Invalid hire dates.");
+  }
+
   // Notice period: each item must be bookable far enough before the date it's
   // actually needed — its delivery date, which can be earlier than the wedding.
   const itemsOnOrder = [...priced.items.values()].filter((i) =>
@@ -166,7 +182,7 @@ export async function POST(req: Request) {
   if (f.weddingDate) {
     const byDate = new Map<string, typeof itemsOnOrder>();
     for (const item of itemsOnOrder) {
-      const d = deliveryDateFor(item.supplier) ?? f.weddingDate;
+      const d = itemDates.get(item.id)!.start;
       (byDate.get(d) ?? byDate.set(d, []).get(d)!).push(item);
     }
     for (const [d, items] of byDate)
@@ -180,7 +196,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // Is everything actually free on their wedding date? (The database re-checks this
+  // Is every item free for its full requested hire period? (The database re-checks this
   // under a lock when the order is written, so this is for a clear early answer.)
   const soldOutView = (
     rows: {
@@ -200,17 +216,17 @@ export async function POST(req: Request) {
     }));
   if (f.weddingDate) {
     try {
-      const byStart = new Map<string, { itemId: string; quantity: number }[]>();
+      const byStart = new Map<string, { dates: HireDates; lines: { itemId: string; quantity: number }[] }>();
       for (const line of priced.quote.lines) {
-        const start = deliveryDateFor(line.item.supplier);
-        byStart.set(start, [
-          ...(byStart.get(start) || []),
-          { itemId: line.item.id, quantity: line.quantity },
-        ]);
+        const dates = itemDates.get(line.item.id)!;
+        const key = `${dates.start}:${dates.end}`;
+        const group = byStart.get(key) ?? { dates, lines: [] };
+        group.lines.push({ itemId: line.item.id, quantity: line.quantity });
+        byStart.set(key, group);
       }
       const results = await Promise.all(
-        [...byStart].map(([start, lines]) =>
-          checkQuantities(admin, lines, f.weddingDate!, undefined, start),
+        [...byStart.values()].map(({ dates, lines }) =>
+          checkQuantities(admin, lines, dates.end, undefined, dates.start),
         ),
       );
       const checks = new Map(results.flatMap((r) => [...r]));
@@ -220,7 +236,7 @@ export async function POST(req: Request) {
         if (again) return again;
         return fail(
           409,
-          "Some items aren't available between delivery and your wedding day.",
+          "Some items aren't available for their requested hire periods.",
           {
             soldOut: soldOutView(
               short.map(([itemId, a]) => ({
@@ -274,7 +290,8 @@ export async function POST(req: Request) {
       quantity: l.quantity,
       line_total_pence: l.lineTotalPence,
       // Delivery date, if different from the wedding day (else create_order defaults it).
-      needed_date: deliveryDateFor(l.item.supplier),
+      needed_date: itemDates.get(l.item.id)!.start,
+      return_date: itemDates.get(l.item.id)!.end,
     })),
   });
 
@@ -291,7 +308,7 @@ export async function POST(req: Request) {
     }
     return fail(
       409,
-      "Some items aren't available between delivery and your wedding day.",
+      "Some items aren't available for their requested hire periods.",
       {
         soldOut: soldOutView(
           rows.map((r) => ({

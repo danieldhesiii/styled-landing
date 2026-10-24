@@ -1,11 +1,13 @@
 "use client";
 import type { PlanningDetails } from "@/lib/wedding";
 import { deliveryDay, deliveryError } from "@/lib/wedding";
+import { hireDateError } from "@/lib/booking-dates";
 import { todayUtc } from "@/lib/availability";
 export default function DeliveryDates({
   weddingDate,
   deliverySameDay = true,
   deliveryDate = "",
+  returnDate = "",
   onChange,
   id = "wedding",
   compact = false,
@@ -33,7 +35,7 @@ export default function DeliveryDates({
       }
     >
       <legend className="mb-3 font-serif text-2xl">
-        Wedding and delivery dates
+        Wedding and default hire dates
       </legend>
       <label className="block text-sm" htmlFor={`${id}-event`}>
         Wedding day
@@ -69,11 +71,18 @@ export default function DeliveryDates({
           />
         </label>
       )}
+      <label className="block text-sm" htmlFor={`${id}-return`}>
+        Return / supplier collection day
+        <input id={`${id}-return`} type="date" min={weddingDate || todayUtc()}
+          value={returnDate || weddingDate}
+          onChange={e => onChange({ returnDate: e.target.value })} className={field} />
+      </label>
       <p className="text-xs leading-relaxed text-ink/60 sm:col-span-3">
-        Getting married on Sunday? Choose Saturday delivery to allow time to set
-        up. Delivery times, charges and collection are confirmed with your
-        suppliers.
+        Set the usual hire period here, for example Saturday delivery and Monday return for a Sunday wedding.
+        You can choose different dates for each item in your basket. These are requests; suppliers confirm times, availability and any extra hire charges.
       </p>
+      {returnDate && hireDateError(deliveryDay({ weddingDate, deliverySameDay, deliveryDate }), returnDate) &&
+        <p role="alert" className="text-sm text-clay sm:col-span-3">{hireDateError(deliveryDay({ weddingDate, deliverySameDay, deliveryDate }), returnDate)}</p>}
       {error && (
         <p role="alert" className="text-sm text-clay sm:col-span-3">
           {error}

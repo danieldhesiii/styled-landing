@@ -54,7 +54,7 @@ export async function loadAdminOrder(admin: SupabaseClient, id: string) {
         return checkQuantities(
           admin,
           [w],
-          order.wedding_date as string,
+          (line?.return_date || order.wedding_date) as string,
           id,
           line?.needed_date || order.wedding_date,
         );

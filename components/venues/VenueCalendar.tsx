@@ -1,19 +1,30 @@
 "use client";
+import { isValidDay } from "@/lib/availability";
 import { useEffect, useState } from "react";
 export default function VenueCalendar({
   slug,
   value,
   onChange,
+  rangeStart,
+  rangeEnd,
 }: {
   slug: string;
+  rangeStart?: string;
+  rangeEnd?: string;
   value: string;
   onChange: (day: string) => void;
 }) {
   const [month, setMonth] = useState(
-      () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+      () => { const d = isValidDay(value) ? new Date(`${value}T12:00:00`) : new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); },
     ),
     [blocked, setBlocked] = useState<string[] | null>(null),
     [failed, setFailed] = useState(false);
+  useEffect(() => {
+    if (isValidDay(value)) {
+      const d = new Date(`${value}T12:00:00`);
+      setMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+    }
+  }, [value]);
   useEffect(() => {
     const controller = new AbortController();
     setBlocked(null);
@@ -87,7 +98,7 @@ export default function VenueCalendar({
               aria-pressed={value === day}
               aria-label={`${day}${unavailable ? " unavailable" : ""}`}
               onClick={() => onChange(day)}
-              className={`rounded-lg py-2 disabled:opacity-25 ${value === day ? "bg-ink text-cream" : "hover:bg-sand"}`}
+              className={`rounded-lg py-2 disabled:opacity-25 ${value === day ? "bg-ink text-cream" : rangeStart && rangeEnd && day >= rangeStart && day <= rangeEnd ? "bg-clay/15 text-ink" : "hover:bg-sand"}`}
             >
               {i + 1}
             </button>

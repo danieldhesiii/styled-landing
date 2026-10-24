@@ -1,5 +1,7 @@
 "use client";
 
+import ItemHireDates from "@/components/wedding/ItemHireDates";
+import { hireDateError, itemHireDates, type HireDates } from "@/lib/booking-dates";
 import HelpButton from "@/components/help/HelpButton";
 import { useMemo, useState } from "react";
 import type { BasketLine } from "@/lib/types";
@@ -16,6 +18,8 @@ interface Props {
   budget: number | null;
   weddingDate: string;
   deliveryDate?: string;
+  returnDate?: string;
+  onItemDates: (itemId: string, dates?: HireDates) => void;
   onQty: (itemId: string, quantity: number) => void;
   onRemove: (itemId: string) => void;
   onCheckout: () => void;
@@ -29,6 +33,8 @@ export default function BasketPanel({
   budget,
   weddingDate,
   deliveryDate,
+  returnDate,
+  onItemDates,
   onQty,
   onRemove,
   onCheckout,
@@ -49,8 +55,13 @@ export default function BasketPanel({
     basket,
     refreshKey,
     deliveryDate ?? weddingDate,
+    returnDate || weddingDate,
   );
-  const dateProblem = deliveryError(weddingDate, deliveryDate ?? weddingDate);
+  const defaults = { start: deliveryDate ?? weddingDate, end: returnDate || weddingDate };
+  const dateProblem = deliveryError(weddingDate, defaults.start) || basket.map(line => {
+    const d = itemHireDates(line, defaults);
+    return hireDateError(d.start, d.end);
+  }).find(Boolean) || null;
   const missing = basket.filter((line) => !getItem(line.itemId));
   const invalid = basket.some(
     (line) =>
@@ -223,6 +234,8 @@ export default function BasketPanel({
                           ×
                         </button>
                       </div>
+                      <ItemHireDates line={basket.find(l => l.itemId === line.item.id)!} name={line.item.name}
+                        defaults={defaults} onChange={onItemDates} id={`basket-${line.item.id}`} />
                       {(() => {
                         const a = availability.lines[line.item.id];
                         if (

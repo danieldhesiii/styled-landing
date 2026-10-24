@@ -27,10 +27,12 @@ export function parseWorkspace(raw: unknown): WorkspaceData {
   )
     throw Error("Check your guest count and budget.");
   const weddingDate = text(b.weddingDate, 10),
-    deliveryDate = text(b.deliveryDate, 10);
+    deliveryDate = text(b.deliveryDate, 10),
+    returnDate = text(b.returnDate, 10);
   if (
     (weddingDate && !isValidDay(weddingDate)) ||
-    (deliveryDate && !isValidDay(deliveryDate))
+    (deliveryDate && !isValidDay(deliveryDate)) ||
+    (returnDate && !isValidDay(returnDate))
   )
     throw Error("Choose valid dates.");
   const photoIds = Array.isArray(b.photoIds) ? b.photoIds : [];
@@ -106,6 +108,7 @@ export function parseWorkspace(raw: unknown): WorkspaceData {
       budget,
       weddingDate,
       deliveryDate,
+      returnDate,
       deliverySameDay: b.deliverySameDay !== false,
       venueChoice:
         b.venueChoice === "have"

@@ -588,6 +588,7 @@ function DesignStudio() {
     brief.weddingDate,
     brief.guestCount,
     deliveryDay(brief),
+    brief.returnDate || brief.weddingDate,
   );
 
   const venue =
@@ -744,6 +745,9 @@ function DesignStudio() {
   }
   function removeItem(itemId: string) {
     setBasket((b) => b.filter((l) => l.itemId !== itemId));
+  }
+  function setItemDates(itemId: string, hireDates?: import("@/lib/booking-dates").HireDates) {
+    setBasket(lines => lines.map(line => line.itemId === itemId ? { ...line, hireDates } : line));
   }
   function setQty(itemId: string, quantity: number) {
     setBasket((b) =>
@@ -1167,6 +1171,7 @@ function DesignStudio() {
                     weddingDate={brief.weddingDate}
                     deliverySameDay={brief.deliverySameDay}
                     deliveryDate={brief.deliveryDate}
+                    returnDate={brief.returnDate}
                     onDates={patchBrief}
                     availability={shopAvailability}
                     lookSignal={shopLookSignal}
@@ -1350,6 +1355,8 @@ function DesignStudio() {
                     budget={budgetUnset ? null : brief.budget}
                     weddingDate={brief.weddingDate}
                     deliveryDate={deliveryDay(brief)}
+                    returnDate={brief.returnDate}
+                    onItemDates={setItemDates}
                     onQty={setQty}
                     onRemove={removeItem}
                     onChangeDates={() => switchStudioTab("wedding")}
@@ -1365,10 +1372,12 @@ function DesignStudio() {
         {step === "checkout" && (
           <CheckoutStep
             basket={basket}
+            onItemDates={setItemDates}
             weddingDate={brief.weddingDate}
             onWeddingDate={(d) => patchBrief({ weddingDate: d })}
             deliverySameDay={brief.deliverySameDay}
             deliveryDate={brief.deliveryDate}
+            returnDate={brief.returnDate}
             onDates={patchBrief}
             styleId={brief.styleId}
             guestCount={brief.guestCount}
@@ -1408,6 +1417,8 @@ function DesignStudio() {
             budget={budgetUnset ? null : brief.budget}
             weddingDate={brief.weddingDate}
             deliveryDate={deliveryDay(brief)}
+            returnDate={brief.returnDate}
+            onItemDates={setItemDates}
             onQty={setQty}
             onRemove={removeItem}
             onChangeDates={() => {

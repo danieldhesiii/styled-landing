@@ -31,8 +31,8 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
         body: "Tell us whether you already have a venue, are looking for one, or are just exploring. Add the wedding location postcode for relevant discovery.",
       },
       {
-        title: "Set wedding and delivery days",
-        body: "Delivery follows your wedding date while Same as wedding day is checked. Untick it for an earlier setup day. Stock is checked from delivery through the wedding.",
+        title: "Set your event and hire dates",
+        body: "Keep the wedding date as your event date. Choose default delivery and return days, then use Different dates for this item in your basket for exceptions. Stock is checked across each item’s full hire period.",
       },
       {
         title: "Keep your photographs",
@@ -70,7 +70,7 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
     steps: [
       {
         title: "Set your wedding plan",
-        body: "Use Wedding plan for your venue, guest count and budget. Set a wedding day and, if different, an earlier delivery day. Stock is checked across that interval. A venue choice is optional.",
+        body: "Use Wedding plan for your venue, guest count and budget. Set a wedding day and default delivery and return dates. Individual items can have their own hire periods in your basket. A venue choice is optional.",
       },
       {
         title: "Browse your way",
@@ -202,7 +202,7 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
       },
       {
         title: "Enter your reservation details",
-        body: "Request supplier confirmation opens the checkout details. Review the latest quote, your contact details and delivery information before submitting a request.",
+        body: "Request supplier confirmation opens the checkout details. Review the latest estimate, your contact details and each item’s delivery and return dates before submitting. Different hire periods may change the final quote.",
       },
       {
         title: "Keep the confirmation",

@@ -1,4 +1,5 @@
 "use client";
+import { dateRangeLabel } from "@/lib/booking-dates";
 
 import Link from "next/link";
 import { use, useCallback, useEffect, useMemo, useState } from "react";
@@ -19,6 +20,7 @@ interface Line {
   supplier_note: string | null;
   supplier_decided_at: string | null;
   needed_date: string | null;
+  return_date: string | null;
 }
 interface OrderEvent {
   id: string;
@@ -212,9 +214,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
           {groups.map(([supplier, ls]) => {
             const pending = ls.filter((l) => l.supplier_status !== "confirmed");
-            // A supplier's delivery date (shared by its lines); flag when it's not the wedding day.
-            const deliveryDate = ls[0]?.needed_date ?? null;
-            const differentDay = deliveryDate && deliveryDate !== order.wedding_date;
             return (
               <div key={supplier} className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-sand bg-cream/50 px-5 py-3">
@@ -222,7 +221,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                     <p className="font-medium text-ink">{supplier}</p>
                     <p className="text-xs text-ink/45">
                       {money(ls.reduce((s, l) => s + l.line_total_pence, 0))}
-                      {differentDay && <span className="ml-2 text-clay">Deliver {longDay(deliveryDate)}</span>}
+
                     </p>
                   </div>
                   {requested && pending.length > 0 && (
@@ -246,6 +245,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-ink">{l.product_name}</p>
+                            <p className="mt-1 text-xs text-clay">Requested hire: {dateRangeLabel(l.needed_date || order.wedding_date, l.return_date || order.wedding_date)}</p>
                             <p className="text-xs text-ink/50">
                               {l.quantity} × {money(l.unit_price_pence)}
                               {l.unit ? ` ${l.unit}` : ""} = <span className="text-ink">{money(l.line_total_pence)}</span>

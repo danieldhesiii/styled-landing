@@ -42,7 +42,7 @@ export async function GET(req: Request) {
     auth.admin
       .from("venue_enquiries")
       .select(
-        "id,name,email,phone,guest_count,preferred_date,viewing_time,next_actor,message,status,request_kind,response,alternative_dates,responded_at,created_at",
+        "id,name,email,phone,guest_count,preferred_date,booking_start,booking_end,viewing_time,next_actor,message,status,request_kind,response,alternative_dates,responded_at,created_at",
       )
       .eq("venue_id", id)
       .order("created_at", { ascending: false })

@@ -1,4 +1,5 @@
 "use client";
+import { hireDateError } from "@/lib/booking-dates";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import VenueCalendar from "./VenueCalendar";
@@ -22,6 +23,9 @@ export default function VenueEnquiryForm({
 }) {
   const [weddingDate, setWeddingDate] = useState(initialKind === "viewing" ? "" : initialDate);
   const [viewingDate, setViewingDate] = useState(initialKind === "viewing" ? initialDate : "");
+  const [extendedHire, setExtendedHire] = useState(false);
+  const [bookingStart, setBookingStart] = useState(initialDate);
+  const [bookingEnd, setBookingEnd] = useState(initialDate);
   const [kind, setKind] = useState(initialKind);
   const date = kind === "viewing" ? viewingDate : weddingDate;
   const setDate = kind === "viewing" ? setViewingDate : setWeddingDate;
@@ -38,13 +42,19 @@ export default function VenueEnquiryForm({
     event.preventDefault();
     if (busy) return;
     const fields = Object.fromEntries(new FormData(event.currentTarget));
+    if (kind === "booking" && extendedHire) {
+      const issue = hireDateError(bookingStart, bookingEnd, today);
+      if (issue) return setError(issue);
+      if (bookingStart > weddingDate || bookingEnd < weddingDate)
+        return setError("Your venue hire period must include the wedding date.");
+    }
     setBusy(true);
     setError("");
     try {
       const response = await fetch("/api/venue-enquiries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...fields, venueId }),
+        body: JSON.stringify({ ...fields, venueId, ...(kind === "booking" ? { bookingStart: extendedHire ? bookingStart : weddingDate, bookingEnd: extendedHire ? bookingEnd : weddingDate } : {}) }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Please try again.");
@@ -128,7 +138,7 @@ export default function VenueEnquiryForm({
         />
       </label>
       {kind === "booking" && <div className="sm:col-span-2">
-        <VenueCalendar slug={slug} value={date} onChange={setDate} />
+        <VenueCalendar slug={slug} value={date} onChange={setDate} rangeStart={extendedHire ? bookingStart : date} rangeEnd={extendedHire ? bookingEnd : date} />
       </div>}
       {kind === "viewing" && <label>Preferred viewing time (optional, UK local time)
         <input name="viewingTime" type="time" className={input} />
@@ -148,6 +158,29 @@ export default function VenueEnquiryForm({
           className={input}
         />
       </label>
+      {kind === "booking" && <fieldset className="min-w-0 rounded-xl border border-sand p-4 sm:col-span-2">
+        <legend className="px-1 font-medium">Venue hire period</legend>
+        <label className="flex min-h-11 items-center gap-3 text-sm">
+          <input type="checkbox" checked={extendedHire} onChange={e => {
+            setExtendedHire(e.target.checked);
+            if (e.target.checked) { setBookingStart(weddingDate); setBookingEnd(weddingDate); }
+          }} className="h-4 w-4 accent-clay" />
+          I need the venue for extra days
+        </label>
+        {extendedHire && <div className="mt-3 grid min-w-0 gap-4 sm:grid-cols-2">
+          <label>Access from (including setup)
+            <input name="bookingStart" type="date" min={today} max={weddingDate || undefined}
+              value={bookingStart} onChange={e => setBookingStart(e.target.value)} required className={input + " min-w-0"} />
+          </label>
+          <label>Access until (including pack-down)
+            <input name="bookingEnd" type="date" min={weddingDate || today}
+              value={bookingEnd} onChange={e => setBookingEnd(e.target.value)} required className={input + " min-w-0"} />
+          </label>
+        </div>}
+        <p className="mt-3 text-sm leading-relaxed text-ink/60">{extendedHire
+          ? "Request every day you need, including setup and pack-down. The venue will confirm access times, availability and the price for the whole period."
+          : "Your request covers the wedding day only. Select extra days if you need earlier setup, a multi-day celebration or later pack-down."}</p>
+      </fieldset>}
       <label>
         Expected wedding guests
         <input

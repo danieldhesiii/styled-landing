@@ -1,10 +1,13 @@
 "use client";
+import { dateRangeLabel } from "@/lib/booking-dates";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import VenueMessageThread from "./VenueMessageThread";
 import { ENQUIRY_STATUSES } from "@/lib/venue-details";
 type Request = {
   id: string;
+  booking_start?: string | null;
+  booking_end?: string | null;
   preferred_date: string;
   viewing_time?: string | null;
   next_actor?: string;
@@ -148,7 +151,8 @@ export default function MyVenueRequests({
                 {r.venue_listings?.name || "Your venue"}
               </h2>
               <p className="mt-3 text-sm text-ink/60">
-                {r.preferred_date}{r.viewing_time ? ` at ${r.viewing_time.slice(0, 5)} UK time` : ""} · {r.guest_count} wedding guests
+                {r.request_kind !== "viewing" && <span className="mb-1 block text-clay">Requested venue hire: {dateRangeLabel(r.booking_start || r.preferred_date, r.booking_end || r.preferred_date)}</span>}
+        {r.preferred_date}{r.viewing_time ? ` at ${r.viewing_time.slice(0, 5)} UK time` : ""} · {r.guest_count} wedding guests
               </p>
             </div>
             <span className="rounded-lg bg-sand px-3 py-2 text-sm">
@@ -172,7 +176,7 @@ export default function MyVenueRequests({
             </p>
             {r.alternative_dates?.length > 0 && (
               <div className="mt-3 text-sm">
-                <p>Suggested {r.request_kind === "viewing" ? "viewing" : "wedding"} dates. Requesting one keeps this conversation and asks the venue to confirm; it does not reserve a date.</p>
+                <p>Suggested {r.request_kind === "viewing" ? "viewing" : "wedding"} dates. Requesting one keeps this conversation and asks the venue to confirm; it does not reserve a date. {r.request_kind !== "viewing" && "Your full hire period moves with the wedding date, keeping the same setup and pack-down days."}</p>
                 <div className="mt-3 flex flex-wrap gap-3">{r.alternative_dates.map((day) => (
                   <button key={day} disabled={!!busy || !["contacted", "declined"].includes(r.status)} onClick={() => void alternative(r.id, day)} className="rounded-full border border-sand px-4 py-2 disabled:opacity-50">Request {day}</button>
                 ))}</div>

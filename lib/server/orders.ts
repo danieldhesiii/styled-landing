@@ -147,13 +147,14 @@ interface LineRow {
   line_total_pence: number;
   supplier_status: string;
   needed_date: string | null;
+  return_date?: string | null;
 }
 
 // What a couple sees of an order. Never includes commission, network hash or
 // the idempotency key.
 export function orderView(o: OrderRow, lines: LineRow[]) {
-  // Per supplier: their total and their delivery date (all a supplier's lines
-  // share one date). Falls back to the wedding date when none was set.
+  // Supplier totals retain a legacy default date for old consumers.
+  // The authoritative hire dates are exposed on each individual line.
   const bySupplier = new Map<string, { totalPence: number; neededDate: string | null }>();
   for (const l of lines) {
     const g = bySupplier.get(l.supplier_name) ?? { totalPence: 0, neededDate: l.needed_date ?? o.wedding_date };
@@ -190,6 +191,7 @@ export function orderView(o: OrderRow, lines: LineRow[]) {
       lineTotalPence: l.line_total_pence,
       supplierStatus: l.supplier_status,
       neededDate: l.needed_date ?? o.wedding_date,
+      returnDate: l.return_date ?? o.wedding_date,
     })),
   };
 }
@@ -197,7 +199,7 @@ export function orderView(o: OrderRow, lines: LineRow[]) {
 export const ORDER_VIEW_COLUMNS =
   "id, reference, couple_message, updated_at, status, created_at, couple_name, email, phone, wedding_date, venue_label, style_id, guest_count, subtotal_pence, deposit_pence, notes";
 export const LINE_VIEW_COLUMNS =
-  "product_id, product_name, supplier_name, unit, quantity, unit_price_pence, line_total_pence, supplier_status, needed_date";
+  "product_id, product_name, supplier_name, unit, quantity, unit_price_pence, line_total_pence, supplier_status, needed_date, return_date";
 
 // Load an order and its lines as the signed-in guest (row level security makes
 // other people's orders invisible).

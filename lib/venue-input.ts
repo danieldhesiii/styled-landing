@@ -1,3 +1,5 @@
+import { hireDateError } from "./booking-dates";
+
 export function safeImageUrl(value: string | null): string | null {
   if (!value) return null;
   if (value.startsWith("/") && !value.startsWith("//") && !value.includes("\\"))
@@ -111,6 +113,16 @@ export function validateVenueEnquiry(
     date < today
   )
     return { error: "Please choose today or a future date." };
+  const bookingStart = body.bookingStart === undefined ? date : str(body.bookingStart);
+  const bookingEnd = body.bookingEnd === undefined ? date : str(body.bookingEnd);
+  if (request_kind === "viewing" && (body.bookingStart !== undefined || body.bookingEnd !== undefined))
+    return { error: "Viewing appointments do not have a venue hire period." };
+  if (request_kind === "booking") {
+    const issue = hireDateError(bookingStart, bookingEnd, today);
+    if (issue) return { error: issue };
+    if (bookingStart > date || bookingEnd < date)
+      return { error: "Your venue hire period must include the wedding date." };
+  }
   if (!Number.isInteger(guests) || guests < 1 || guests > 10000)
     return { error: "Please enter a guest count between 1 and 10,000." };
   if (message.length > 5000 || phone.length > 40)
@@ -125,6 +137,8 @@ export function validateVenueEnquiry(
       phone: phone || null,
       guest_count: guests,
       preferred_date: date,
+      booking_start: request_kind === "booking" ? bookingStart : null,
+      booking_end: request_kind === "booking" ? bookingEnd : null,
       viewing_time: request_kind === "viewing" ? viewingTime || null : null,
       message: message || null,
     },

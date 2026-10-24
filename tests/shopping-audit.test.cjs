@@ -199,7 +199,8 @@ test("basket treats zero and negative budgets as unset and blocks failed availab
   const props = {
     basket: [{ itemId: "chair", quantity: 1 }],
     guestCount: 10,
-    weddingDate: "2099-01-01",
+    weddingDate: new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10),
+    onItemDates: noop,
     onQty: noop,
     onRemove: noop,
     onCheckout: noop,

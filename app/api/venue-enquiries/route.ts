@@ -71,7 +71,8 @@ export async function POST(req: Request) {
         .from("venue_enquiries")
         .select("id")
         .eq("venue_id", venue.id)
-        .eq("preferred_date", result.value.preferred_date)
+        .lte("booking_start", result.value.booking_end!)
+        .gte("booking_end", result.value.booking_start!)
         .eq("request_kind", "booking")
         .eq("status", "booked")
         .limit(1);
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
       if (booked?.length)
         return fail(
           409,
-          "That date is no longer available. Please choose another date.",
+          "Part of that venue hire period is already booked. Please choose another period.",
         );
     }
     if (result.value.package_id) {
@@ -97,13 +98,14 @@ export async function POST(req: Request) {
         .from("venue_date_blocks")
         .select("day")
         .eq("venue_id", venue.id)
-        .eq("day", result.value.preferred_date)
+        .gte("day", result.value.booking_start!)
+        .lte("day", result.value.booking_end!)
         .limit(1);
       if (blockError) throw blockError;
       if (blocked?.length)
         return fail(
           409,
-          "That date is unavailable. Please choose another date.",
+          "Part of that venue hire period is unavailable. Please choose another period.",
         );
     }
     const { data: request, error } = await admin
@@ -119,6 +121,9 @@ export async function POST(req: Request) {
     after(() => notifyVenueRequest(request.id, "new"));
     return NextResponse.json({ ok: true, id: request.id }, { status: 201 });
   } catch (error) {
+    if (error && typeof error === "object" && "message" in error &&
+      /hire period|already booked|date is blocked/i.test(String(error.message)))
+      return fail(409, "Part of that venue hire period is no longer available. Please choose another period.");
     console.error("[venue-enquiries]", error);
     return fail(
       503,
@@ -133,7 +138,7 @@ export async function GET(req: Request) {
   const { data, error } = await auth.admin
     .from("venue_enquiries")
     .select(
-      "id,venue_id,preferred_date,viewing_time,next_actor,request_kind,guest_count,status,message,response,alternative_dates,responded_at,created_at,venue_listings(name,slug)",
+      "id,venue_id,preferred_date,booking_start,booking_end,viewing_time,next_actor,request_kind,guest_count,status,message,response,alternative_dates,responded_at,created_at,venue_listings(name,slug)",
     )
     .eq("owner_user_id", auth.user.id)
     .order("created_at", { ascending: false })

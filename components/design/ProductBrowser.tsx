@@ -55,6 +55,7 @@ export default function ProductBrowser({
   onDates,
   deliverySameDay,
   deliveryDate,
+  returnDate,
   onAdd,
   onRemove,
   onQty,
@@ -508,6 +509,7 @@ export default function ProductBrowser({
               weddingDate={weddingDate}
               deliverySameDay={deliverySameDay}
               deliveryDate={deliveryDate}
+              returnDate={returnDate}
               onChange={onDates}
               id="catalogue"
             />

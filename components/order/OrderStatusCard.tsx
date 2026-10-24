@@ -1,3 +1,4 @@
+import { dateRangeLabel } from "@/lib/booking-dates";
 import { formatGBP } from "@/lib/quote";
 
 // What a couple sees of their order: where it's up to, what each supplier has
@@ -11,6 +12,7 @@ export interface OrderViewLine {
   lineTotalPence: number;
   supplierStatus: "pending" | "confirmed" | "declined";
   neededDate: string | null;
+  returnDate?: string | null;
 }
 
 export interface OrderView {
@@ -125,11 +127,6 @@ export default function OrderStatusCard({ order }: { order: OrderView }) {
             : allIn
               ? LINE_BADGE.confirmed
               : LINE_BADGE.pending;
-          // All of a supplier's lines share a delivery date; show it when it isn't
-          // the wedding day.
-          const deliveryDate = lines[0]?.neededDate ?? null;
-          const differentDay =
-            deliveryDate && deliveryDate !== order.weddingDate;
           return (
             <section key={supplier}>
               <div className="flex items-center justify-between gap-2">
@@ -140,11 +137,6 @@ export default function OrderStatusCard({ order }: { order: OrderView }) {
                   {badge.label}
                 </span>
               </div>
-              {differentDay && (
-                <p className="mt-0.5 text-xs text-clay">
-                  Requested delivery / collection: {formatDay(deliveryDate)}
-                </p>
-              )}
               <ul className="mt-2 divide-y divide-sand rounded-xl border border-sand">
                 {lines.map((l, i) => (
                   <li
@@ -154,6 +146,7 @@ export default function OrderStatusCard({ order }: { order: OrderView }) {
                     <span className="text-ink/80">
                       {l.name}
                       <span className="text-ink/40"> × {l.quantity}</span>
+                      <span className="mt-1 block text-xs text-clay">Requested hire: {dateRangeLabel(l.neededDate, l.returnDate ?? order.weddingDate)}</span>
                     </span>
                     <span className="flex items-center gap-2">
                       {l.supplierStatus !== "pending" && (

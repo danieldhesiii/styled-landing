@@ -24,6 +24,7 @@ export function useShopAvailability(
   date: string,
   guests: number,
   delivery = date,
+  returnDate = date,
 ): ShopAvailability {
   const [state, setState] = useState<ShopAvailability>({
     items: null,
@@ -39,7 +40,7 @@ export function useShopAvailability(
     let cancelled = false;
     setState({ items: null, loading: true, error: null });
     fetch(
-      `/api/availability?date=${date}&guests=${guests}&delivery=${encodeURIComponent(delivery)}`,
+      `/api/availability?date=${date}&guests=${guests}&delivery=${encodeURIComponent(delivery)}&returnDate=${encodeURIComponent(returnDate)}`,
       { cache: "no-store" },
     )
       .then((r) => r.json())
@@ -65,7 +66,7 @@ export function useShopAvailability(
     return () => {
       cancelled = true;
     };
-  }, [date, guests, delivery]);
+  }, [date, guests, delivery, returnDate]);
 
   return state;
 }
@@ -83,6 +84,7 @@ export function useBasketAvailability(
   basket: BasketLine[],
   refreshKey = 0,
   delivery = date,
+  returnDate = date,
 ): BasketAvailability {
   const [state, setState] = useState<BasketAvailability>({
     lines: {},
@@ -91,7 +93,7 @@ export function useBasketAvailability(
     error: null,
     checked: false,
   });
-  const key = JSON.stringify(basket.map((l) => [l.itemId, l.quantity]));
+  const key = JSON.stringify(basket.map((l) => [l.itemId, l.quantity, l.hireDates]));
 
   useEffect(() => {
     if (!usable(date) || !usable(delivery) || basket.length === 0) {
@@ -111,7 +113,7 @@ export function useBasketAvailability(
       fetch("/api/availability/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, basket, delivery }),
+        body: JSON.stringify({ date, basket, delivery, returnDate, itemDates: Object.fromEntries(basket.filter(l => l.hireDates).map(l => [l.itemId, l.hireDates])) }),
       })
         .then((r) => r.json())
         .then((d) => {
@@ -150,7 +152,7 @@ export function useBasketAvailability(
       clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, key, refreshKey, delivery]);
+  }, [date, key, refreshKey, delivery, returnDate]);
 
   return state;
 }

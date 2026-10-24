@@ -749,7 +749,7 @@ export default function VenuePortal() {
               .filter((r) => r.status === "booked")
               .map((r) => (
                 <p key={r.id} className="mt-3 text-sm">
-                  {r.preferred_date} · Confirmed Styled booking · {r.name}
+                  {r.booking_start || r.preferred_date} to {r.booking_end || r.preferred_date} · Confirmed Styled booking · {r.name}
                 </p>
               ))}
             {!blocks.length && !requests.some((r) => r.status === "booked") && (

@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { loadCatalogue } from "@/lib/server/catalogue";
 import { loadAvailability } from "@/lib/server/availability";
 import { classifyAvailability, isValidDay, todayUtc } from "@/lib/availability";
+import { hireDateError } from "@/lib/booking-dates";
 import { deliveryError } from "@/lib/wedding";
 import { suggestedQty } from "@/lib/quote";
 
@@ -37,7 +38,8 @@ export async function GET(req: Request) {
     );
 
   const start = url.searchParams.get("delivery") || date;
-  const invalid = deliveryError(date, start);
+  const end = url.searchParams.get("returnDate") || date;
+  const invalid = deliveryError(date, start) || hireDateError(start, end);
   if (invalid)
     return NextResponse.json({ ok: false, error: invalid }, { status: 400 });
   try {
@@ -45,7 +47,7 @@ export async function GET(req: Request) {
     const raw = await loadAvailability(
       createAdminClient(),
       catalogue.map((i) => i.id),
-      date,
+      end,
       undefined,
       start,
     );

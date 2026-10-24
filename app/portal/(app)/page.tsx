@@ -1,5 +1,6 @@
 "use client";
 
+import { dateRangeLabel } from "@/lib/booking-dates";
 import { useEffect, useState } from "react";
 import OnboardingChecklist from "@/components/vendor/OnboardingChecklist";
 import { vendorApi } from "@/lib/vendor-client";
@@ -12,6 +13,8 @@ interface Line {
   quantity: number;
   status: "pending" | "confirmed" | "declined";
   note: string | null;
+  neededDate: string | null;
+  returnDate: string | null;
 }
 interface Order {
   orderId: string;
@@ -117,16 +120,7 @@ export default function PortalOrdersPage() {
                       {o.reference}
                     </h2>
                     <p className="mt-1 text-sm text-ink/60">
-                      Deliver {longDay(o.deliveryDate)}
-                      {o.venue ? ` · ${o.venue}` : ""}
-                      {o.deliveryDate &&
-                        o.weddingDate &&
-                        o.deliveryDate !== o.weddingDate && (
-                          <span className="text-ink/40">
-                            {" "}
-                            · wedding {longDay(o.weddingDate)}
-                          </span>
-                        )}
+                      Wedding {longDay(o.weddingDate)}{o.venue ? ` · ${o.venue}` : ""}
                     </p>
                   </div>
                   {o.actionable && pending.length > 0 && (
@@ -149,6 +143,7 @@ export default function PortalOrdersPage() {
                     >
                       <div>
                         <p className="text-sm font-medium text-ink">{l.name}</p>
+                        <p className="mt-1 text-xs text-clay">Requested hire: {dateRangeLabel(l.neededDate, l.returnDate)}</p>
                         <p className="text-xs text-ink/50">
                           {l.quantity}
                           {l.unit ? ` · ${l.unit}` : ""}

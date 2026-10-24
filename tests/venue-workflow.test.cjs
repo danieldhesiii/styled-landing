@@ -19,7 +19,7 @@ function load(file, stubs = {}) {
 }
 const ID = '11111111-1111-4111-8111-111111111111';
 const VENUE = '22222222-2222-4222-8222-222222222222';
-const DAY = '2099-06-12';
+const DAY = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
 const rules = load('lib/venue-workflow.ts');
 const input = load('lib/venue-input.ts');
 const details = load('lib/venue-details.ts');
@@ -29,7 +29,7 @@ function database(resolve = () => ({ data: null, error: null })) {
     from(table) {
       const q = { table, filters: [], operation: 'select' };
       const chain = {};
-      for (const method of ['select','eq','in','gte','order','limit','insert','update','delete']) chain[method] = (...args) => {
+      for (const method of ['select','eq','in','gte','lte','order','limit','insert','update','delete']) chain[method] = (...args) => {
         if (['insert','update','delete'].includes(method)) { q.operation = method; q.value = args[0]; }
         else q.filters.push([method, ...args]);
         return chain;
@@ -151,7 +151,7 @@ test('public availability queries only wedding bookings and returns dates withou
   assert.deepEqual(await r.json(), { blockedDates: [DAY, '2099-06-13'] });
   const q = db.queries.find((q) => q.table === 'venue_enquiries');
   assert.ok(q.filters.some((f) => f[0] === 'eq' && f[1] === 'request_kind' && f[2] === 'booking'));
-  assert.deepEqual(q.filters.find((f) => f[0] === 'select'), ['select', 'preferred_date']);
+  assert.deepEqual(q.filters.find((f) => f[0] === 'select'), ['select', 'preferred_date,booking_start,booking_end']);
 });
 test('venue response endpoint refuses wrong-kind confirmation before RPC and records agreed viewing time', async () => {
   for (const status of ['booked', 'viewing_confirmed']) {

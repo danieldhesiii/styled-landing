@@ -8,6 +8,7 @@ export interface PlanningDetails {
   venuePostcode?: string;
   deliverySameDay?: boolean;
   deliveryDate?: string;
+  returnDate?: string;
 }
 export type WeddingBrief = Brief & PlanningDetails;
 export interface BoardPin {

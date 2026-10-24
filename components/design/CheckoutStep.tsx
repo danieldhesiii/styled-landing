@@ -8,6 +8,8 @@ import { useBasketAvailability } from "@/components/availability/useAvailability
 import { useUser } from "@/components/session/useUser";
 import { availabilityLabel } from "@/lib/availability";
 
+import ItemHireDates from "@/components/wedding/ItemHireDates";
+import { hireDateError, itemHireDates, type HireDates } from "@/lib/booking-dates";
 import DeliveryDates from "@/components/wedding/DeliveryDates";
 import {
   deliveryDay,
@@ -17,6 +19,7 @@ import {
 interface Props extends PlanningDetails {
   onDates: (p: Partial<PlanningDetails> & { weddingDate?: string }) => void;
   basket: BasketLine[];
+  onItemDates: (itemId: string, dates?: HireDates) => void;
   weddingDate: string;
   onWeddingDate: (date: string) => void;
   styleId: string;
@@ -53,9 +56,11 @@ const fmtDate = (d: string) =>
 
 export default function CheckoutStep({
   basket,
+  onItemDates,
   weddingDate,
   onWeddingDate,
   deliveryDate,
+  returnDate,
   deliverySameDay,
   onDates,
   styleId,
@@ -74,8 +79,13 @@ export default function CheckoutStep({
   }, [accountEmail]);
   const [placed, setPlaced] = useState<PlacedOrder | null>(null);
   const [serverQuote, setServerQuote] = useState<ServerQuote | null>(null);
-  // Per-supplier delivery dates. Default: everything on the wedding day.
+  // Shared planning defaults with optional independent dates on each basket line.
   const delivery = deliveryDay({ weddingDate, deliveryDate, deliverySameDay });
+  const defaults = { start: delivery, end: returnDate || weddingDate };
+  const dateProblem = deliveryError(weddingDate, delivery) || basket.map(line => {
+    const d = itemHireDates(line, defaults);
+    return hireDateError(d.start, d.end);
+  }).find(Boolean);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   // Bumped to re-check availability after the server says something sold out.
@@ -85,6 +95,7 @@ export default function CheckoutStep({
     basket,
     availabilityNonce,
     delivery,
+    returnDate || weddingDate,
   );
   const unavailable = basket.filter(
     (l) => availability.lines[l.itemId]?.status === "unavailable",
@@ -149,14 +160,14 @@ export default function CheckoutStep({
   async function placeOrder() {
     if (!serverQuote || submitting) return;
     setError(null);
-    const dateIssue = deliveryError(weddingDate, delivery);
+    const dateIssue = dateProblem;
     if (dateIssue) return setError(dateIssue);
     if (!name.trim()) return setError("Please tell us your names.");
     if (!EMAIL.test(email.trim()))
       return setError("Please enter a valid email address.");
     if (unavailable.length > 0) {
       return setError(
-        "Some items aren't available between delivery and your wedding day. Please adjust them below first.",
+        "Some items aren't available for their requested hire periods. Please adjust them below first.",
       );
     }
 
@@ -178,6 +189,8 @@ export default function CheckoutStep({
           email: email.trim(),
           weddingDate: weddingDate || undefined,
           deliveryDate: delivery,
+          returnDate: defaults.end,
+          itemDates: Object.fromEntries(basket.filter(l => l.hireDates).map(l => [l.itemId, l.hireDates])),
           styleId,
           guestCount,
           venueLabel,
@@ -215,7 +228,7 @@ export default function CheckoutStep({
           )
           .join(", ");
         setError(
-          `These items aren't available between delivery and your wedding day: ${items}. Please lower the quantity, remove them, or choose another date.`,
+          `These items aren't available for their requested hire periods: ${items}. Please lower the quantity, remove them, or choose another date.`,
         );
         setAvailabilityNonce((n) => n + 1);
       } else if (data?.unavailable?.length) {
@@ -337,7 +350,7 @@ export default function CheckoutStep({
                     ? availability.error
                     : unavailable.length > 0
                       ? "Some items need attention for this date:"
-                      : "Availability checked from delivery through your wedding day."}
+                      : "Availability checked for each item’s complete hire period."}
             </p>
             {unavailable.length > 0 && (
               <ul className="mt-2 space-y-1 rounded-xl bg-red-50 px-4 py-3 text-xs text-red-800">
@@ -350,6 +363,15 @@ export default function CheckoutStep({
               </ul>
             )}
           </div>
+          <section className="space-y-3 rounded-xl border border-sand p-4">
+            <h2 className="font-serif text-xl">Dates for your items</h2>
+            <p className="text-xs text-ink/60">All items use your default hire dates unless you choose different dates below. The final quote may vary with the hire period.</p>
+            {basket.map(line => <div key={line.itemId}>
+              <h3 className="mt-3 text-sm font-medium">{nameOf(line.itemId)}</h3>
+              <ItemHireDates line={line} name={nameOf(line.itemId)} defaults={defaults}
+                onChange={onItemDates} id={`checkout-${line.itemId}`} />
+            </div>)}
+          </section>
           <div className="rounded-xl border border-dashed border-sand bg-cream/50 p-4 text-sm text-ink/50">
             This form submits a request for manual review. Your final quote, any deposit, payment dates and delivery or collection costs must be agreed separately. No payment is taken here.
           </div>
@@ -372,7 +394,7 @@ export default function CheckoutStep({
               availability.loading ||
               !availability.checked ||
               !!availability.error ||
-              !!deliveryError(weddingDate, delivery)
+              !!dateProblem
             }
             className="w-full rounded-full bg-ink px-6 py-3.5 text-cream hover:bg-ink/90 disabled:bg-ink/30"
           >
@@ -400,6 +422,7 @@ export default function CheckoutStep({
               weddingDate={weddingDate}
               deliverySameDay={deliverySameDay}
               deliveryDate={deliveryDate}
+              returnDate={returnDate}
               onChange={onDates}
               id="checkout"
             />

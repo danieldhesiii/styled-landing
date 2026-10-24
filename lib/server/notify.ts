@@ -214,30 +214,28 @@ export async function notifySuppliersOfOrder(
 
     const { data: lines } = await admin
       .from("order_lines")
-      .select("supplier_id, product_name, quantity, unit, needed_date")
+      .select("supplier_id, product_name, quantity, unit, needed_date, return_date")
       .eq("order_id", orderId);
     if (!lines || lines.length === 0) return;
 
-    // Group lines by supplier, tracking their delivery date (shared by their lines).
+    // One message per supplier, with the requested dates on every item.
     const bySupplier = new Map<
       string,
       {
-        deliveryDate: string | null;
-        items: { name: string; quantity: number; unit: string | null }[];
+        items: { name: string; quantity: number; unit: string | null; start: string | null; end: string | null }[];
       }
     >();
     for (const l of lines) {
       if (!l.supplier_id) continue;
       const group = bySupplier.get(l.supplier_id as string) ?? {
-        deliveryDate:
-          (l.needed_date as string | null) ??
-          (order.wedding_date as string | null),
         items: [],
       };
       group.items.push({
         name: l.product_name as string,
         quantity: l.quantity as number,
         unit: l.unit as string | null,
+        start: (l.needed_date as string | null) ?? (order.wedding_date as string | null),
+        end: (l.return_date as string | null) ?? (order.wedding_date as string | null),
       });
       bySupplier.set(l.supplier_id as string, group);
     }
@@ -291,15 +289,8 @@ export async function notifySuppliersOfOrder(
       if (to.length === 0) continue; // nobody to tell yet — staff can relay from admin
 
       const items = group.items;
-      const deliveryDate = longDate(group.deliveryDate);
-      // Note the wedding day only when the delivery date is different.
-      const whenNote =
-        group.deliveryDate &&
-        group.deliveryDate !== (order.wedding_date as string | null)
-          ? ` (wedding ${weddingDate})`
-          : "";
       const itemLines = items.map(
-        (i) => `${i.quantity} × ${i.name}${i.unit ? ` (${i.unit})` : ""}`,
+        (i) => `${i.quantity} × ${i.name}${i.unit ? ` (${i.unit})` : ""}: delivery / supplier pickup ${longDate(i.start)}; return / supplier collection ${longDate(i.end)}`,
       );
       const count = items.length;
       const subject = `New Styled order to confirm: ${order.reference}`;
@@ -307,11 +298,11 @@ export async function notifySuppliersOfOrder(
       const text = [
         `Hi ${supplier?.name ?? "there"},`,
         ``,
-        `You have ${count} item${count === 1 ? "" : "s"} to confirm for delivery on ${deliveryDate}${whenNote}${venue ? ` at ${venue}` : ""}.`,
+        `You have ${count} item${count === 1 ? "" : "s"} to confirm for the hire dates listed below (wedding ${weddingDate})${venue ? ` at ${venue}` : ""}.`,
         ``,
         ...itemLines.map((l) => `  • ${l}`),
         ``,
-        `Please reply to this email with availability for both the delivery and wedding dates. If you cannot fulfil them, suggest your nearest available dates or suitable alternatives and include this order reference.`,
+        `Please reply to this email with availability for each item’s full requested hire period. If you cannot fulfil them, suggest your nearest available dates or suitable alternatives and include this order reference.`,
         `Styled will review your reply manually before confirming anything to the couple. You do not need a stock-management system to reply.`,
         `If you already use the supplier portal, you can also record your decision there:`,
         portalUrl,
@@ -324,10 +315,9 @@ export async function notifySuppliersOfOrder(
         <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#2b2622">
           <p style="font-size:20px;font-weight:600">New order to confirm</p>
           <p>Hi ${escapeHtml(supplier?.name ?? "there")},</p>
-          <p>You have <strong>${count} item${count === 1 ? "" : "s"}</strong> to confirm for delivery on
-             <strong>${escapeHtml(deliveryDate)}</strong>${whenNote ? ` ${escapeHtml(whenNote.trim())}` : ""}${venue ? ` at <strong>${escapeHtml(venue)}</strong>` : ""}.</p>
+          <p>You have <strong>${count} item${count === 1 ? "" : "s"}</strong> to confirm for the hire dates listed below. Wedding: ${escapeHtml(weddingDate)}${venue ? ` at <strong>${escapeHtml(venue)}</strong>` : ""}.</p>
           <ul>${itemLines.map((l) => `<li>${escapeHtml(l)}</li>`).join("")}</ul>
-          <p>Please reply to this email to confirm product availability for both dates. If you cannot fulfil them, suggest your nearest available dates or suitable alternatives and include the order reference.</p>
+          <p>Please reply to this email to confirm product availability for each item’s full requested hire period. If you cannot fulfil them, suggest your nearest available dates or suitable alternatives and include the order reference.</p>
           <p>Styled will review your reply manually before confirming anything to the couple. You do not need a stock-management system to reply. If you already have portal access, you can also record your decision below.</p>
           <p style="margin:24px 0">
             <a href="${portalUrl}" style="background:#2b2622;color:#faf6f0;text-decoration:none;padding:12px 24px;border-radius:999px;display:inline-block">
@@ -371,13 +361,13 @@ export async function notifyStaffOfOrder(
     );
     const { data: lines, error: lineError } = await admin
       .from("order_lines")
-      .select("product_name,supplier_name,quantity,needed_date")
+      .select("product_name,supplier_name,quantity,needed_date,return_date")
       .eq("order_id", orderId);
     if (lineError) return false;
     const url = `${env.siteUrl}/admin/orders/${encodeURIComponent(orderId)}`;
     const details = (lines || []).map(
       (l) =>
-        `${l.quantity} × ${l.product_name} (${l.supplier_name}), delivery ${longDate(l.needed_date)}`,
+        `${l.quantity} × ${l.product_name} (${l.supplier_name}), delivery ${longDate(l.needed_date)}, return / collection ${longDate(l.return_date ?? order.wedding_date)}`,
     );
     const intro = `New request ${order.reference} from ${order.couple_name}. Wedding: ${longDate(order.wedding_date)}. Venue: ${order.venue_label || "To confirm"}.`;
     return await sendEmail({
@@ -388,7 +378,7 @@ export async function notifyStaffOfOrder(
         "",
         ...details,
         "",
-        "Check supplier availability, delivery and wedding dates. If unavailable, ask for alternatives before confirming. No payment has been collected.",
+        "Check supplier availability for each item’s complete requested hire period. If unavailable, ask for alternatives before confirming. No payment has been collected.",
         url,
         "Styled",
       ].join("\n"),
