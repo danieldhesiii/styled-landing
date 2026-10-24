@@ -45,7 +45,7 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
     label: "Boards",
     title: "Collect ideas for your wedding",
     intro:
-      "Private boards bring your products, inspiration, saved looks and notes into one place. Google Photos and Pinterest icons explain the available import steps.",
+      "Private boards bring your products, inspiration, saved looks and notes into one place. Google Photos offers a download/upload guide. Pinterest opens a public preview or a separate window beside your board.",
     steps: [
       {
         title: "Create a board",
@@ -53,7 +53,7 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
       },
       {
         title: "Build the idea",
-        body: "Add catalogue pieces, upload your inspiration images, write notes or choose a look already saved in the visualiser. Board changes save to your account. Use board in visualiser prepares photos, catalogue pieces and notes without changing your venue or basket. Direct Google Photos and Pinterest account imports still need setup; photo upload and Pinterest link saving work now.",
+        body: "Add catalogue pieces, upload your inspiration images, write notes or choose a look already saved in the visualiser. Board changes save to your account. Use board in visualiser prepares photos, catalogue pieces and notes without changing your venue or basket. For Pinterest, save a board or Pin link and choose View beside my board. Public previews show Pinterest content alongside Styled; private boards and full browsing open in a separate Pinterest window. Upload a downloaded image to use it in the visualiser. Google Photos uses a download/upload guide.",
       },
       {
         title: "Shop when ready",

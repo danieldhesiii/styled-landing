@@ -45,7 +45,7 @@ export function pinterestLink(value: string): string | null {
         "pinterest.co.uk",
         "www.pinterest.co.uk",
         "pin.it",
-      ].includes(url.hostname)
+      ].includes(url.hostname) && !/^[a-z]{2}\.pinterest\.com$/.test(url.hostname)
     )
       return null;
     if (url.pathname === "/") return null;

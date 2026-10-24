@@ -22,3 +22,18 @@ Screenshots: `screenshots/boards-imports-mobile.jpg`, `screenshots/boards-import
 ## Outstanding provider setup
 
 See studio-navigation.md for official Google Photos Picker and Pinterest API links. Public direct account connections require provider configuration and approval. Until configured, users can upload selected photos and save Pinterest source links using the visible guides.
+
+
+## Pinterest viewing workspace
+
+Boards now supports a Pinterest preview beside the active Styled board. Paste a full board or Pin URL under Import photos > Pinterest, then save and view it, or preview it without saving. Existing saved Pinterest cards expose View beside my board. On a phone, the preview stacks above the board content and can be closed without leaving the board.
+
+Public previews use Pinterest’s official board/Pin widget inside a sandboxed iframe. The widget document has scripts and popup permissions only, no same-origin access to Styled. No Pinterest account token, Styled session, private image URL or board name is passed to the widget. Third-party content loads only after choosing to view it. Board previews may show at most 50 Pins and do not copy those images to Styled.
+
+Open Pinterest window opens the exact source link in a separate window, allowing normal Pinterest sign-in and private-board viewing. An ordinary new-tab link remains available when popups or embeds are blocked. Shortened pin.it links are preserved for opening on Pinterest; the preview explains that a full board/Pin URL is needed for embedding.
+
+There is no bulk downloader or account-import claim. Automatic board access requires a registered Pinterest app, OAuth and provider approval. Users can download an individual image using Pinterest’s own option when available, then upload a copy to Styled. Only uploaded photos explicitly chosen for the visualiser become image inputs. No database or authentication changes are needed.
+
+Official references: https://dev.pinterest.com/docs/web-features/widgets/ and https://developer.pinterest.com/docs/getting-started/connect-app/.
+
+Pinterest viewer verification: public wedding board images rendered through the official widget; the separate-window button opened the exact board URL; saving a source twice kept one reference; unsafe URLs were rejected; shortened links showed the manual-open fallback without creating a widget. Mobile preview at 390 device pixels had no horizontal page overflow. Test board edits stayed in local component state. The temporary preview route was removed before deployment.

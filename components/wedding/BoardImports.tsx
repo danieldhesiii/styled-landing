@@ -36,14 +36,18 @@ export default function BoardImports({
   disabled,
   onUpload,
   onLink,
+  onPreview,
 }: {
   disabled: boolean;
   onUpload: () => void;
   onLink: (url: string) => Promise<void>;
+  onPreview: (url: string) => void;
 }) {
   const [source, setSource] = useState<"google" | "pinterest" | null>(null),
     [link, setLink] = useState(""),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [status, setStatus] = useState(""),
+    [saving, setSaving] = useState(false);
   return (
     <section
       aria-labelledby="board-import-title"
@@ -74,7 +78,7 @@ export default function BoardImports({
         {(
           [
             ["google", "Google Photos guide", "Manual download and upload"],
-            ["pinterest", "Pinterest links", "Save a link or upload images"],
+            ["pinterest", "Pinterest", "View a board beside Styled"],
           ] as const
         ).map(([id, label, detail]) => (
           <button
@@ -85,6 +89,7 @@ export default function BoardImports({
             onClick={() => {
               setSource(source === id ? null : id);
               setError("");
+              setStatus("");
             }}
             className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl sm:min-h-16 sm:flex-row sm:justify-start sm:gap-3 border px-2 py-3 text-center text-xs sm:px-4 sm:text-left sm:text-sm ${source === id ? "border-clay bg-cream" : "border-sand"}`}
           >
@@ -109,10 +114,10 @@ export default function BoardImports({
               : "Bring Pinterest ideas into your board"}
           </h3>
           <p className="mt-2 text-xs leading-relaxed text-ink/60">
-            These are manual guides and links, not connected accounts.{" "}
+
             {source === "google"
               ? "For now, open Google Photos, download the photos you want to use, then upload them here. Styled cannot browse your Google library."
-              : "For now, save a Pinterest board or Pin link below. To use an image in the visualiser, upload a copy you have permission to use. A saved link does not import the images from a Pinterest board."}
+              : "Paste a board or Pin link to view its public preview beside your Styled board. You can also open the exact board in a separate Pinterest window, including private boards after signing in there. Images are added to Styled only when you upload them."}
           </p>
           <ol className="mt-3 list-inside list-decimal space-y-2 text-xs leading-relaxed">
             <li>
@@ -151,12 +156,17 @@ export default function BoardImports({
                   setError("Enter an https Pinterest board or Pin link.");
                   return;
                 }
+                if (saving || disabled) return;
                 setError("");
+                setStatus("");
+                setSaving(true);
                 try {
                   await onLink(url);
-                  setLink("");
+                  setStatus("Pinterest link saved. Choose and upload individual images to add them to Styled.");
                 } catch {
                   setError("Could not save the link. Please try again.");
+                } finally {
+                  setSaving(false);
                 }
               }}
             >
@@ -167,19 +177,25 @@ export default function BoardImports({
                   required
                   maxLength={900}
                   value={link}
-                  onChange={(e) => setLink(e.target.value)}
+                  onChange={(e) => { setLink(e.target.value); setStatus(""); }}
                   placeholder="https://www.pinterest.com/…"
                   className="mt-2 block w-full rounded-lg border border-sand bg-white px-3 py-2.5 text-sm"
                 />
               </label>
               <button
-                disabled={disabled}
+                disabled={disabled || saving}
                 className="rounded-full border border-sand bg-white px-4 py-2.5 text-xs disabled:opacity-50"
               >
-                Save Pinterest link
+                {saving ? "Saving…" : "Save and view Pinterest link"}
               </button>
+              <button type="button" disabled={disabled || saving} onClick={() => {
+                const url = pinterestLink(link);
+                if (!url) { setError("Enter an https Pinterest board or Pin link."); return; }
+                setError(""); onPreview(url);
+              }} className="min-h-11 rounded-full px-4 py-2.5 text-xs underline disabled:opacity-50">Preview without saving</button>
             </form>
           )}
+          {status && source === "pinterest" && <p role="status" className="mt-3 text-xs text-ink/70">{status}</p>}
           {error && (
             <p role="alert" className="mt-3 text-xs text-clay">
               {error}

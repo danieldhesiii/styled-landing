@@ -6,6 +6,7 @@ import type { SavedLook } from "@/components/design/SavedLooks";
 import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
 import { formatGBP } from "@/lib/quote";
+import PinterestPreview from "./PinterestPreview";
 import BoardImports from "./BoardImports";
 import BoardCataloguePicker from "./BoardCataloguePicker";
 import ProductDetails from "@/components/design/ProductDetails";
@@ -109,6 +110,7 @@ export default function Boards({
     [look, setLook] = useState(""),
     [error, setError] = useState(""),
     [uploading, setUploading] = useState(false);
+  const [pinterest, setPinterest] = useState<{ boardId: string; url: string } | null>(null);
   const file = useRef<HTMLInputElement>(null);
   const board = boards.find((b) => b.id === selected) || boards[0],
     disabled = busy || uploading || !loaded;
@@ -138,6 +140,7 @@ export default function Boards({
       board.pins.some((pin) => pin.kind === kind && pin.ref === ref)
     )
       return true;
+    if (kind === "note" && text.startsWith("Pinterest: ") && board.pins.some(p => p.kind === "note" && p.text === text)) return true;
     setError("");
     if (board.pins.length >= 100) {
       setError("This board has 100 ideas. Remove one or create another board.");
@@ -292,9 +295,11 @@ export default function Boards({
         <BoardImports
           disabled={disabled || !board}
           onUpload={() => file.current?.click()}
+          onPreview={url => { if (board) setPinterest({ boardId: board.id, url }); }}
           onLink={async (url) => {
             if (!(await pin("note", undefined, `Pinterest: ${url}`)))
               throw Error("Could not save link");
+            if (board) setPinterest({ boardId: board.id, url });
           }}
         />
       </details>
@@ -309,6 +314,8 @@ export default function Boards({
         </p>
       ) : (
         <>
+          <div className={pinterest?.boardId === board.id ? "grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]" : "min-w-0"}>
+          <div className="min-w-0">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-serif text-3xl">{board.name}</h2>
             <p className="text-xs text-ink/60">
@@ -430,7 +437,7 @@ export default function Boards({
               Your board is ready. Use Add to board to collect your first idea.
             </p>
           )}
-          <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={`mt-5 grid min-w-0 gap-5 sm:grid-cols-2 ${pinterest?.boardId === board.id ? "" : "lg:grid-cols-3"}`}>
             {board.pins.map((p) => {
               const sourceLink =
                 p.kind === "note" && p.text.startsWith("Pinterest: ")
@@ -488,16 +495,11 @@ export default function Boards({
                               ? p.text
                               : "Saved wedding look")}
                     </p>
-                    {sourceLink && (
-                      <a
-                        href={sourceLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-3 inline-flex min-h-10 items-center text-sm underline"
-                      >
-                        Open Pinterest inspiration ↗
-                      </a>
-                    )}
+                    {sourceLink && <div className="mt-3 space-y-2">
+                      <button type="button" onClick={() => setPinterest({ boardId: board.id, url: sourceLink })}
+                        className="min-h-11 rounded-full border border-sand px-4 py-2 text-sm">View beside my board</button>
+                      <a href={sourceLink} target="_blank" rel="noopener noreferrer" className="block py-2 text-sm underline">Open on Pinterest ↗</a>
+                    </div>}
                     {p.kind === "look" && (
                       <button
                         type="button"
@@ -569,6 +571,10 @@ export default function Boards({
                 </article>
               );
             })}
+          </div>
+          </div>
+          {pinterest?.boardId === board.id && <PinterestPreview url={pinterest.url} boardName={board.name}
+            disabled={disabled} onClose={() => setPinterest(null)} onUpload={() => file.current?.click()} />}
           </div>
         </>
       )}

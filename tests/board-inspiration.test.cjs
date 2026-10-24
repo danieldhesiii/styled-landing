@@ -145,3 +145,21 @@ test("render instructions distinguish venue, catalogue and final mood photos", (
   assert.match(inspirationInstruction(2), /FIRST image/);
   assert.equal(inspirationInstruction(0), "");
 });
+
+const { pinterestPreviewLink, pinterestPreviewDocument } = load("lib/pinterest.ts");
+test("Pinterest preview accepts only full board/Pin paths and canonicalises regional links", () => {
+  assert.deepEqual(pinterestPreviewLink("https://uk.pinterest.com/styled_uk/garden-wedding/?tracking=x"), { kind: "board", url: "https://www.pinterest.com/styled_uk/garden-wedding/" });
+  assert.deepEqual(pinterestPreviewLink("https://ca.pinterest.com/example/wedding-decor/"), { kind: "board", url: "https://www.pinterest.com/example/wedding-decor/" });
+  assert.deepEqual(pinterestPreviewLink("https://www.pinterest.co.uk/pin/123456789/"), { kind: "pin", url: "https://www.pinterest.com/pin/123456789/" });
+  for (const url of ["https://pin.it/abc", "https://www.pinterest.com/user/", "https://www.pinterest.com/settings/profile/", "https://www.pinterest.com/search/pins/", "https://www.pinterest.com/pin/not-a-pin/", "https://www.pinterest.com/user/board/section/", "https://www.pinterest.com/user/%3Cscript%3E/", "https://www.pinterest.com/user/%2Fbad/", "https://www.pinterest.com/user/%zz/", "https://pinterest.com.evil.test/user/board/", "javascript:alert(1)"])
+    assert.equal(pinterestPreviewLink(url), null, url);
+});
+test("widget document uses only the official Pinterest script and a canonical safe link", () => {
+  const html = pinterestPreviewDocument("https://www.pinterest.com/example/ceremony/?token=do-not-include");
+  assert.match(html, /data-pin-do="embedBoard"/);
+  assert.match(html, /https:\/\/assets.pinterest.com\/js\/pinit.js/);
+  assert.match(html, /rel="noopener noreferrer"/);
+  assert.doesNotMatch(html, /do-not-include|token=|supabase|styleduk/);
+  assert.match(pinterestPreviewDocument("https://www.pinterest.com/pin/123/"), /data-pin-do="embedPin"/);
+  assert.equal(pinterestPreviewDocument("https://pin.it/abc"), null);
+});
