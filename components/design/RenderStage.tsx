@@ -584,7 +584,7 @@ export default function RenderStage({
               key={displayImage}
               src={displayImage}
               alt={showOriginal || !renderUrl ? "Original venue photo" : "Illustrative AI preview of your venue"}
-              className="max-h-[65vh] w-full animate-fade-in object-contain"
+              className="block h-auto w-full animate-fade-in"
             />
 
             {/* Top-left label */}
