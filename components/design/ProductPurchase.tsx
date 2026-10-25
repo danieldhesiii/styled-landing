@@ -29,7 +29,7 @@ export default function ProductPurchase({
   const limit = quantityLimit(availability);
   const short = availability?.status === "unavailable";
   return (
-    <div className="mt-4 space-y-3">
+    <div className="mt-auto space-y-3 pt-4">
       {blocked && (
         <p role="status" className="text-xs text-clay">
           {catalogue.loading
@@ -45,32 +45,80 @@ export default function ProductPurchase({
         </p>
       )}
       {line ? (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <label className="text-xs">
-            Basket quantity{" "}
+        <div className="rounded-xl border border-sage/30 bg-sage/10 p-3">
+          <div className="mb-2 flex min-h-8 items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5 text-xs font-medium text-ink">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 16 16"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
+                <path
+                  d="m3 8 3 3 7-7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              In basket
+            </span>
+            {onRemove && (
+              <button
+                type="button"
+                onClick={() => onRemove(item.id)}
+                aria-label={`Remove ${item.name} from basket`}
+                className="min-h-11 px-1 text-xs text-ink/70 underline underline-offset-4 hover:text-ink"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+          <div
+            role="group"
+            aria-label={`Basket quantity for ${item.name}`}
+            className="flex min-w-0 items-center overflow-hidden rounded-full border border-sage/30 bg-white"
+          >
+            <button
+              type="button"
+              disabled={blocked || !onQty || line.quantity <= 1}
+              onClick={() => {
+                if (validQuantity(line.quantity - 1, availability))
+                  onQty?.(item.id, line.quantity - 1);
+              }}
+              aria-label={`Decrease quantity of ${item.name}`}
+              className="h-11 w-11 shrink-0 text-lg hover:bg-sage/10 disabled:opacity-30"
+            >
+              −
+            </button>
             <input
               type="number"
               min={1}
               max={limit || 1}
-              value={line.quantity}
+              value={String(line.quantity)}
+              inputMode="numeric"
               disabled={blocked || !onQty}
               aria-label={`Quantity of ${item.name}`}
               onChange={(e) => {
                 const n = Number(e.target.value);
                 if (validQuantity(n, availability)) onQty?.(item.id, n);
               }}
-              className="ml-2 min-h-11 w-20 rounded-lg border border-sand p-2"
+              className="h-11 min-w-0 flex-1 bg-transparent px-1 text-center text-sm font-medium tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
-          </label>
-          {onRemove && (
             <button
               type="button"
-              onClick={() => onRemove(item.id)}
-              className="min-h-11 text-xs underline"
+              disabled={blocked || !onQty || line.quantity >= limit}
+              onClick={() => {
+                if (validQuantity(line.quantity + 1, availability))
+                  onQty?.(item.id, line.quantity + 1);
+              }}
+              aria-label={`Increase quantity of ${item.name}`}
+              className="h-11 w-11 shrink-0 text-lg hover:bg-sage/10 disabled:opacity-30"
             >
-              Remove
+              +
             </button>
-          )}
+          </div>
           {!blocked && line.quantity > limit && limit > 0 && onQty && (
             <button
               type="button"

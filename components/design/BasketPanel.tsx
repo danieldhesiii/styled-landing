@@ -176,8 +176,8 @@ export default function BasketPanel({
                 </div>
                 <div className="mt-2 space-y-2">
                   {group.lines.map((line) => (
-                    <div key={line.item.id}>
-                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-3 rounded-xl border border-sand bg-cream/50 px-3 py-2">
+                    <div key={line.item.id} className="overflow-hidden rounded-xl border border-sand bg-cream/50">
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-3 px-3 py-2">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium leading-snug text-ink">
                             {line.item.name}
@@ -233,7 +233,7 @@ export default function BasketPanel({
                           ×
                         </button>
                       </div>
-                      <ItemHireDates line={basket.find(l => l.itemId === line.item.id)!} name={line.item.name}
+                      <ItemHireDates compact line={basket.find(l => l.itemId === line.item.id)!} name={line.item.name}
                         defaults={defaults} onChange={onItemDates} id={`basket-${line.item.id}`} />
                       {(() => {
                         const a = availability.lines[line.item.id];

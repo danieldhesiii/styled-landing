@@ -147,7 +147,7 @@ export default function LookProducts({
                   <button
                     type="button"
                     onClick={() => setDetailId(i.id)}
-                    className="mt-2 min-h-11 text-xs underline"
+                    className="mt-2 min-h-11 text-left text-xs underline"
                   >
                     Details, terms and boards
                   </button>

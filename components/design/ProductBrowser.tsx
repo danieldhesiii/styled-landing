@@ -238,12 +238,12 @@ export default function ProductBrowser({
           </button>
         )}
         {!savedOnly && (
-          <div className="flex gap-2">
+          <div aria-label="Catalogue view" className="flex gap-1 rounded-full border border-sage/40 bg-sage/15 p-1">
             <button
               type="button"
               onClick={() => setView("browse")}
               aria-pressed={view === "browse"}
-              className="rounded-full border border-sand px-4 py-2 text-sm"
+              className={`min-h-11 rounded-full border px-4 py-2 text-sm font-medium text-ink transition-colors ${view === "browse" ? "border-sage bg-sage" : "border-transparent hover:bg-sage/20"}`}
             >
               All pieces
             </button>
@@ -251,7 +251,7 @@ export default function ProductBrowser({
               type="button"
               onClick={() => setView("look")}
               aria-pressed={view === "look"}
-              className="rounded-full border border-sand px-4 py-2 text-sm"
+              className={`min-h-11 rounded-full border px-4 py-2 text-sm font-medium text-ink transition-colors ${view === "look" ? "border-sage bg-sage" : "border-transparent hover:bg-sage/20"}`}
             >
               This look
             </button>
@@ -682,7 +682,7 @@ export default function ProductBrowser({
                     {item.note && (
                       <p className="mt-2 text-xs text-ink/60">{item.note}</p>
                     )}
-                    <div className="mt-auto pt-4">
+                    <div className="mt-auto">
                       <ProductPurchase
                         item={item}
                         line={line}
