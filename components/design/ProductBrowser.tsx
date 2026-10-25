@@ -298,7 +298,7 @@ export default function ProductBrowser({
             type="button"
             aria-expanded={filtersOpen}
             onClick={() => setFiltersOpen(!filtersOpen)}
-            className="rounded-full border border-sand px-4 py-2 text-sm"
+            className={`min-h-11 rounded-full border px-4 py-2 text-sm font-medium text-ink transition-colors ${filtersOpen ? "border-clay bg-clay hover:bg-clay/90" : "border-clay/40 bg-clay/15 hover:bg-clay/25"}`}
           >
             Filters
           </button>
@@ -306,7 +306,7 @@ export default function ProductBrowser({
             type="button"
             aria-pressed={byVendor}
             onClick={() => setByVendor(!byVendor)}
-            className="rounded-full border border-sand px-4 py-2 text-sm"
+            className={`min-h-11 rounded-full border px-4 py-2 text-sm font-medium text-ink transition-colors ${byVendor ? "border-clay bg-clay hover:bg-clay/90" : "border-clay/40 bg-clay/15 hover:bg-clay/25"}`}
           >
             Suppliers
           </button>
