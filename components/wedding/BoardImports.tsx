@@ -43,180 +43,168 @@ export default function BoardImports({
   onLink: (url: string) => Promise<void>;
   onPreview: (url: string) => void;
 }) {
-  const [source, setSource] = useState<"google" | "pinterest" | null>(null),
-    [link, setLink] = useState(""),
+  const [link, setLink] = useState(""),
     [error, setError] = useState(""),
     [status, setStatus] = useState(""),
     [saving, setSaving] = useState(false);
+  function validatedLink() {
+    const safe = pinterestLink(link);
+    if (!safe) setError("Enter an https Pinterest board or Pin link.");
+    else setError("");
+    return safe;
+  }
   return (
-    <section
-      aria-labelledby="board-import-title"
-      className="mb-6 border-b border-sand pb-6"
-    >
-      <h2 id="board-import-title" className="font-serif text-2xl">
-        Add inspiration
-      </h2>
-      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink/60">
-        Bring photos and ideas into this board, then prepare them for the
-        visualiser. Only catalogue pieces can be added to your basket.
-      </p>
-      <div className="mt-4 grid grid-cols-3 gap-2">
+    <section aria-labelledby="board-import-title">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 id="board-import-title" className="font-serif text-2xl">
+            Add inspiration
+          </h2>
+          <p className="mt-2 text-sm text-ink/60">
+            Bring photos into your board, then use the board in the visualiser.
+          </p>
+        </div>
         <button
           type="button"
           disabled={disabled}
           onClick={onUpload}
-          className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl sm:min-h-16 sm:flex-row sm:justify-start sm:gap-3 border border-sand px-2 py-3 text-center text-xs sm:px-4 sm:text-left sm:text-sm disabled:opacity-50"
+          className="flex min-h-11 items-center gap-2 rounded-full border border-sand px-4 text-sm disabled:opacity-50"
         >
           <ImportIcon source="upload" />
-          <span>
-            Upload a photo
-            <span className="mt-1 hidden text-xs text-ink/60 sm:block">
-              From your device
-            </span>
-          </span>
+          Upload a photo
         </button>
-        {(
-          [
-            ["google", "Google Photos guide", "Manual download and upload"],
-            ["pinterest", "Pinterest", "View a board beside Styled"],
-          ] as const
-        ).map(([id, label, detail]) => (
-          <button
-            key={id}
-            type="button"
-            aria-expanded={source === id}
-            aria-controls="board-import-guide"
-            onClick={() => {
-              setSource(source === id ? null : id);
-              setError("");
-              setStatus("");
-            }}
-            className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl sm:min-h-16 sm:flex-row sm:justify-start sm:gap-3 border px-2 py-3 text-center text-xs sm:px-4 sm:text-left sm:text-sm ${source === id ? "border-clay bg-cream" : "border-sand"}`}
-          >
-            <ImportIcon source={id} />
-            <span>
-              {label}
-              <span className="mt-1 hidden text-xs text-ink/60 sm:block">
-                {detail}
-              </span>
-            </span>
-          </button>
-        ))}
       </div>
-      {source && (
-        <div
-          id="board-import-guide"
-          className="mt-4 rounded-xl bg-cream p-4 text-sm"
+      <div className="mt-5 grid min-w-0 gap-5 lg:grid-cols-2">
+        <section
+          aria-label="Google Photos import instructions"
+          className="min-w-0 rounded-xl bg-cream p-4"
         >
-          <h3 className="font-medium">
-            {source === "google"
-              ? "Add photos from Google Photos"
-              : "Bring Pinterest ideas into your board"}
+          <h3 className="flex items-center gap-2 font-medium">
+            <ImportIcon source="google" />
+            Google Photos
           </h3>
-          <p className="mt-2 text-xs leading-relaxed text-ink/60">
-
-            {source === "google"
-              ? "For now, open Google Photos, download the photos you want to use, then upload them here. Styled cannot browse your Google library."
-              : "Paste a board or Pin link to view its public preview beside your Styled board. You can also open the exact board in a separate Pinterest window, including private boards after signing in there. Images are added to Styled only when you upload them."}
+          <p className="mt-3 text-sm leading-relaxed text-ink/70">
+            Open your library, download the photos you want, then upload them to
+            this board. Styled cannot browse your Google Photos library
+            directly.
           </p>
-          <ol className="mt-3 list-inside list-decimal space-y-2 text-xs leading-relaxed">
+          <ol className="mt-3 list-inside list-decimal space-y-2 text-xs leading-relaxed text-ink/70">
             <li>
               <a
-                href={
-                  source === "google"
-                    ? "https://photos.google.com/"
-                    : "https://www.pinterest.com/"
-                }
+                href="https://photos.google.com/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline underline-offset-4"
+                className="underline"
               >
-                Open {source === "google" ? "Google Photos" : "Pinterest"} in a
-                new tab ↗
+                Open Google Photos ↗
               </a>{" "}
-              and choose your inspiration.
+              and select photos.
             </li>
-            <li>
-              {source === "google"
-                ? "Download your selected photos to your device."
-                : "Copy a board or Pin link, or download an image you have permission to use."}
-            </li>
-            <li>
-              Upload the photo here, then choose Use board in visualiser when
-              you are ready.
-            </li>
+            <li>Download them to your device.</li>
+            <li>Upload them here, then choose Use board in visualiser.</li>
           </ol>
-          {source === "pinterest" && (
-            <form
-              className="mt-4 flex flex-wrap items-end gap-2"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const url = pinterestLink(link);
-                if (!url) {
-                  setError("Enter an https Pinterest board or Pin link.");
-                  return;
-                }
-                if (saving || disabled) return;
-                setError("");
-                setStatus("");
-                setSaving(true);
-                try {
-                  await onLink(url);
-                  setStatus("Pinterest link saved. Choose and upload individual images to add them to Styled.");
-                } catch {
-                  setError("Could not save the link. Please try again.");
-                } finally {
-                  setSaving(false);
-                }
-              }}
-            >
-              <label className="min-w-0 flex-1 text-xs">
-                Pinterest board or Pin link
-                <input
-                  type="url"
-                  required
-                  maxLength={900}
-                  value={link}
-                  onChange={(e) => { setLink(e.target.value); setStatus(""); }}
-                  placeholder="https://www.pinterest.com/…"
-                  className="mt-2 block w-full rounded-lg border border-sand bg-white px-3 py-2.5 text-sm"
-                />
-              </label>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onUpload}
+            className="mt-4 min-h-11 rounded-full border border-sand bg-white px-4 text-sm disabled:opacity-50"
+          >
+            Upload selected photos
+          </button>
+        </section>
+        <section
+          aria-label="Pinterest import instructions"
+          className="min-w-0 rounded-xl bg-cream p-4"
+        >
+          <h3 className="flex items-center gap-2 font-medium">
+            <ImportIcon source="pinterest" />
+            Pinterest
+          </h3>
+          <p className="mt-3 text-sm leading-relaxed text-ink/70">
+            Paste a board or Pin link to see its public preview beside your
+            board. For private boards, open Pinterest and sign in there. Upload
+            individual images you have permission to use.
+          </p>
+          <a
+            href="https://www.pinterest.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex min-h-11 items-center text-xs underline"
+          >
+            Open Pinterest ↗
+          </a>
+          <form
+            className="mt-3 space-y-3"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const safe = validatedLink();
+              if (!safe || disabled || saving) return;
+              setSaving(true);
+              setStatus("");
+              try {
+                await onLink(safe);
+                setStatus(
+                  "Link saved. Upload individual images to add them to Styled.",
+                );
+              } catch {
+                setError("Could not save the link. Try again.");
+              } finally {
+                setSaving(false);
+              }
+            }}
+          >
+            <label className="block text-xs">
+              Pinterest board or Pin link
+              <input
+                type="url"
+                required
+                maxLength={900}
+                value={link}
+                onChange={(e) => {
+                  setLink(e.target.value);
+                  setStatus("");
+                }}
+                placeholder="https://www.pinterest.com/…"
+                className="mt-2 block min-h-11 w-full min-w-0 rounded-lg border border-sand bg-white px-3 text-sm"
+              />
+            </label>
+            <div className="flex flex-wrap gap-2">
               <button
                 disabled={disabled || saving}
-                className="rounded-full border border-sand bg-white px-4 py-2.5 text-xs disabled:opacity-50"
+                className="min-h-11 rounded-full bg-ink px-4 text-xs text-cream disabled:opacity-50"
               >
                 {saving ? "Saving…" : "Save and view Pinterest link"}
               </button>
-              <button type="button" disabled={disabled || saving} onClick={() => {
-                const url = pinterestLink(link);
-                if (!url) { setError("Enter an https Pinterest board or Pin link."); return; }
-                setError(""); onPreview(url);
-              }} className="min-h-11 rounded-full px-4 py-2.5 text-xs underline disabled:opacity-50">Preview without saving</button>
-            </form>
+              <button
+                type="button"
+                disabled={disabled || saving}
+                onClick={() => {
+                  const safe = validatedLink();
+                  if (safe) onPreview(safe);
+                }}
+                className="min-h-11 px-2 text-xs underline disabled:opacity-50"
+              >
+                Preview without saving
+              </button>
+            </div>
+          </form>
+          {status && (
+            <p role="status" className="mt-3 text-xs text-ink/70">
+              {status}
+            </p>
           )}
-          {status && source === "pinterest" && <p role="status" className="mt-3 text-xs text-ink/70">{status}</p>}
           {error && (
             <p role="alert" className="mt-3 text-xs text-clay">
               {error}
             </p>
           )}
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={onUpload}
-            className="mt-4 rounded-full bg-ink px-4 py-2.5 text-xs text-cream disabled:opacity-50"
-          >
-            Upload selected photo
-          </button>
-          {disabled && (
-            <p className="mt-2 text-xs text-ink/60">
-              Create or select a board and wait for it to finish saving before
-              adding inspiration.
-            </p>
-          )}
-        </div>
-      )}
+        </section>
+      </div>
+      <p className="mt-4 text-xs text-ink/60">
+        {disabled
+          ? "Create or select a board and wait for saving to finish before adding photos."
+          : "Inspiration photos are not catalogue products and cannot be added to your basket."}
+      </p>
     </section>
   );
 }

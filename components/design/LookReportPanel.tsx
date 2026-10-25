@@ -24,9 +24,9 @@ export default function LookReportPanel({
   return (
     <section aria-label="What's in this picture" className="border-t border-sand bg-cream/40 px-4 py-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h3 className="text-xs font-medium text-ink">What&apos;s in this picture</h3>
+        <h3 className="text-xs font-medium text-ink">Catalogue references for this look</h3>
         <p className="text-[11px] text-ink/50">
-          {look.items.length} piece{look.items.length === 1 ? "" : "s"} you can order
+          {look.items.length} product reference{look.items.length === 1 ? "" : "s"}
           {look.checked && look.date
             ? ` for ${new Date(`${look.date}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}`
             : ""}
@@ -36,12 +36,11 @@ export default function LookReportPanel({
       {!look.checked && (
         <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-clay/10 px-3 py-2 text-[11px] text-ink/70">
           <span className="flex-1">
-            We haven&apos;t checked these against your wedding date. Add it, then generate again, so every piece is
-            confirmed free on your day.
+            Add your event date to check stock when generating. Availability and delivery still need supplier confirmation before booking.
           </span>
           <input
             type="date"
-            aria-label="Wedding date"
+            aria-label="Event date"
             min={today}
             value={weddingDate}
             onChange={(e) => onWeddingDate(e.target.value)}

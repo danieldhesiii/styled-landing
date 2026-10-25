@@ -17,6 +17,7 @@ import {
   type PlanningDetails,
 } from "@/lib/wedding";
 interface Props extends PlanningDetails {
+  eventName?: string;
   onDates: (p: Partial<PlanningDetails> & { weddingDate?: string }) => void;
   basket: BasketLine[];
   onItemDates: (itemId: string, dates?: HireDates) => void;
@@ -55,6 +56,7 @@ const fmtDate = (d: string) =>
   });
 
 export default function CheckoutStep({
+  eventName,
   basket,
   onItemDates,
   weddingDate,
@@ -194,6 +196,7 @@ export default function CheckoutStep({
           styleId,
           guestCount,
           venueLabel,
+          ...(eventName ? {notes:`Event plan: ${eventName}`} : {}),
           idempotencyKey: idempotencyKey.current,
         }),
       });
@@ -300,6 +303,7 @@ export default function CheckoutStep({
         Submit your selection for manual supplier confirmation and a final quote. Agree payment and delivery or collection before booking. No payment is taken and stock is not reserved by this request.
       </p>
 
+      <p className="mt-4 rounded-xl bg-cream p-4 text-sm leading-relaxed text-ink/70">{eventName && <strong>{eventName}: </strong>}Request well ahead of your event. Allow time for supplier lead times, delivery and setup, and confirm your essential arrival deadline in writing. Other event baskets are submitted separately.</p>
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_380px]">
         {/* Details form */}
         <div className="space-y-4">

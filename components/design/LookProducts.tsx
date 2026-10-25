@@ -63,7 +63,7 @@ export default function LookProducts({
   return (
     <section
       aria-label="Products from this look"
-      className="border-t border-sand bg-white p-5 sm:p-7"
+      className="rounded-2xl border border-sand bg-white p-5 sm:p-7"
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -71,7 +71,7 @@ export default function LookProducts({
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/60">
             {suggested
               ? "This is an example image. These catalogue pieces match its style, rather than being the exact items pictured. Add them to your basket here without leaving the visualiser."
-              : "Explore the catalogue pieces used as references for this look. Add them here without leaving the visualiser. Generated details may vary from the actual products."}
+              : "Explore the catalogue pieces used as references for this look. Add them here without leaving the visualiser. Images are inspiration only. Colours, proportions and details may differ from the actual products; check supplier photos and specifications."}
             {" "}Availability needs supplier confirmation.
           </p>
         </div>

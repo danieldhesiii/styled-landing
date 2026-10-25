@@ -37,6 +37,8 @@ import { useShopAvailability } from "@/components/availability/useAvailability";
 
 import LocationFilter from "@/components/wedding/LocationFilter";
 import type { DiscoveryResults } from "@/lib/location";
+import EventPlans from "@/components/wedding/EventPlans";
+import { eventWorkspace, eventBrief, FIRST_EVENT_ID } from "@/lib/event-plans";
 import MyWedding from "@/components/wedding/MyWedding";
 import Boards from "@/components/wedding/Boards";
 import {
@@ -44,6 +46,7 @@ import {
   workspaceData,
   workspaceFingerprint,
   type WorkspaceData,
+  type EventPlan,
   type WeddingBoard,
 } from "@/lib/wedding";
 
@@ -135,6 +138,11 @@ function DesignStudio() {
     designKey = useRef("");
   const accountId = useRef<string | null>(null);
   const [basket, setBasket] = useState<BasketLine[]>([]);
+  const [eventPlans, setEventPlans] = useState<EventPlan[]>([]);
+  const [activeEventId, setActiveEventId] = useState(FIRST_EVENT_ID);
+  const activeEventRef = useRef(FIRST_EVENT_ID);
+  const [generationBusy, setGenerationBusy] = useState(false);
+  const renderRestoreToken = useRef(0);
 
   // Renders made for the current look (oldest first) and which one is showing.
   const [versions, setVersions] = useState<RenderRef[]>([]);
@@ -158,6 +166,7 @@ function DesignStudio() {
   const currentRender = versions.find((v) => v.id === renderId) ?? null;
 
   function showRender(render: RenderRef | null) {
+    renderRestoreToken.current += 1;
     if (!render) {
       setVersions([]);
       setRenderId(null);
@@ -203,6 +212,9 @@ function DesignStudio() {
       let localDraft: {
         brief?: Partial<Brief>;
         workspaceRevision?: number;
+        activeEventId?: string;
+        basket?: BasketLine[];
+        renderId?: string | null;
       } | null = null;
       try {
         const raw = localStorage.getItem(designKey.current);
@@ -212,6 +224,7 @@ function DesignStudio() {
             basket?: BasketLine[];
             renderId?: string | null;
             workspaceRevision?: number;
+            activeEventId?: string;
           };
           localDraft = saved;
           if (saved.brief) {
@@ -232,32 +245,6 @@ function DesignStudio() {
             setBrief((b) => ({ ...b, ...restoredBrief }));
           }
           if (Array.isArray(saved.basket)) setBasket(saved.basket);
-          if (
-            saved.renderId &&
-            !new URLSearchParams(window.location.search).has("venue") &&
-            !new URLSearchParams(window.location.search).has("style")
-          ) {
-            fetch(`/api/renders/${saved.renderId}`)
-              .then((r) => r.json())
-              .then((data) => {
-                if (
-                  !cancelled &&
-                  data.status === "succeeded" &&
-                  data.imageUrl &&
-                  saved.renderId
-                ) {
-                  setVersions([
-                    {
-                      id: saved.renderId,
-                      url: data.imageUrl,
-                      itemIds: data.itemIds,
-                    },
-                  ]);
-                  setRenderId(saved.renderId);
-                }
-              })
-              .catch(() => {});
-          }
         }
       } catch {
         // Corrupt saved state — start fresh.
@@ -272,11 +259,37 @@ function DesignStudio() {
         setWorkspacePhotos(data.photos || {});
         if (data.data) {
           const stored = data.data as WorkspaceData;
+          if (stored.events?.length && stored.activeEventId) {
+            setEventPlans(stored.events);
+            setActiveEventId(stored.activeEventId);
+            activeEventRef.current = stored.activeEventId;
+            const selected = stored.events.find(
+              (e) => e.id === stored.activeEventId,
+            );
+            if (selected) {
+              setBasket(selected.basket);
+              setVersions([]);
+              setRenderId(null);
+              const draftMatches =
+                localDraft?.workspaceRevision === data.revision &&
+                localDraft?.activeEventId === stored.activeEventId;
+              const selectedRender = draftMatches
+                ? localDraft?.renderId
+                : selected.renderId;
+              if (selectedRender && selectedRender !== "placeholder") {
+                setRenderId(selectedRender);
+                void restoreEventRender(selectedRender, selected.id);
+              }
+            }
+          }
           const { photoIds, ...details } = stored.brief;
           const draft =
-            localDraft?.workspaceRevision === data.revision
+            localDraft?.workspaceRevision === data.revision &&
+            (localDraft?.activeEventId || FIRST_EVENT_ID) ===
+              (stored.activeEventId || FIRST_EVENT_ID)
               ? localDraft?.brief
               : undefined;
+          if (draft && localDraft?.basket) setBasket(localDraft.basket);
           const selectedPhotoIds =
             draft?.uploadedImages?.map((p) => p.id) ?? photoIds;
           setBrief((b) => ({
@@ -292,6 +305,16 @@ function DesignStudio() {
           }));
           setBoards(stored.boards);
           setSavedWorkspace(workspaceFingerprint(stored));
+        }
+        if (
+          !data.data?.events?.length &&
+          localDraft?.renderId &&
+          localDraft.renderId !== "placeholder" &&
+          !entryParams.has("venue") &&
+          !entryParams.has("style")
+        ) {
+          setRenderId(localDraft.renderId);
+          void restoreEventRender(localDraft.renderId, FIRST_EVENT_ID);
         }
         if (!data.data)
           setSavedWorkspace(
@@ -351,13 +374,14 @@ function DesignStudio() {
           brief,
           basket,
           renderId,
+          activeEventId,
           workspaceRevision: workspaceRevision.current,
         }),
       );
     } catch {
       // Storage full or unavailable — non-fatal.
     }
-  }, [brief, basket, renderId, restored]);
+  }, [brief, basket, renderId, activeEventId, restored]);
 
   // Saved looks (favourites) live in the database under the couple's Supabase
   // user (guest or account), so they persist and follow them across devices once
@@ -640,12 +664,149 @@ function DesignStudio() {
     setBrief((b) => ({ ...b, ...patch }));
   };
 
-  async function saveWorkspace(nextBoards = boards, patch?: Partial<Brief>) {
+  async function restoreEventRender(id: string, eventId: string) {
+    const token = ++renderRestoreToken.current;
+    try {
+      const response = await fetch(`/api/renders/${id}`);
+      const data = await response.json();
+      if (
+        activeEventRef.current !== eventId ||
+        token !== renderRestoreToken.current ||
+        !response.ok ||
+        data.status !== "succeeded"
+      )
+        return;
+      setVersions([
+        { id, url: data.imageUrl, itemIds: data.itemIds, look: data.look },
+      ]);
+      setRenderId(id);
+    } catch {
+      setLookError(
+        "The saved preview could not be opened. Your plan is still available.",
+      );
+    }
+  }
+  async function switchEvent(
+    targetId: string,
+    newPlan?: { name: string; kind: EventPlan["kind"] },
+  ) {
+    if (!workspaceLoaded || workspaceLock.current || generationBusy)
+      return false;
+    const outgoing = eventWorkspace(
+      brief,
+      boards,
+      eventPlans,
+      activeEventId,
+      basket,
+      renderId,
+    );
+    let next = outgoing.events!;
+    if (newPlan) {
+      if (next.length >= 12) return false;
+      const initial = workspaceData(
+        {
+          ...brief,
+          venueId: "manor_orangery",
+          venueChoice: "exploring",
+          venueName: "",
+          venuePostcode: "",
+          uploadedImages: [],
+          budget: 0,
+          budgetUnknown: true,
+          planSetupComplete: false,
+        },
+        [],
+      ).brief;
+      next = [
+        ...next,
+        {
+          id: targetId,
+          name: newPlan.name,
+          kind: newPlan.kind,
+          brief: initial,
+          basket: [],
+          renderId: null,
+        },
+      ];
+    }
+    const target = next.find((e) => e.id === targetId);
+    if (!target) return false;
+    const value: WorkspaceData = {
+      brief: target.brief,
+      boards,
+      events: next,
+      activeEventId: targetId,
+    };
+    workspaceLock.current = true;
+    setWorkspaceSaving(true);
+    setWorkspaceError("");
+    try {
+      const response = await fetch("/api/wedding", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          data: value,
+          revision: workspaceRevision.current,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok)
+        throw Error(
+          data.error ||
+            "Could not switch plans. Your current plan is still open.",
+        );
+      workspaceRevision.current = data.revision;
+      const photos = {
+        ...workspacePhotos,
+        ...Object.fromEntries(brief.uploadedImages.map((p) => [p.id, p.url])),
+      };
+      setWorkspacePhotos(photos);
+      setEventPlans(next);
+      setActiveEventId(targetId);
+      activeEventRef.current = targetId;
+      setBrief(eventBrief(target, photos));
+      setBasket(target.basket);
+      renderRestoreToken.current += 1;
+      setVersions([]);
+      setRenderId(target.renderId || null);
+      setBoardInspiration(null);
+      setDiscovery(null);
+      setPartnerVenue(null);
+      setSavedWorkspace(workspaceFingerprint(value));
+      setWorkspaceTouched(false);
+      if (target.renderId) void restoreEventRender(target.renderId, targetId);
+      setActionNotice(
+        `${target.name} is open. Catalogue choices and dates now apply to this event.`,
+      );
+      switchStudioTab("wedding");
+      return true;
+    } catch (e) {
+      setWorkspaceError(
+        e instanceof Error ? e.message : "Could not save event plans.",
+      );
+      return false;
+    } finally {
+      workspaceLock.current = false;
+      setWorkspaceSaving(false);
+    }
+  }
+  async function saveWorkspace(
+    nextBoards = boards,
+    patch?: Partial<Brief>,
+    nextBasket = basket,
+  ) {
     if (!workspaceLoaded || workspaceLock.current) return false;
     workspaceLock.current = true;
     setWorkspaceSaving(true);
     setWorkspaceError("");
-    const value = workspaceData({ ...brief, ...patch }, nextBoards);
+    const value = eventWorkspace(
+      { ...brief, ...patch },
+      nextBoards,
+      eventPlans,
+      activeEventId,
+      nextBasket,
+      renderId,
+    );
     try {
       const res = await fetch("/api/wedding", {
         method: "PUT",
@@ -660,6 +821,7 @@ function DesignStudio() {
         throw Error(d.error || "Could not save your wedding.");
       workspaceRevision.current = d.revision;
       setBoards(nextBoards);
+      setEventPlans(value.events!);
       if (patch) setBrief((current) => ({ ...current, ...patch }));
       setSavedWorkspace(workspaceFingerprint(value));
       return true;
@@ -713,7 +875,16 @@ function DesignStudio() {
   }
   const workspaceDirty =
     workspaceLoaded &&
-    workspaceFingerprint(workspaceData(brief, boards)) !== savedWorkspace;
+    workspaceFingerprint(
+      eventWorkspace(
+        brief,
+        boards,
+        eventPlans,
+        activeEventId,
+        basket,
+        renderId,
+      ),
+    ) !== savedWorkspace;
   useEffect(() => {
     if (!workspaceDirty || (!savedWorkspace && !workspaceTouched)) return;
     const protect = (event: BeforeUnloadEvent) => {
@@ -746,8 +917,15 @@ function DesignStudio() {
   function removeItem(itemId: string) {
     setBasket((b) => b.filter((l) => l.itemId !== itemId));
   }
-  function setItemDates(itemId: string, hireDates?: import("@/lib/booking-dates").HireDates) {
-    setBasket(lines => lines.map(line => line.itemId === itemId ? { ...line, hireDates } : line));
+  function setItemDates(
+    itemId: string,
+    hireDates?: import("@/lib/booking-dates").HireDates,
+  ) {
+    setBasket((lines) =>
+      lines.map((line) =>
+        line.itemId === itemId ? { ...line, hireDates } : line,
+      ),
+    );
   }
   function setQty(itemId: string, quantity: number) {
     setBasket((b) =>
@@ -848,6 +1026,20 @@ function DesignStudio() {
         id="studio-content"
         className="mx-auto max-w-7xl px-4 pb-24 sm:px-5 md:pb-8"
       >
+        {workspaceLoaded && restored && (
+          <EventPlans
+            events={eventPlans}
+            activeId={activeEventId}
+            brief={brief}
+            disabled={workspaceSaving || generationBusy || step !== "studio"}
+            dirty={workspaceDirty}
+            onSave={() => saveWorkspace()}
+            onSwitch={(id) => switchEvent(id)}
+            onCreate={(name, kind) =>
+              switchEvent(crypto.randomUUID(), { name, kind })
+            }
+          />
+        )}
         {actionNotice && (
           <p
             role="status"
@@ -995,6 +1187,19 @@ function DesignStudio() {
             )}
             <div hidden={studioTab !== "wedding"}>
               <MyWedding
+                key={activeEventId}
+                eventName={
+                  eventPlans.find((e) => e.id === activeEventId)?.name ||
+                  "Wedding day"
+                }
+                basketCount={basket.length}
+                previewUrl={currentRender?.url}
+                selectedItems={basket.map((line) => ({
+                  name: getItem(line.itemId)?.name || "Unlisted catalogue item",
+                  quantity: line.quantity,
+                }))}
+                renderCount={versions.length}
+                boardCount={boards.length}
                 photos={workspacePhotos}
                 brief={brief}
                 onChange={patchBrief}
@@ -1004,8 +1209,16 @@ function DesignStudio() {
                 status={
                   !workspaceLoaded
                     ? "Loading saved details…"
-                    : workspaceFingerprint(workspaceData(brief, boards)) ===
-                        savedWorkspace
+                    : workspaceFingerprint(
+                          eventWorkspace(
+                            brief,
+                            boards,
+                            eventPlans,
+                            activeEventId,
+                            basket,
+                            renderId,
+                          ),
+                        ) === savedWorkspace
                       ? "Saved to your account"
                       : "You have unsaved changes to your wedding plan"
                 }
@@ -1193,9 +1406,9 @@ function DesignStudio() {
                 <div
                   ref={visualiserRef}
                   hidden={studioTab !== "visualiser"}
-                  className="scroll-mt-24 overflow-hidden rounded-2xl border border-sand bg-cream"
+                  className="scroll-mt-24 space-y-5"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-sand p-6">
+                  <div className="flex flex-wrap items-center justify-between gap-4 px-1 py-2">
                     <div>
                       <h1 className="font-serif text-3xl">AI visualiser</h1>
                       <p className="mt-2 text-sm text-ink/60">
@@ -1279,6 +1492,17 @@ function DesignStudio() {
                       </p>
                     )}{" "}
                     <RenderStage
+                      key={activeEventId}
+                      initialScene={
+                        eventPlans.find((e) => e.id === activeEventId)?.kind ===
+                        "ceremony"
+                          ? "ceremony"
+                          : eventPlans.find((e) => e.id === activeEventId)
+                                ?.kind === "party"
+                            ? "party"
+                            : "reception"
+                      }
+                      onGeneratingChange={setGenerationBusy}
                       venue={headerVenue}
                       uploadedImages={brief.uploadedImages}
                       style={style}
@@ -1374,6 +1598,11 @@ function DesignStudio() {
 
         {step === "checkout" && (
           <CheckoutStep
+            key={activeEventId}
+            eventName={
+              eventPlans.find((e) => e.id === activeEventId)?.name ||
+              "Wedding day"
+            }
             basket={basket}
             onItemDates={setItemDates}
             weddingDate={brief.weddingDate}
@@ -1386,7 +1615,10 @@ function DesignStudio() {
             guestCount={brief.guestCount}
             venueLabel={venue.name}
             onBack={() => setStep("studio")}
-            onOrdered={() => setBasket([])}
+            onOrdered={() => {
+              setBasket([]);
+              void saveWorkspace(boards, undefined, []);
+            }}
           />
         )}
       </main>

@@ -10,6 +10,8 @@ export default function TermsPage() {
     </section>
     <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Inspiration and estimates</h2>
       <p>Generated looks, styling examples and illustrative catalogue content help you explore ideas. They do not guarantee an exact product, colour, layout, stock level or outcome. Check actual specifications, quantities and availability before booking.</p>
+      <p>AI images are planning inspiration only and may misrepresent colours, proportions, quantities, room features or product details. They are not supplier photographs, specifications or a promise of an exact result. Check the actual product listing, dimensions and supplier photographs, and confirm requirements in writing before booking. This guidance does not affect your statutory rights.</p>
+      <p>Request items in good time for your event, allowing for supplier lead times, delivery, setup and collection. Agree the dates and any essential arrival deadline in writing. Saving items, a preview or a plan does not reserve stock or guarantee delivery.</p>
       <p>Catalogue totals are estimates. Submitting a supplier request does not take payment or reserve items. Supplier confirmation and a final quote come first; payment, delivery or collection and any deposit are then agreed separately.</p>
     </section>
     <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Booking arrangements and changes</h2>

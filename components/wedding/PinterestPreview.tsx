@@ -15,7 +15,7 @@ export default function PinterestPreview({ url, boardName, disabled, onClose, on
     heading.current?.focus({ preventScroll: true });
   }, [url]);
   if (!safe) return null;
-  return <aside aria-label="Pinterest inspiration workspace" className="order-first min-w-0 self-start lg:order-last rounded-2xl border border-sand bg-cream p-4 lg:sticky lg:top-24">
+  return <aside aria-label="Pinterest inspiration workspace" className="order-first min-w-0 self-start lg:order-last rounded-2xl border border-sand bg-cream p-4">
     <div className="flex items-start justify-between gap-3">
       <div className="flex items-center gap-2"><ImportIcon source="pinterest" /><h2 ref={heading} tabIndex={-1} className="font-serif text-2xl outline-none">Pinterest inspiration</h2></div>
       <button type="button" onClick={onClose} aria-label="Close Pinterest preview" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-sand bg-white text-lg">×</button>

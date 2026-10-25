@@ -21,6 +21,8 @@ export interface RenderRef {
 import type { BoardInspiration } from "@/lib/board-inspiration";
 
 interface Props {
+  initialScene?: SceneId;
+  onGeneratingChange?: (busy: boolean) => void;
   boardInspiration?: BoardInspiration | null;
   venue: SampleVenue;
   uploadedImages: { id: string; url: string }[];
@@ -112,6 +114,8 @@ export default function RenderStage({
   onRemoveAngle,
   onShopLook,
   onToggleSave,
+  initialScene = DEFAULT_SCENE,
+  onGeneratingChange,
 }: Props) {
   const fieldId = useId();
   const descriptionId = `${fieldId}-description`;
@@ -120,6 +124,7 @@ export default function RenderStage({
   const saveErrorId = `${fieldId}-save-error`;
   const [description, setDescription] = useState("");
   const [sending, setSending] = useState(false);
+  useEffect(() => { onGeneratingChange?.(sending); }, [sending, onGeneratingChange]);
   const [showGenPanel, setShowGenPanel] = useState(false);
   // "new" generates a fresh look from the venue photo (clears the current render);
   // "tweak" edits the render that's showing, keeping everything the change doesn't
@@ -142,7 +147,7 @@ export default function RenderStage({
   const [draftStyleId, setDraftStyleId] = useState(style.id);
   // Which wedding scene we're setting the room up for (reception, ceremony,
   // party, drinks, proposal).
-  const [setting, setSetting] = useState<SceneId>(DEFAULT_SCENE);
+  const [setting, setSetting] = useState<SceneId>(initialScene);
   const [improving, setImproving] = useState(false);
   const [improveError, setImproveError] = useState<string | null>(null);
   const [activeExample, setActiveExample] = useState<
@@ -422,14 +427,13 @@ export default function RenderStage({
 
   // A gentle pop-up after a fresh render, pointing the couple at the shop list.
   const shopPromptCard = showShopPrompt && renderUrl && (
-    <div className="absolute inset-x-0 top-14 z-10 flex justify-center px-4 animate-fade-in">
-      <div className="flex max-w-md items-center gap-3 rounded-2xl border border-sand bg-cream/95 px-4 py-2.5 shadow-xl backdrop-blur">
+    <div className="px-4 pb-4 animate-fade-in">
+      <div className="flex flex-wrap items-center gap-3 rounded-xl bg-cream px-4 py-3">
         <span className="text-lg">🛍</span>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium text-ink">Your look is ready</p>
           <p className="text-[11px] leading-snug text-ink/55">
-            See the pieces in this picture and add the ones you love to your
-            design.
+            Review the catalogue references below and add your favourites to your basket.
           </p>
         </div>
         <button
@@ -506,7 +510,7 @@ export default function RenderStage({
   const currentStep = sending || showGenPanel ? 2 : renderUrl ? 3 : originalImage ? 2 : 1;
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-sand bg-white">
       <div className="border-b border-sand px-4 py-3">
         <ol aria-label="Visualise progress" className="grid grid-cols-3 gap-3 text-xs sm:text-sm">
           {["Venue photo", "Describe", "Review & shop"].map((label, index) => (
@@ -517,7 +521,7 @@ export default function RenderStage({
           ))}
         </ol>
         <p id={illustrationId} className="mt-2 text-xs leading-relaxed text-ink/60">
-          AI previews are illustrative. Room details, proportions and products may differ; review the pieces below and confirm details with suppliers.
+          AI-generated inspiration, not an exact product photograph or a guaranteed result. Colours, scale, layout, quantities and item details may differ. Check each catalogue listing, dimensions and supplier photographs before booking. Confirm suitability, availability and delivery in writing with the supplier.
         </p>
       </div>
       {saveError && <p id={saveErrorId} role="alert" className="border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{saveError}</p>}
@@ -538,7 +542,7 @@ export default function RenderStage({
       )}
 
       {/* ── IMAGE ──────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden bg-sand/40">
+      <div className="relative mx-3 my-3 overflow-hidden rounded-xl bg-cream sm:mx-4 sm:my-4">
         {splitView ? (
           /* ── SIDE-BY-SIDE COMPARE: original left, styled right ─────── */
           <>
@@ -548,7 +552,7 @@ export default function RenderStage({
                 <img
                   src={originalImage!}
                   alt="Your original venue"
-                  className="aspect-video w-full animate-fade-in object-cover"
+                  className="aspect-video w-full animate-fade-in object-contain"
                 />
                 <div className="absolute left-3 top-3 rounded-full bg-ink/55 px-3 py-1 text-[11px] text-cream backdrop-blur-sm">
                   Original
@@ -559,7 +563,7 @@ export default function RenderStage({
                 <img
                   src={previewImage!}
                   alt="Illustrative AI preview of your venue"
-                  className="aspect-video w-full animate-fade-in object-cover"
+                  className="aspect-video w-full animate-fade-in object-contain"
                 />
                 <div className="absolute right-3 top-3 rounded-full bg-ink/55 px-3 py-1 text-[11px] text-cream backdrop-blur-sm">
                   Styled · {styleName}
@@ -567,7 +571,6 @@ export default function RenderStage({
               </div>
             </div>
             {actionBar}
-            {shopPromptCard}
             {generatingOverlay}
           </>
         ) : displayImage ? (
@@ -577,7 +580,7 @@ export default function RenderStage({
               key={displayImage}
               src={displayImage}
               alt={showOriginal || !renderUrl ? "Original venue photo" : "Illustrative AI preview of your venue"}
-              className="aspect-video w-full animate-fade-in object-cover"
+              className="max-h-[65vh] w-full animate-fade-in object-contain"
             />
 
             {/* Top-left label */}
@@ -644,7 +647,6 @@ export default function RenderStage({
             {/* Style badge + actions — only on the styled render */}
             {renderUrl && !showOriginal && actionBar}
 
-            {shopPromptCard}
             {generatingOverlay}
           </>
         ) : (
@@ -731,6 +733,7 @@ export default function RenderStage({
         )}
       </div>
 
+      {shopPromptCard}
       {/* ── WHAT'S IN THIS PICTURE ─────────────────────────────────── */}
       {renderUrl &&
         !showOriginal &&

@@ -22,7 +22,18 @@ export interface WeddingBoard {
   name: string;
   pins: BoardPin[];
 }
+export interface EventPlan {
+  id: string;
+  name: string;
+  kind: "ceremony" | "reception" | "party" | "other";
+  brief: Omit<WeddingBrief, "uploadedImages"> & { photoIds: string[] };
+  basket: import("./types").BasketLine[];
+  renderId?: string | null;
+}
 export interface WorkspaceData {
+  events?: EventPlan[];
+  activeEventId?: string;
+
   brief: Omit<WeddingBrief, "uploadedImages"> & { photoIds: string[] };
   boards: WeddingBoard[];
 }

@@ -287,11 +287,7 @@ export default function Boards({
           </button>
         ))}
       </div>
-      <details className="mb-5 border-y border-sand py-3">
-        <summary className="cursor-pointer text-sm">
-          <span aria-hidden="true">▧</span> Import photos · Google Photos ·
-          Pinterest
-        </summary>
+      <div className="mb-5 border-y border-sand py-5">
         <BoardImports
           disabled={disabled || !board}
           onUpload={() => file.current?.click()}
@@ -302,7 +298,7 @@ export default function Boards({
             if (board) setPinterest({ boardId: board.id, url });
           }}
         />
-      </details>
+      </div>
       {error && (
         <p role="alert" className="mb-4 text-sm text-clay">
           {error}

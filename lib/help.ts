@@ -141,7 +141,7 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
     label: "AI visualiser",
     title: "Explore how your ideas could look",
     intro:
-      "The visualiser is an optional workspace in its own studio tab. Opening it does not generate an image.",
+      "Choose the event you are planning at the top of the studio. Each event has its own venue, dates, basket and latest preview. Opening the visualiser does not generate an image.",
     steps: [
       {
         title: "Choose your starting image",

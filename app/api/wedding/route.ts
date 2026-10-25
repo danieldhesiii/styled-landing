@@ -24,7 +24,7 @@ export async function GET() {
       .select("id,storage_path")
       .eq("owner_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(300);
     if (photoError)
       return fail(500, "Could not load your private photographs.");
     if (rows?.length) {
@@ -83,17 +83,19 @@ export async function PUT(req: Request) {
   const photoIds = [
     ...new Set([
       ...value.brief.photoIds,
+      ...(value.events || []).flatMap((e) => e.brief.photoIds),
       ...value.boards.flatMap((b) =>
         b.pins.filter((p) => p.kind === "photo").map((p) => p.ref!),
       ),
     ]),
   ];
   const lookIds = [
-    ...new Set(
-      value.boards.flatMap((b) =>
+    ...new Set([
+      ...value.boards.flatMap((b) =>
         b.pins.filter((p) => p.kind === "look").map((p) => p.ref!),
       ),
-    ),
+      ...(value.events || []).flatMap((e) => (e.renderId ? [e.renderId] : [])),
+    ]),
   ];
   if (photoIds.length) {
     const { data, error } = await supabase

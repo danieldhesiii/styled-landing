@@ -9,6 +9,12 @@ import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
 type Panel = "setup" | "overview" | "day" | "venue" | "photos";
 export default function MyWedding({
   brief,
+  eventName = "Wedding day",
+  basketCount = 0,
+  renderCount = 0,
+  boardCount = 0,
+  previewUrl,
+  selectedItems = [],
   photos,
   onChange,
   onSave,
@@ -22,6 +28,12 @@ export default function MyWedding({
   onBookings,
 }: {
   brief: WeddingBrief;
+  eventName?: string;
+  basketCount?: number;
+  renderCount?: number;
+  boardCount?: number;
+  previewUrl?: string;
+  selectedItems?: { name: string; quantity: number }[];
   photos: Record<string, string>;
   onChange: (patch: Partial<WeddingBrief>) => void;
   onSave: (patch?: Partial<WeddingBrief>) => Promise<boolean>;
@@ -40,9 +52,11 @@ export default function MyWedding({
     if (loaded && !initialised.current) {
       initialised.current = true;
       setPanel(
-        brief.planSetupComplete || brief.weddingDate || brief.venueName
-          ? "overview"
-          : "setup",
+        brief.planSetupComplete === false
+          ? "setup"
+          : brief.planSetupComplete || brief.weddingDate || brief.venueName
+            ? "overview"
+            : "setup",
       );
     }
   }, [loaded, brief.planSetupComplete, brief.weddingDate, brief.venueName]);
@@ -122,8 +136,113 @@ export default function MyWedding({
               ? "A few details will help us find relevant pieces. Estimates are fine, and you can edit everything later."
               : "Your dates guide availability, guests guide quantities, and your budget covers the supplier basket. Venue hire is agreed separately."}
           </p>
+          <section
+            aria-label="How your event plan connects"
+            className="mt-6 rounded-xl bg-cream p-5"
+          >
+            <h2 className="font-serif text-2xl">Your plan for {eventName}</h2>
+            <p className="mt-2 text-sm leading-relaxed text-ink/70">
+              This is the brief used across your event: the date checks supplier
+              availability, guest numbers suggest quantities, and your venue and
+              photographs guide the visualiser. A venue saved here is a planning
+              choice, not a reservation.
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <button
+                type="button"
+                onClick={onBrowse}
+                className="min-h-16 rounded-lg border border-sand bg-white p-3 text-left text-sm"
+              >
+                <strong>{basketCount} catalogue selections</strong>
+                <span className="mt-1 block text-xs text-ink/60">
+                  Review pieces for this event →
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={onVisualise}
+                className="min-h-16 rounded-lg border border-sand bg-white p-3 text-left text-sm"
+              >
+                <strong>
+                  {renderCount ? "Preview ready" : "Create your preview"}
+                </strong>
+                <span className="mt-1 block text-xs text-ink/60">
+                  Visualise this venue and setup →
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={onBoards}
+                className="min-h-16 rounded-lg border border-sand bg-white p-3 text-left text-sm"
+              >
+                <strong>{boardCount} inspiration boards</strong>
+                <span className="mt-1 block text-xs text-ink/60">
+                  Ideas shared across your events →
+                </span>
+              </button>
+            </div>
+            <p className="mt-4 text-xs leading-relaxed text-ink/70">
+              <strong>Plan ahead.</strong> Request items well before your event
+              and allow for supplier lead times, delivery and setup. A saved
+              plan or basket does not reserve stock or guarantee arrival. Agree
+              availability, delivery and collection with each supplier before
+              relying on a booking.
+            </p>
+          </section>
           {panel === "overview" && (
             <>
+              <section
+                aria-label="Current planning snapshot"
+                className="mt-6 grid gap-4 sm:grid-cols-[160px_1fr]"
+              >
+                {previewUrl || brief.uploadedImages[0]?.url ? (
+                  <img
+                    src={previewUrl || brief.uploadedImages[0]?.url}
+                    alt={
+                      previewUrl
+                        ? "Your latest illustrative event preview"
+                        : "Your planned venue photograph"
+                    }
+                    className="max-h-40 w-full rounded-xl object-contain bg-cream"
+                  />
+                ) : (
+                  <div className="flex min-h-24 items-center justify-center rounded-xl bg-cream p-4 text-center text-xs text-ink/60">
+                    Add a venue photo or create a preview to see it here.
+                  </div>
+                )}
+                <div>
+                  <h2 className="font-serif text-2xl">What you’re planning</h2>
+                  <p className="mt-2 text-sm text-ink/70">
+                    {venueName} · {dateLabel}
+                  </p>
+                  {selectedItems.length ? (
+                    <ul className="mt-3 space-y-1 text-sm">
+                      {selectedItems.slice(0, 4).map((item, index) => (
+                        <li key={index}>
+                          {item.quantity} × {item.name}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 text-sm text-ink/60">
+                      No catalogue pieces selected for this event yet. Browse
+                      pieces to start its basket.
+                    </p>
+                  )}
+                  {selectedItems.length > 4 && (
+                    <p className="mt-2 text-xs text-ink/60">
+                      Plus {selectedItems.length - 4} more selections in this
+                      event’s basket.
+                    </p>
+                  )}
+                  {previewUrl && (
+                    <p className="mt-2 text-xs text-ink/60">
+                      AI preview for inspiration only. Check the real product
+                      details before booking.
+                    </p>
+                  )}
+                </div>
+              </section>
               <div className="mt-7 grid gap-6 border-y border-sand py-6 sm:grid-cols-3">
                 {(
                   [
@@ -305,9 +424,11 @@ export default function MyWedding({
                   : "Your venue choice"}
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-ink/70">
-                Use Find venues to discover places and request dates. Save the
-                place you’re planning around here, including one booked
-                elsewhere.
+                Save the venue for this event so you can keep its location and
+                photos with your plan. The visualiser uses your uploaded photos;
+                a venue name alone cannot create an accurate room preview. Use
+                Find venues to explore alternatives or request dates. Venues
+                booked elsewhere can also be saved here.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {(

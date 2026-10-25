@@ -35,10 +35,10 @@ export default function DeliveryDates({
       }
     >
       <legend className="mb-3 font-serif text-2xl">
-        Wedding and default hire dates
+        Event and default hire dates
       </legend>
       <label className="block text-sm" htmlFor={`${id}-event`}>
-        Wedding day
+        Event date
         <input
           id={`${id}-event`}
           type="date"
@@ -55,7 +55,7 @@ export default function DeliveryDates({
           onChange={(e) => onChange({ deliverySameDay: e.target.checked })}
           className="h-4 w-4 accent-clay"
         />
-        Delivery is the same as my wedding day
+        Delivery is the same as my event date
       </label>
       {!deliverySameDay && (
         <label className="block text-sm" htmlFor={`${id}-delivery`}>
