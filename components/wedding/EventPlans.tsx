@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { EventPlan, WeddingBrief } from "@/lib/wedding";
 import { daysToEvent } from "@/lib/event-plans";
 
@@ -27,6 +27,15 @@ export default function EventPlans({
   const [adding, setAdding] = useState(false),
     [name, setName] = useState(""),
     [kind, setKind] = useState<EventPlan["kind"]>("ceremony");
+  const addButton = useRef<HTMLButtonElement>(null);
+  const [creating, setCreating] = useState(false);
+  function cancelAdding() {
+    if (creating || disabled) return;
+    setAdding(false);
+    setName("");
+    setKind("ceremony");
+    addButton.current?.focus();
+  }
   const [infoOpen, setInfoOpen] = useState(false);
   const infoId = useId();
   const [now, setNow] = useState<Date | null>(null);
@@ -95,12 +104,13 @@ export default function EventPlans({
         <div className="col-span-2 flex items-center gap-2 sm:ml-auto">
           <button
             type="button"
-            disabled={disabled || events.length >= 12}
-            onClick={() => setAdding(!adding)}
+            ref={addButton}
+            disabled={disabled || creating || (!adding && events.length >= 12)}
+            onClick={() => (adding ? cancelAdding() : setAdding(true))}
             aria-expanded={adding}
             className="min-h-11 rounded-full border border-sand px-4 text-sm disabled:opacity-50"
           >
-            + Add event
+            {adding ? "Close" : "+ Add event"}
           </button>
           {dirty ? (
             <button
@@ -160,11 +170,26 @@ export default function EventPlans({
       {adding && (
         <form
           className="mt-4 grid gap-3 border-t border-sand pt-4 sm:grid-cols-[1fr_1fr_auto]"
+          aria-label="Add event"
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && !creating && !disabled) {
+              e.preventDefault();
+              e.stopPropagation();
+              cancelAdding();
+            }
+          }}
           onSubmit={async (e) => {
             e.preventDefault();
-            if (await onCreate(name.trim(), kind)) {
-              setAdding(false);
-              setName("");
+            if (creating || disabled || !name.trim()) return;
+            setCreating(true);
+            try {
+              if (await onCreate(name.trim(), kind)) {
+                setAdding(false);
+                setName("");
+                setKind("ceremony");
+              }
+            } finally {
+              setCreating(false);
             }
           }}
         >
@@ -192,12 +217,23 @@ export default function EventPlans({
               <option value="other">Other event</option>
             </select>
           </label>
-          <button
-            disabled={disabled || !name.trim()}
-            className="min-h-11 self-end rounded-full bg-ink px-4 text-sm text-cream disabled:opacity-50"
-          >
-            Create event
-          </button>
+          <div className="flex items-center gap-2 self-end">
+            <button
+              type="button"
+              disabled={disabled || creating}
+              onClick={cancelAdding}
+              className="min-h-11 rounded-full border border-sand px-4 text-sm disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={disabled || creating || !name.trim()}
+              className="min-h-11 rounded-full bg-ink px-4 text-sm text-cream disabled:opacity-50"
+            >
+              {creating ? "Creating…" : "Create event"}
+            </button>
+          </div>
           <p className="text-xs text-ink/60 sm:col-span-3">
             Starts with your current date and guest count. You can change both.
           </p>
