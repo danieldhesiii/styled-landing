@@ -196,6 +196,7 @@ export default function EventPlans({
           <label className="text-xs">
             Event name
             <input
+              autoFocus
               required
               maxLength={80}
               value={name}
