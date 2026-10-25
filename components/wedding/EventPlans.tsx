@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { EventPlan, WeddingBrief } from "@/lib/wedding";
 import { daysToEvent } from "@/lib/event-plans";
 
@@ -12,7 +12,9 @@ export default function EventPlans({
   onSave,
   onSwitch,
   onCreate,
+  onEditDates,
 }: {
+  onEditDates?: () => void;
   events: EventPlan[];
   activeId: string;
   brief: WeddingBrief;
@@ -25,6 +27,8 @@ export default function EventPlans({
   const [adding, setAdding] = useState(false),
     [name, setName] = useState(""),
     [kind, setKind] = useState<EventPlan["kind"]>("ceremony");
+  const [infoOpen, setInfoOpen] = useState(false);
+  const infoId = useId();
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
     setNow(new Date());
@@ -40,17 +44,17 @@ export default function EventPlans({
   return (
     <section
       aria-label="Event plans"
-      className="mt-5 rounded-2xl border border-sand bg-white px-4 py-4 sm:px-5"
+      className="mt-4 border-b border-sand pb-4"
     >
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="min-w-0 flex-1 text-xs text-ink/60 sm:max-w-xs">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 sm:flex sm:items-center">
+        <label className="min-w-0 text-xs text-ink/60 sm:w-60 sm:shrink-0">
           Currently planning
           <select
             aria-label="Currently planning"
             value={activeId}
             disabled={disabled}
             onChange={(e) => void onSwitch(e.target.value)}
-            className="mt-1 block min-h-11 w-full rounded-lg border border-sand bg-cream px-3 text-sm font-medium text-ink disabled:opacity-50"
+            className="mt-1.5 block min-h-11 w-full rounded-xl border border-sand bg-white px-3 text-sm font-medium text-ink disabled:opacity-50"
           >
             {options.map((e) => (
               <option key={e.id} value={e.id}>
@@ -59,46 +63,100 @@ export default function EventPlans({
             ))}
           </select>
         </label>
-        <p className="flex-1 text-sm text-ink/70" aria-live="polite">
+        <p
+          className="flex min-h-11 items-center gap-1 text-xs text-ink/60 sm:flex-1"
+          aria-live="polite"
+        >
           {days === null ? (
-            "Add your event date in Wedding plan for a countdown."
+            onEditDates ? (
+              <button
+                type="button"
+                onClick={onEditDates}
+                className="min-h-11 whitespace-nowrap underline underline-offset-4"
+              >
+                Set date
+              </button>
+            ) : (
+              "Date not set"
+            )
           ) : days > 0 ? (
             <>
               <strong className="tabular-nums text-ink">
                 {days} {days === 1 ? "day" : "days"}
               </strong>{" "}
-              until {currentName}
+              to go
             </>
           ) : days === 0 ? (
-            `${currentName} is today`
+            "Today"
           ) : (
-            `${currentName} has taken place`
+            "Event complete"
           )}
         </p>
-        <button
-          type="button"
-          disabled={disabled || events.length >= 12}
-          onClick={() => setAdding(!adding)}
-          aria-expanded={adding}
-          className="min-h-11 rounded-full border border-sand px-4 text-sm disabled:opacity-50"
-        >
-          + Add event
-        </button>
-        <button
-          type="button"
-          disabled={disabled || !dirty}
-          onClick={() => void onSave()}
-          className="min-h-11 rounded-full bg-ink px-4 text-sm text-cream disabled:opacity-40"
-        >
-          {disabled ? "Please wait…" : dirty ? "Save plan" : "Saved"}
-        </button>
+        <div className="col-span-2 flex items-center gap-2 sm:ml-auto">
+          <button
+            type="button"
+            disabled={disabled || events.length >= 12}
+            onClick={() => setAdding(!adding)}
+            aria-expanded={adding}
+            className="min-h-11 rounded-full border border-sand px-4 text-sm disabled:opacity-50"
+          >
+            + Add event
+          </button>
+          {dirty ? (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => void onSave()}
+              className="min-h-11 rounded-full bg-ink px-4 text-sm text-cream disabled:opacity-40"
+            >
+              {disabled ? "Please wait…" : "Save plan"}
+            </button>
+          ) : (
+            <span role="status" className="px-2 text-xs text-ink/50">
+              Saved
+            </span>
+          )}
+          <button
+            type="button"
+            aria-label="About event plans"
+            aria-expanded={infoOpen}
+            aria-controls={infoId}
+            onClick={() => setInfoOpen(!infoOpen)}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink/60 hover:bg-sand/40"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              className="h-5 w-5"
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="9"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+              <path
+                d="M12 11v6m0-10v.5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
-      <p className="mt-3 text-xs leading-relaxed text-ink/60">
-        Each event has its own venue, date, guest count, budget, basket and
-        latest preview. Boards and saved inspiration are shared. Switching
-        events saves your current plan first. Submit each event’s basket
-        separately.
-      </p>
+      {infoOpen && (
+        <p
+          id={infoId}
+          className="mt-4 max-w-2xl text-sm leading-relaxed text-ink/70"
+        >
+          Keep separate dates, venues and baskets for each event. Switching
+          events saves your current plan. Boards and saved ideas are shared
+          across events. Submit each basket separately.
+        </p>
+      )}
       {adding && (
         <form
           className="mt-4 grid gap-3 border-t border-sand pt-4 sm:grid-cols-[1fr_1fr_auto]"
@@ -141,8 +199,7 @@ export default function EventPlans({
             Create event
           </button>
           <p className="text-xs text-ink/60 sm:col-span-3">
-            Your new event starts with the current date and guest estimate. Set
-            its own venue, dates and budget in Wedding plan.
+            Starts with your current date and guest count. You can change both.
           </p>
         </form>
       )}

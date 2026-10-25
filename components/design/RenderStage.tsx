@@ -6,6 +6,7 @@ import { STYLES, getStyle } from "@/lib/styles";
 import { SCENES, DEFAULT_SCENE, type SceneId } from "@/lib/scenes";
 import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
 import type { LookReport } from "@/lib/look";
+import ContextHelp from "@/components/ui/ContextHelp";
 import LookReportPanel from "@/components/design/LookReportPanel";
 
 export interface RenderRef {
@@ -521,8 +522,11 @@ export default function RenderStage({
           ))}
         </ol>
         <p id={illustrationId} className="mt-2 text-xs leading-relaxed text-ink/60">
-          AI-generated inspiration, not an exact product photograph or a guaranteed result. Colours, scale, layout, quantities and item details may differ. Check each catalogue listing, dimensions and supplier photographs before booking. Confirm suitability, availability and delivery in writing with the supplier.
+          AI preview only. Actual items, colours and proportions may differ.
         </p>
+        <ContextHelp title="About AI previews">
+          <p>Generated images are inspiration, not exact product photographs or a guaranteed result. Scale, layout, quantities and details can differ. Check catalogue listings, dimensions and supplier photographs before booking. Confirm suitability, availability and delivery with suppliers in writing.</p>
+        </ContextHelp>
       </div>
       {saveError && <p id={saveErrorId} role="alert" className="border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{saveError}</p>}
       {/* ── ERROR BANNER ───────────────────────────────────────────── */}
@@ -1023,9 +1027,7 @@ export default function RenderStage({
           ) : (
             <>
               <p className="mb-4 text-xs leading-relaxed text-ink/50">
-                Just describe the look you want in your own words: colours,
-                flowers, lighting, layout, anything. You don't have to pick a
-                style; your description leads the design.
+                Describe your colours, flowers, lighting and layout, or choose a style.
               </p>
 
               {/* Which wedding scene to set the room up for */}
@@ -1089,7 +1091,7 @@ export default function RenderStage({
                   {improveError ? (
                     <span className="text-clay">{improveError}</span>
                   ) : (
-                    "The more detail about your colours, flowers, lighting and layout, the better the result. Tap ✨ to have us flesh it out for you."
+                    "Include the details that matter to you."
                   )}
                 </p>
               </div>

@@ -8,6 +8,7 @@ import { useBasketAvailability } from "@/components/availability/useAvailability
 import { useUser } from "@/components/session/useUser";
 import { availabilityLabel } from "@/lib/availability";
 
+import ContextHelp from "@/components/ui/ContextHelp";
 import ItemHireDates from "@/components/wedding/ItemHireDates";
 import { hireDateError, itemHireDates, type HireDates } from "@/lib/booking-dates";
 import DeliveryDates from "@/components/wedding/DeliveryDates";
@@ -300,10 +301,13 @@ export default function CheckoutStep({
         Request supplier confirmation.
       </h1>
       <p className="mt-2 text-ink/60">
-        Submit your selection for manual supplier confirmation and a final quote. Agree payment and delivery or collection before booking. No payment is taken and stock is not reserved by this request.
+        Suppliers confirm availability and a final quote before you book. No payment is taken now.
       </p>
 
-      <p className="mt-4 rounded-xl bg-cream p-4 text-sm leading-relaxed text-ink/70">{eventName && <strong>{eventName}: </strong>}Request well ahead of your event. Allow time for supplier lead times, delivery and setup, and confirm your essential arrival deadline in writing. Other event baskets are submitted separately.</p>
+      <p className="mt-3 text-sm text-ink/70">{eventName && <strong>{eventName}. </strong>}Allow time for supplier lead times, delivery and setup.</p>
+      <ContextHelp title="Before sending your request">
+        <p>Request well ahead of the event and agree any essential arrival deadline in writing. This request does not reserve stock. Other event baskets are submitted separately.</p>
+      </ContextHelp>
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_380px]">
         {/* Details form */}
         <div className="space-y-4">

@@ -61,7 +61,7 @@ export default function BoardImports({
             Add inspiration
           </h2>
           <p className="mt-2 text-sm text-ink/60">
-            Bring photos into your board, then use the board in the visualiser.
+            Upload photos or bring ideas from Google Photos and Pinterest.
           </p>
         </div>
         <button
@@ -84,25 +84,17 @@ export default function BoardImports({
             Google Photos
           </h3>
           <p className="mt-3 text-sm leading-relaxed text-ink/70">
-            Open your library, download the photos you want, then upload them to
-            this board. Styled cannot browse your Google Photos library
-            directly.
+            Download photos from Google, then upload them here. Direct library
+            access isn’t connected.
           </p>
-          <ol className="mt-3 list-inside list-decimal space-y-2 text-xs leading-relaxed text-ink/70">
-            <li>
-              <a
-                href="https://photos.google.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline"
-              >
-                Open Google Photos ↗
-              </a>{" "}
-              and select photos.
-            </li>
-            <li>Download them to your device.</li>
-            <li>Upload them here, then choose Use board in visualiser.</li>
-          </ol>
+          <a
+            href="https://photos.google.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-flex min-h-11 items-center text-xs underline underline-offset-4"
+          >
+            Open Google Photos ↗
+          </a>
           <button
             type="button"
             disabled={disabled}
@@ -121,9 +113,8 @@ export default function BoardImports({
             Pinterest
           </h3>
           <p className="mt-3 text-sm leading-relaxed text-ink/70">
-            Paste a board or Pin link to see its public preview beside your
-            board. For private boards, open Pinterest and sign in there. Upload
-            individual images you have permission to use.
+            Preview a public board or Pin. Open private boards on Pinterest.
+            Upload images you have permission to use.
           </p>
           <a
             href="https://www.pinterest.com/"
@@ -173,7 +164,7 @@ export default function BoardImports({
                 disabled={disabled || saving}
                 className="min-h-11 rounded-full bg-ink px-4 text-xs text-cream disabled:opacity-50"
               >
-                {saving ? "Saving…" : "Save and view Pinterest link"}
+                {saving ? "Saving…" : "Save link"}
               </button>
               <button
                 type="button"
@@ -184,7 +175,7 @@ export default function BoardImports({
                 }}
                 className="min-h-11 px-2 text-xs underline disabled:opacity-50"
               >
-                Preview without saving
+                Preview
               </button>
             </div>
           </form>
@@ -202,8 +193,8 @@ export default function BoardImports({
       </div>
       <p className="mt-4 text-xs text-ink/60">
         {disabled
-          ? "Create or select a board and wait for saving to finish before adding photos."
-          : "Inspiration photos are not catalogue products and cannot be added to your basket."}
+          ? "Create a board above to add photos."
+          : "Only catalogue products can be added to your basket."}
       </p>
     </section>
   );

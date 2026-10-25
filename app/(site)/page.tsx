@@ -13,22 +13,22 @@ const FEATURES = [
   {
     n: "I",
     title: "See it before you commit",
-    body: "Explore an illustrative wedding look from your venue photo. Try florals, linens and lighting as inspiration; generated images may differ from actual products, sizes and layouts.",
+    body: "Turn a venue photo into wedding inspiration. AI details may differ from real products.",
   },
   {
     n: "II",
     title: "Shop the look",
-    body: "Browse catalogue pieces alongside your inspiration and build a selection. Product details and supplier confirmation determine what can be supplied.",
+    body: "Discover real catalogue pieces and build your basket alongside your preview.",
   },
   {
     n: "III",
     title: "Explore suppliers",
-    body: "Explore supplier profiles for flowers, furniture, décor and lighting. Availability and delivery or collection depend on the supplier, location and date.",
+    body: "Find flowers, furniture, décor and lighting from wedding suppliers.",
   },
   {
     n: "IV",
     title: "Request, then confirm",
-    body: "Submit your selection for manual review. Receive supplier confirmation and a final quote, then agree payment and delivery or collection before booking.",
+    body: "Request a quote, then agree availability, payment and delivery before booking.",
   },
 ];
 

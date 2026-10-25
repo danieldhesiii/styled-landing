@@ -17,6 +17,7 @@ export default function LookProducts({
   onAddToBoard,
   onChangeDates,
   itemIds,
+  wide = false,
   report,
   illustrative = false,
   styleId,
@@ -34,6 +35,7 @@ export default function LookProducts({
 }: BoardPickerProps & {
   onChangeDates?: () => void;
   itemIds: string[];
+  wide?: boolean;
   report?: LookReport;
   illustrative?: boolean;
   styleId?: string;
@@ -58,7 +60,11 @@ export default function LookProducts({
   const [detailId, setDetailId] = useState<string | null>(null);
   const detail = detailId ? getItem(detailId) : undefined;
   const { items, suggested, missing } = productsForLook({
-    catalogue, itemIds, report, illustrative, styleId,
+    catalogue,
+    itemIds,
+    report,
+    illustrative,
+    styleId,
   });
   return (
     <section
@@ -67,12 +73,13 @@ export default function LookProducts({
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="font-serif text-3xl">{suggested ? "Create this look" : "Pieces from this look"}</h2>
+          <h2 className="font-serif text-3xl">
+            {suggested ? "Create this look" : "Pieces from this look"}
+          </h2>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/60">
             {suggested
-              ? "This is an example image. These catalogue pieces match its style, rather than being the exact items pictured. Add them to your basket here without leaving the visualiser."
-              : "Explore the catalogue pieces used as references for this look. Add them here without leaving the visualiser. Images are inspiration only. Colours, proportions and details may differ from the actual products; check supplier photos and specifications."}
-            {" "}Availability needs supplier confirmation.
+              ? "Catalogue pieces to recreate this style, not exact items pictured."
+              : "Catalogue references for your preview. Add your favourites to the basket."}
           </p>
         </div>
         <button
@@ -80,7 +87,7 @@ export default function LookProducts({
           onClick={onBrowse}
           className="rounded-full border border-sand px-4 py-2 text-sm"
         >
-          Browse the full catalogue →
+          Browse catalogue
         </button>
       </div>
       {!ready && (
@@ -105,11 +112,14 @@ export default function LookProducts({
       )}
       {ready && missing > 0 && !catalogueLoading && !catalogueError && (
         <p className="mt-4 text-sm text-ink/60">
-          {missing} linked {missing === 1 ? "piece is" : "pieces are"} no longer listed. Available pieces are shown below.
+          {missing} linked {missing === 1 ? "piece is" : "pieces are"} no longer
+          listed. Available pieces are shown below.
         </p>
       )}
       {ready && items.length > 0 && (
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div
+          className={`mt-5 grid gap-3 sm:grid-cols-2 ${wide ? "lg:grid-cols-3 xl:grid-cols-4" : "xl:grid-cols-3"}`}
+        >
           {items.map((i) => {
             const line = basket.find((l) => l.itemId === i.id);
             return (
@@ -164,7 +174,11 @@ export default function LookProducts({
                   />
                   <button
                     type="button"
-                    aria-label={savedIds.includes(i.id) ? `Unsave ${i.name}` : `Save ${i.name}`}
+                    aria-label={
+                      savedIds.includes(i.id)
+                        ? `Unsave ${i.name}`
+                        : `Save ${i.name}`
+                    }
                     aria-pressed={savedIds.includes(i.id)}
                     disabled={
                       catalogueLoading ||

@@ -23,15 +23,11 @@ export default function LookReportPanel({
 
   return (
     <section aria-label="What's in this picture" className="border-t border-sand bg-cream/40 px-4 py-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h3 className="text-xs font-medium text-ink">Catalogue references for this look</h3>
-        <p className="text-[11px] text-ink/50">
-          {look.items.length} product reference{look.items.length === 1 ? "" : "s"}
-          {look.checked && look.date
-            ? ` for ${new Date(`${look.date}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}`
-            : ""}
-        </p>
-      </div>
+      <details className="group">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-xs text-ink/70 [&::-webkit-details-marker]:hidden">
+          <span>{look.items.length} catalogue references{look.excluded.length ? ` · ${look.excluded.length} changes` : ""}</span>
+          <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180"><path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </summary>
 
       {!look.checked && (
         <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-clay/10 px-3 py-2 text-[11px] text-ink/70">
@@ -100,6 +96,7 @@ export default function LookReportPanel({
           {look.leftPlain.map((c) => categoryMeta(c).label.toLowerCase()).join(", ")}.
         </p>
       )}
+      </details>
     </section>
   );
 }

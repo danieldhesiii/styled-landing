@@ -142,6 +142,7 @@ function DesignStudio() {
   const [activeEventId, setActiveEventId] = useState(FIRST_EVENT_ID);
   const activeEventRef = useRef(FIRST_EVENT_ID);
   const [generationBusy, setGenerationBusy] = useState(false);
+  const [dateEditorRequest, setDateEditorRequest] = useState(0);
   const renderRestoreToken = useRef(0);
 
   // Renders made for the current look (oldest first) and which one is showing.
@@ -764,6 +765,7 @@ function DesignStudio() {
       setEventPlans(next);
       setActiveEventId(targetId);
       activeEventRef.current = targetId;
+      setDateEditorRequest(0);
       setBrief(eventBrief(target, photos));
       setBasket(target.basket);
       renderRestoreToken.current += 1;
@@ -1001,7 +1003,7 @@ function DesignStudio() {
               type="button"
               onClick={() => openBookings()}
               aria-current={studioTab === "orders" ? "page" : undefined}
-              className="min-h-11 rounded-full border border-sand px-2 py-2 text-xs sm:px-3"
+              className="min-h-11 rounded-full border border-sand px-2 py-2 text-xs sm:px-3 md:hidden"
             >
               My bookings
             </button>
@@ -1034,6 +1036,10 @@ function DesignStudio() {
             disabled={workspaceSaving || generationBusy || step !== "studio"}
             dirty={workspaceDirty}
             onSave={() => saveWorkspace()}
+            onEditDates={() => {
+              setDateEditorRequest((n) => n + 1);
+              switchStudioTab("wedding");
+            }}
             onSwitch={(id) => switchEvent(id)}
             onCreate={(name, kind) =>
               switchEvent(crypto.randomUUID(), { name, kind })
@@ -1102,16 +1108,14 @@ function DesignStudio() {
             )}
             {(["saved", "looks"] as StudioTab[]).includes(studioTab) && (
               <section aria-labelledby="saved-title" className="mb-6">
-                <p className="text-xs text-clay">Your private collection</p>
                 <h1
                   id="saved-title"
-                  className="mt-2 font-serif text-4xl sm:text-5xl"
+                  className="mt-2 font-serif text-3xl sm:text-4xl"
                 >
                   Saved
                 </h1>
                 <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/60">
-                  Keep your favourite catalogue pieces and generated looks
-                  together.
+                  Your favourite pieces and looks, in one place.
                 </p>
                 <nav
                   aria-label="Saved collection"
@@ -1138,12 +1142,9 @@ function DesignStudio() {
                   ))}
                 </nav>
                 <p className="mt-4 text-xs leading-relaxed text-ink/60">
-                  {studioTab === "saved"
-                    ? "Individual catalogue pieces to shortlist or add to your basket."
-                    : studioTab === "looks"
-                      ? "Your AI previews. Open a look to explore its pieces in the visualiser."
-                      : "Group pieces, looks, photos and notes into your own wedding ideas."}{" "}
-                  Saving does not reserve stock.
+                  {studioTab === "looks"
+                    ? "Open a look to explore its pieces."
+                    : "Save ideas here. Add pieces to your basket when ready."}
                 </p>
               </section>
             )}
@@ -1188,6 +1189,7 @@ function DesignStudio() {
             <div hidden={studioTab !== "wedding"}>
               <MyWedding
                 key={activeEventId}
+                dateEditorRequest={dateEditorRequest}
                 eventName={
                   eventPlans.find((e) => e.id === activeEventId)?.name ||
                   "Wedding day"
@@ -1351,7 +1353,7 @@ function DesignStudio() {
                 studioTab === "looks" ||
                 studioTab === "orders"
               }
-              className={`${studioTab === "venues" || studioTab === "wedding" || studioTab === "boards" || studioTab === "looks" || studioTab === "orders" ? "hidden" : "grid"} gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start`}
+              className={`${studioTab === "venues" || studioTab === "wedding" || studioTab === "boards" || studioTab === "looks" || studioTab === "orders" ? "hidden" : "grid"} gap-5 ${basket.length ? "lg:grid-cols-[minmax(0,1fr)_340px]" : "lg:grid-cols-1"} lg:items-start`}
             >
               {/* Catalogue first, optional visualiser below. */}
               <div className="min-w-0 space-y-5">
@@ -1410,11 +1412,11 @@ function DesignStudio() {
                 >
                   <div className="flex flex-wrap items-center justify-between gap-4 px-1 py-2">
                     <div>
-                      <h1 className="font-serif text-3xl">AI visualiser</h1>
+                      <h1 className="font-serif text-3xl sm:text-4xl">
+                        AI visualiser
+                      </h1>
                       <p className="mt-2 text-sm text-ink/60">
-                        Create an illustrative preview with your venue and
-                        chosen pieces. Your basket and saved items stay with
-                        you.
+                        Preview your venue, then explore the pieces below.
                       </p>
                     </div>
                     <button
@@ -1549,6 +1551,7 @@ function DesignStudio() {
                   </div>
                   <div ref={lookProductsRef} className="scroll-mt-24">
                     <LookProducts
+                      wide={basket.length === 0}
                       itemIds={currentRender?.itemIds || []}
                       report={currentRender?.look}
                       illustrative={currentRender?.id === "placeholder"}
@@ -1573,25 +1576,27 @@ function DesignStudio() {
                 </div>
               </div>
 
-              {/* Right column — sticky basket */}
-              <div className="hidden lg:sticky lg:top-20 lg:block">
-                <div className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm lg:h-[calc(100vh-6rem)]">
-                  <BasketPanel
-                    basket={basket}
-                    guestCount={brief.guestCount}
-                    budget={budgetUnset ? null : brief.budget}
-                    weddingDate={brief.weddingDate}
-                    deliveryDate={deliveryDay(brief)}
-                    returnDate={brief.returnDate}
-                    onItemDates={setItemDates}
-                    onQty={setQty}
-                    onRemove={removeItem}
-                    onChangeDates={() => switchStudioTab("wedding")}
-                    onBrowse={() => switchStudioTab("catalogue")}
-                    onCheckout={() => setStep("checkout")}
-                  />
+              {/* Show the basket beside the work once it has selections. */}
+              {basket.length > 0 && (
+                <div className="hidden lg:sticky lg:top-20 lg:block">
+                  <div className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm lg:h-[calc(100vh-6rem)]">
+                    <BasketPanel
+                      basket={basket}
+                      guestCount={brief.guestCount}
+                      budget={budgetUnset ? null : brief.budget}
+                      weddingDate={brief.weddingDate}
+                      deliveryDate={deliveryDay(brief)}
+                      returnDate={brief.returnDate}
+                      onItemDates={setItemDates}
+                      onQty={setQty}
+                      onRemove={removeItem}
+                      onChangeDates={() => switchStudioTab("wedding")}
+                      onBrowse={() => switchStudioTab("catalogue")}
+                      onCheckout={() => setStep("checkout")}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}

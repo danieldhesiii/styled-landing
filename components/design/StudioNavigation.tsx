@@ -92,7 +92,7 @@ export default function StudioNavigation({
                   <path d={path} />
                 </svg>
               )}
-              {label}
+              {mobile ? id === "wedding" ? "Plan" : id === "catalogue" ? "Shop" : id === "venues" ? "Venues" : label : label}
             </button>
           );
         })}

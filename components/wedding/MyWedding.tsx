@@ -3,12 +3,14 @@ import { useEffect, useRef, useState } from "react";
 import type { WeddingBrief } from "@/lib/wedding";
 import { dateRangeLabel } from "@/lib/booking-dates";
 import { deliveryDay } from "@/lib/wedding";
+import ContextHelp from "@/components/ui/ContextHelp";
 import DeliveryDates from "./DeliveryDates";
 import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
 
 type Panel = "setup" | "overview" | "day" | "venue" | "photos";
 export default function MyWedding({
   brief,
+  dateEditorRequest = 0,
   eventName = "Wedding day",
   basketCount = 0,
   renderCount = 0,
@@ -28,6 +30,7 @@ export default function MyWedding({
   onBookings,
 }: {
   brief: WeddingBrief;
+  dateEditorRequest?: number;
   eventName?: string;
   basketCount?: number;
   renderCount?: number;
@@ -48,6 +51,9 @@ export default function MyWedding({
 }) {
   const [panel, setPanel] = useState<Panel>("setup");
   const initialised = useRef(false);
+  useEffect(() => {
+    if (dateEditorRequest > 0) setPanel("day");
+  }, [dateEditorRequest]);
   useEffect(() => {
     if (loaded && !initialised.current) {
       initialised.current = true;
@@ -108,19 +114,8 @@ export default function MyWedding({
       : "Still finding a venue";
   return (
     <section className="rounded-2xl border border-sand bg-white p-5 sm:p-8">
-      <p className="text-xs uppercase tracking-widest text-clay">
-        Your private planning space
-      </p>
-      <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
-        <h1 className="font-serif text-4xl sm:text-5xl">Wedding plan</h1>
-        {loaded && panel !== "setup" && (
-          <p
-            role="status"
-            className="max-w-xs text-xs leading-relaxed text-ink/70"
-          >
-            {saving ? "Saving your changes…" : status}
-          </p>
-        )}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <h1 className="font-serif text-3xl sm:text-4xl">Wedding plan</h1>
       </div>
       {!loaded ? (
         <div role="status" className="mt-8 space-y-4">
@@ -133,116 +128,23 @@ export default function MyWedding({
         <>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink/70">
             {panel === "setup"
-              ? "A few details will help us find relevant pieces. Estimates are fine, and you can edit everything later."
-              : "Your dates guide availability, guests guide quantities, and your budget covers the supplier basket. Venue hire is agreed separately."}
+              ? "Start with a few details. You can change them later."
+              : `Your venue, dates and selections for ${eventName}.`}
           </p>
-          <section
-            aria-label="How your event plan connects"
-            className="mt-6 rounded-xl bg-cream p-5"
-          >
-            <h2 className="font-serif text-2xl">Your plan for {eventName}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-ink/70">
-              This is the brief used across your event: the date checks supplier
-              availability, guest numbers suggest quantities, and your venue and
-              photographs guide the visualiser. A venue saved here is a planning
-              choice, not a reservation.
+          <ContextHelp title="How your plan is used">
+            <p>
+              Your date guides stock checks, guest count suggests quantities,
+              and venue photos guide the visualiser. A saved venue is a planning
+              choice, not a booking.
             </p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <button
-                type="button"
-                onClick={onBrowse}
-                className="min-h-16 rounded-lg border border-sand bg-white p-3 text-left text-sm"
-              >
-                <strong>{basketCount} catalogue selections</strong>
-                <span className="mt-1 block text-xs text-ink/60">
-                  Review pieces for this event →
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={onVisualise}
-                className="min-h-16 rounded-lg border border-sand bg-white p-3 text-left text-sm"
-              >
-                <strong>
-                  {renderCount ? "Preview ready" : "Create your preview"}
-                </strong>
-                <span className="mt-1 block text-xs text-ink/60">
-                  Visualise this venue and setup →
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={onBoards}
-                className="min-h-16 rounded-lg border border-sand bg-white p-3 text-left text-sm"
-              >
-                <strong>{boardCount} inspiration boards</strong>
-                <span className="mt-1 block text-xs text-ink/60">
-                  Ideas shared across your events →
-                </span>
-              </button>
-            </div>
-            <p className="mt-4 text-xs leading-relaxed text-ink/70">
-              <strong>Plan ahead.</strong> Request items well before your event
-              and allow for supplier lead times, delivery and setup. A saved
-              plan or basket does not reserve stock or guarantee arrival. Agree
-              availability, delivery and collection with each supplier before
-              relying on a booking.
+            <p>
+              Request pieces in good time. Allow for supplier lead times,
+              delivery and setup, and agree your arrival deadline in writing.
+              Saving does not reserve stock.
             </p>
-          </section>
+          </ContextHelp>
           {panel === "overview" && (
             <>
-              <section
-                aria-label="Current planning snapshot"
-                className="mt-6 grid gap-4 sm:grid-cols-[160px_1fr]"
-              >
-                {previewUrl || brief.uploadedImages[0]?.url ? (
-                  <img
-                    src={previewUrl || brief.uploadedImages[0]?.url}
-                    alt={
-                      previewUrl
-                        ? "Your latest illustrative event preview"
-                        : "Your planned venue photograph"
-                    }
-                    className="max-h-40 w-full rounded-xl object-contain bg-cream"
-                  />
-                ) : (
-                  <div className="flex min-h-24 items-center justify-center rounded-xl bg-cream p-4 text-center text-xs text-ink/60">
-                    Add a venue photo or create a preview to see it here.
-                  </div>
-                )}
-                <div>
-                  <h2 className="font-serif text-2xl">What you’re planning</h2>
-                  <p className="mt-2 text-sm text-ink/70">
-                    {venueName} · {dateLabel}
-                  </p>
-                  {selectedItems.length ? (
-                    <ul className="mt-3 space-y-1 text-sm">
-                      {selectedItems.slice(0, 4).map((item, index) => (
-                        <li key={index}>
-                          {item.quantity} × {item.name}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="mt-3 text-sm text-ink/60">
-                      No catalogue pieces selected for this event yet. Browse
-                      pieces to start its basket.
-                    </p>
-                  )}
-                  {selectedItems.length > 4 && (
-                    <p className="mt-2 text-xs text-ink/60">
-                      Plus {selectedItems.length - 4} more selections in this
-                      event’s basket.
-                    </p>
-                  )}
-                  {previewUrl && (
-                    <p className="mt-2 text-xs text-ink/60">
-                      AI preview for inspiration only. Check the real product
-                      details before booking.
-                    </p>
-                  )}
-                </div>
-              </section>
               <div className="mt-7 grid gap-6 border-y border-sand py-6 sm:grid-cols-3">
                 {(
                   [
@@ -283,20 +185,84 @@ export default function MyWedding({
                     <button
                       type="button"
                       onClick={() => setPanel(target)}
-                      className="mt-3 min-h-10 text-sm underline"
+                      aria-label={`Edit ${label.toLowerCase()}`}
+                      className="mt-3 min-h-11 text-sm underline underline-offset-4"
                     >
-                      Edit {label.toLowerCase()} →
+                      {label === "Your day" && !brief.weddingDate
+                        ? "Add date"
+                        : label === "Your planned venue" && !brief.venueName
+                          ? "Choose venue"
+                          : "Edit"}
                     </button>
                   </section>
                 ))}
               </div>
+              <section
+                aria-label="Current planning snapshot"
+                className="mt-6 grid gap-4 sm:grid-cols-[160px_1fr]"
+              >
+                {previewUrl || brief.uploadedImages[0]?.url ? (
+                  <img
+                    src={previewUrl || brief.uploadedImages[0]?.url}
+                    alt={
+                      previewUrl
+                        ? "Your latest illustrative event preview"
+                        : "Your planned venue photograph"
+                    }
+                    className="max-h-40 w-full rounded-xl object-contain bg-cream"
+                  />
+                ) : (
+                  <div className="flex min-h-24 items-center justify-center rounded-xl bg-cream p-4 text-center text-xs text-ink/60">
+                    Add a venue photo or create a preview to see it here.
+                  </div>
+                )}
+                <div>
+                  <h2 className="font-serif text-2xl">Your selections</h2>
+                  {selectedItems.length > 0 && (
+                    <p className="mt-2 text-sm text-ink/70">
+                      {selectedItems.length} selections in this event’s basket
+                    </p>
+                  )}
+                  {selectedItems.length ? (
+                    <ul className="mt-3 space-y-1 text-sm">
+                      {selectedItems.slice(0, 4).map((item, index) => (
+                        <li key={index}>
+                          {item.quantity} × {item.name}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 text-sm text-ink/60">
+                      Browse the catalogue to add your first pieces.
+                    </p>
+                  )}
+                  {selectedItems.length > 4 && (
+                    <p className="mt-2 text-xs text-ink/60">
+                      Plus {selectedItems.length - 4} more selections in this
+                      event’s basket.
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={onVisualise}
+                    className="mt-2 min-h-11 text-sm underline underline-offset-4"
+                  >
+                    {renderCount ? "Open preview" : "Visualise this event"}
+                  </button>
+                  {previewUrl && (
+                    <p className="mt-2 text-xs text-ink/60">
+                      AI preview. Actual details may differ.
+                    </p>
+                  )}
+                </div>
+              </section>
               <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h2 className="font-serif text-2xl">Venue photographs</h2>
+                  <h2 className="font-serif text-xl">Venue photographs</h2>
                   <p className="mt-2 text-sm text-ink/70">
                     {brief.uploadedImages.length
                       ? `${brief.uploadedImages.length} private photos for your visualiser`
-                      : "Add photos when you have them. You can shop without uploading."}
+                      : "Add your venue photos for the visualiser."}
                   </p>
                 </div>
                 <button
@@ -313,14 +279,14 @@ export default function MyWedding({
                   onClick={onBrowse}
                   className="rounded-full bg-ink px-6 py-3 text-sm text-cream"
                 >
-                  Browse pieces for your day →
+                  Browse catalogue
                 </button>
                 <button
                   type="button"
                   onClick={onBoards}
                   className="rounded-full border border-sand px-5 py-3 text-sm"
                 >
-                  Collect ideas on Boards
+                  Boards
                 </button>
                 <button
                   type="button"
@@ -424,11 +390,8 @@ export default function MyWedding({
                   : "Your venue choice"}
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-ink/70">
-                Save the venue for this event so you can keep its location and
-                photos with your plan. The visualiser uses your uploaded photos;
-                a venue name alone cannot create an accurate room preview. Use
-                Find venues to explore alternatives or request dates. Venues
-                booked elsewhere can also be saved here.
+                Add a venue booked through Styled or elsewhere. Upload its
+                photos to use it in the visualiser.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {(
@@ -648,7 +611,7 @@ export default function MyWedding({
               </button>
             </>
           )}
-          {(panel !== "overview" || status.includes("unsaved") || saving) && (
+          {panel !== "overview" && (
             <div className="sticky bottom-20 mt-7 flex flex-wrap items-center gap-3 rounded-xl border border-sand bg-cream p-4 shadow-sm md:bottom-3">
               <button
                 type="button"
@@ -662,7 +625,7 @@ export default function MyWedding({
                     ? "Save & start planning →"
                     : "Save changes"}
               </button>
-              {panel !== "overview" && panel !== "setup" && (
+              {panel !== "setup" && (
                 <button
                   type="button"
                   onClick={() => setPanel("overview")}

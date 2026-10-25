@@ -24,13 +24,9 @@ export default function VenueExplorer(props: {
     >
       <div className="flex flex-wrap items-start justify-between gap-5">
         <div>
-          <p className="text-xs uppercase tracking-widest text-clay">
-            Your setting, your style
-          </p>
-          <h1 className="mt-3 font-serif text-4xl sm:text-5xl">Find a venue</h1>
+          <h1 className="font-serif text-3xl sm:text-4xl">Find a venue</h1>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink/60">
-            Explore spaces, shortlist favourites and save your planned venue to
-            your wedding plan.
+            Find a space for your event. Save a favourite or ask about dates.
           </p>
         </div>
         {props.onRequests ? (

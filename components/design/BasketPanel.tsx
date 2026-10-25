@@ -103,8 +103,7 @@ export default function BasketPanel({
           </span>
         </div>
         <p className="mt-2 text-xs leading-relaxed text-ink/60">
-          Your choices before submission. Adding pieces here does not create an
-          order or confirm a booking.
+          Review your pieces before requesting confirmation.
         </p>
         <div className="mt-2">
           <HelpButton
@@ -157,8 +156,7 @@ export default function BasketPanel({
           <div className="flex h-full flex-col items-center justify-center text-center">
             <span className="text-3xl">🧺</span>
             <p className="mt-3 text-sm text-ink/50">
-              Your design is empty. Add pieces from the catalogue and they'll
-              appear here with live pricing.
+              Add catalogue pieces to start your basket.
             </p>
           </div>
         ) : (
@@ -310,7 +308,7 @@ export default function BasketPanel({
               Change dates
             </button>
           )}
-          {onBrowse && (
+          {onBrowse && basket.length > 0 && (
             <button
               type="button"
               onClick={onBrowse}
@@ -341,8 +339,7 @@ export default function BasketPanel({
           Request supplier confirmation
         </button>
         <p className="mt-2 text-center text-[11px] text-ink/40">
-          The server rechecks pricing and availability at submission. No booking
-          is confirmed here.
+          No payment or reservation until you agree the final quote.
         </p>
       </div>
     </div>

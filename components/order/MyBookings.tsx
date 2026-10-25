@@ -15,14 +15,9 @@ export default function MyBookings({
 }) {
   return (
     <section>
-      <p className="text-xs uppercase tracking-widest text-clay">
-        Your requests & confirmations
-      </p>
-      <h1 className="mt-3 font-serif text-4xl sm:text-5xl">My bookings</h1>
-      <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink/60">
-        Follow everything you have submitted here. Each request shows its own
-        status; sending a request is not a confirmed booking. Your basket holds
-        products you have not submitted yet.
+      <h1 className="font-serif text-3xl sm:text-4xl">My bookings</h1>
+      <p className="mt-3 max-w-2xl text-sm text-ink/60">
+        Track supplier and venue requests. A request becomes a booking only after confirmation.
       </p>
       <nav
         aria-label="Booking types"
