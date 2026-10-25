@@ -285,6 +285,7 @@ export default function Boards({
       </div>
       <div className="mb-5 border-y border-sand py-5">
         <BoardImports
+          hasBoard={!!board}
           disabled={disabled || !board}
           onUpload={() => file.current?.click()}
           onPreview={url => { if (board) setPinterest({ boardId: board.id, url }); }}
@@ -330,11 +331,12 @@ export default function Boards({
               Use board in visualiser →
             </button>
             <p className="max-w-xl text-xs leading-relaxed text-ink/60">
-              Prepare these ideas for a new look. Nothing generates until you
-              choose Generate.
+              {board.pins.some(p => p.kind !== "look" && !p.text.startsWith("Pinterest: "))
+                ? "Opens Visualise with these ideas. Choose Generate when ready."
+                : "Add a photo, catalogue item or note to use this board in Visualise."}
             </p>
           </div>
-          <details className="border-y border-sand py-4">
+          <details open={!board.pins.length} className="border-y border-sand py-4">
             <summary className="w-fit cursor-pointer rounded-full bg-ink px-5 py-2.5 text-sm text-cream">
               Add to board
             </summary>

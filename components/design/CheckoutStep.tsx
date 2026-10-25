@@ -274,7 +274,7 @@ export default function CheckoutStep({
             href="/design?tab=orders"
             className="rounded-full bg-ink px-6 py-3 text-sm text-cream hover:bg-ink/90"
           >
-            View my orders
+            View my bookings
           </a>
           <button
             type="button"
@@ -298,7 +298,7 @@ export default function CheckoutStep({
         ← Back to your design
       </button>
       <h1 className="mt-4 font-serif text-4xl text-ink">
-        Request supplier confirmation.
+        Request supplier confirmation
       </h1>
       <p className="mt-2 text-ink/60">
         Suppliers confirm availability and a final quote before you book. No payment is taken now.
@@ -339,7 +339,7 @@ export default function CheckoutStep({
               htmlFor="checkout-date"
               className="text-sm font-medium text-ink"
             >
-              Wedding date
+              Event date
             </label>
             <input
               id="checkout-date"
@@ -351,7 +351,7 @@ export default function CheckoutStep({
             />
             <p className="mt-1.5 text-xs text-ink/45">
               {!weddingDate
-                ? "Add your wedding and delivery dates so we can check availability."
+                ? "Add your event and hire dates so we can check availability."
                 : availability.loading
                   ? "Checking every supplier for your date…"
                   : availability.error

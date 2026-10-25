@@ -1,4 +1,5 @@
 "use client";
+import ContextHelp from "@/components/ui/ContextHelp";
 import type { PlanningDetails } from "@/lib/wedding";
 import { deliveryDay, deliveryError } from "@/lib/wedding";
 import { hireDateError } from "@/lib/booking-dates";
@@ -34,9 +35,7 @@ export default function DeliveryDates({
         compact ? "grid gap-4 sm:grid-cols-3 sm:items-end" : "space-y-4"
       }
     >
-      <legend className="mb-3 font-serif text-2xl">
-        Event and default hire dates
-      </legend>
+      <legend className="mb-3 font-serif text-2xl">Event and hire dates</legend>
       <label className="block text-sm" htmlFor={`${id}-event`}>
         Event date
         <input
@@ -73,16 +72,41 @@ export default function DeliveryDates({
       )}
       <label className="block text-sm" htmlFor={`${id}-return`}>
         Return / supplier collection day
-        <input id={`${id}-return`} type="date" min={weddingDate || todayUtc()}
+        <input
+          id={`${id}-return`}
+          type="date"
+          min={weddingDate || todayUtc()}
           value={returnDate || weddingDate}
-          onChange={e => onChange({ returnDate: e.target.value })} className={field} />
+          onChange={(e) => onChange({ returnDate: e.target.value })}
+          className={field}
+        />
       </label>
-      <p className="text-xs leading-relaxed text-ink/60 sm:col-span-3">
-        Set the usual hire period here, for example Saturday delivery and Monday return for a Sunday wedding.
-        You can choose different dates for each item in your basket. These are requests; suppliers confirm times, availability and any extra hire charges.
-      </p>
-      {returnDate && hireDateError(deliveryDay({ weddingDate, deliverySameDay, deliveryDate }), returnDate) &&
-        <p role="alert" className="text-sm text-clay sm:col-span-3">{hireDateError(deliveryDay({ weddingDate, deliverySameDay, deliveryDate }), returnDate)}</p>}
+      <div className="sm:col-span-3">
+        <p className="text-xs leading-relaxed text-ink/70">
+          These are the default dates for this event. Change individual item
+          dates in Basket. Suppliers must confirm availability and timing.
+        </p>
+        <ContextHelp title="Choosing delivery and return dates">
+          <p>
+            For a Sunday celebration, you might need Saturday delivery and
+            Monday return. Include setup time and agree an arrival deadline well
+            in advance. Suppliers confirm delivery, collection and any extra
+            hire charges before booking.
+          </p>
+        </ContextHelp>
+      </div>
+      {returnDate &&
+        hireDateError(
+          deliveryDay({ weddingDate, deliverySameDay, deliveryDate }),
+          returnDate,
+        ) && (
+          <p role="alert" className="text-sm text-clay sm:col-span-3">
+            {hireDateError(
+              deliveryDay({ weddingDate, deliverySameDay, deliveryDate }),
+              returnDate,
+            )}
+          </p>
+        )}
       {error && (
         <p role="alert" className="text-sm text-clay sm:col-span-3">
           {error}

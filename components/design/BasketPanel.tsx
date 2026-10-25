@@ -177,16 +177,16 @@ export default function BasketPanel({
                 <div className="mt-2 space-y-2">
                   {group.lines.map((line) => (
                     <div key={line.item.id}>
-                      <div className="flex items-center gap-2 rounded-xl border border-sand bg-cream/50 px-3 py-2">
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-3 rounded-xl border border-sand bg-cream/50 px-3 py-2">
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-medium text-ink">
+                          <p className="text-sm font-medium leading-snug text-ink">
                             {line.item.name}
                           </p>
                           <p className="text-[11px] text-ink/40">
                             {formatGBP(line.item.unitPrice)} {line.item.unit}
                           </p>
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="col-start-1 row-start-2 flex items-center gap-1">
                           <button
                             type="button"
                             onClick={() =>
@@ -195,8 +195,9 @@ export default function BasketPanel({
                                 Math.max(1, line.quantity - 1),
                               )
                             }
-                            className="h-11 w-11 rounded-full border border-sand text-ink/60 hover:border-clay hover:text-clay"
-                            aria-label="Decrease quantity"
+                            className="h-11 w-11 rounded-full border border-sand text-ink/60 hover:border-clay hover:text-clay disabled:opacity-40"
+                            disabled={line.quantity <= 1}
+                            aria-label={`Decrease quantity of ${line.item.name}`}
                           >
                             −
                           </button>
@@ -214,19 +215,19 @@ export default function BasketPanel({
                             onClick={() =>
                               onQty(line.item.id, line.quantity + 1)
                             }
-                            className="h-11 w-11 rounded-full border border-sand text-ink/60 hover:border-clay hover:text-clay"
-                            aria-label="Increase quantity"
+                            className="h-11 w-11 rounded-full border border-sand text-ink/60 hover:border-clay hover:text-clay disabled:opacity-40"
+                            aria-label={`Increase quantity of ${line.item.name}`}
                           >
                             +
                           </button>
                         </div>
-                        <span className="w-14 text-right text-xs font-medium text-ink tabular-nums">
+                        <span className="col-start-2 row-start-2 text-right text-sm font-medium text-ink tabular-nums">
                           {formatGBP(line.lineTotal)}
                         </span>
                         <button
                           type="button"
                           onClick={() => onRemove(line.item.id)}
-                          className="min-h-11 min-w-11 text-ink/30 hover:text-clay"
+                          className="col-start-2 row-start-1 min-h-11 min-w-11 justify-self-end text-ink/60 hover:text-clay"
                           aria-label={`Remove ${line.item.name}`}
                         >
                           ×

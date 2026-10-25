@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
-import { HELP_GUIDES, HELP_TOPICS, type HelpTopic } from "@/lib/help";
+import { HELP_GUIDES, helpTopicsFor, type HelpTopic } from "@/lib/help";
 
 export default function HowItWorks({
   onClose,
-  initialTopic = "catalogue",
+  initialTopic = "overview",
 }: {
   onClose: () => void;
   initialTopic?: HelpTopic;
@@ -14,13 +14,7 @@ export default function HowItWorks({
     content = useRef<HTMLDivElement>(null),
     tabs = useRef<(HTMLButtonElement | null)[]>([]),
     id = useId();
-  const topics = HELP_TOPICS.filter((key) =>
-    initialTopic === "suppliers"
-      ? key === "suppliers"
-      : initialTopic === "venue_partners"
-        ? key === "venue_partners" || key === "venues"
-        : key !== "suppliers" && key !== "venue_partners",
-  );
+  const topics = helpTopicsFor(initialTopic);
   const guide = HELP_GUIDES[topic];
   useEffect(() => {
     const node = dialog.current;
@@ -93,23 +87,38 @@ export default function HowItWorks({
               id={`${id}-description`}
               className="mt-2 max-w-lg text-sm leading-relaxed text-ink/60"
             >
-              Opened for {HELP_GUIDES[initialTopic].label.toLowerCase()}.
-              Explore any topic here without changing your page.
+              Step-by-step help for your current page.
             </p>
           </div>
           <button
             type="button"
             onClick={close}
             aria-label="Close how it works"
-            className="shrink-0 rounded-full border border-sand px-3 py-2 text-sm"
+            className="min-h-11 shrink-0 rounded-full border border-sand px-3 py-2 text-sm"
           >
             Close ×
           </button>
         </div>
+        {topics.length > 1 && (
+          <label className="mt-4 block text-xs text-ink/70 sm:hidden">
+            Help topic
+            <select
+              value={topic}
+              onChange={(e) => select(e.target.value as HelpTopic)}
+              className="mt-2 block min-h-11 w-full rounded-xl border border-sand bg-white px-3 text-sm text-ink"
+            >
+              {topics.map((key) => (
+                <option key={key} value={key}>
+                  {HELP_GUIDES[key].label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <div
           role="tablist"
           aria-label="How it works topics"
-          className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3"
+          className="mt-5 hidden grid-cols-5 gap-2 sm:grid"
         >
           {topics.map((key, index) => (
             <button
@@ -125,7 +134,7 @@ export default function HowItWorks({
               tabIndex={topic === key ? 0 : -1}
               onKeyDown={(e) => navigate(e, index)}
               onClick={() => select(key)}
-              className={`rounded-full border px-3 py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay ${topic === key ? "border-ink bg-ink text-cream" : "border-sand hover:border-clay"}`}
+              className={`min-h-11 rounded-full border px-3 py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay ${topic === key ? "border-ink bg-ink text-cream" : "border-sand hover:border-clay"}`}
             >
               {HELP_GUIDES[key].label}
             </button>
@@ -136,10 +145,13 @@ export default function HowItWorks({
         ref={content}
         id={`${id}-panel`}
         role="tabpanel"
-        aria-labelledby={`${id}-tab-${topic}`}
+        aria-label={guide.label}
         tabIndex={0}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay sm:px-7"
       >
+        <p className="mb-4 text-xs text-ink/60">
+          Changing help topics leaves your page and plan unchanged.
+        </p>
         <h3 className="font-serif text-3xl">{guide.title}</h3>
         <p className="mt-3 text-sm leading-relaxed text-ink/60">
           {guide.intro}
@@ -167,6 +179,12 @@ export default function HowItWorks({
         </p>
       </div>
       <footer className="shrink-0 border-t border-sand px-5 py-4 sm:px-7">
+        <a
+          href="mailto:support@styleduk.com"
+          className="mb-3 inline-flex min-h-11 items-center text-sm text-ink/70 underline underline-offset-4"
+        >
+          Need help? Email Styled
+        </a>
         <button
           type="button"
           onClick={close}

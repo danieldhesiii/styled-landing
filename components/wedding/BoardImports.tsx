@@ -34,11 +34,13 @@ export function ImportIcon({
 }
 export default function BoardImports({
   disabled,
+  hasBoard,
   onUpload,
   onLink,
   onPreview,
 }: {
   disabled: boolean;
+  hasBoard: boolean;
   onUpload: () => void;
   onLink: (url: string) => Promise<void>;
   onPreview: (url: string) => void;
@@ -101,7 +103,7 @@ export default function BoardImports({
             onClick={onUpload}
             className="mt-4 min-h-11 rounded-full border border-sand bg-white px-4 text-sm disabled:opacity-50"
           >
-            Upload selected photos
+            Upload a downloaded photo
           </button>
         </section>
         <section
@@ -175,7 +177,7 @@ export default function BoardImports({
                 }}
                 className="min-h-11 px-2 text-xs underline disabled:opacity-50"
               >
-                Preview
+                View beside board
               </button>
             </div>
           </form>
@@ -192,9 +194,11 @@ export default function BoardImports({
         </section>
       </div>
       <p className="mt-4 text-xs text-ink/60">
-        {disabled
-          ? "Create a board above to add photos."
-          : "Only catalogue products can be added to your basket."}
+        {!hasBoard
+          ? "Create a board above to add photos and save links."
+          : disabled
+            ? "Please wait until your board is ready before adding ideas."
+            : "Only catalogue products can be added to your basket."}
       </p>
     </section>
   );

@@ -1,14 +1,16 @@
 export const HELP_TOPICS = [
+  "overview",
   "wedding",
-  "boards",
   "catalogue",
   "venues",
-  "saved_items",
+  "boards",
+  "saved",
   "visualiser",
-  "saved_looks",
   "basket",
   "orders",
   "suppliers",
+  "business",
+  "supplier_partners",
   "venue_partners",
 ] as const;
 export type HelpTopic = (typeof HELP_TOPICS)[number];
@@ -20,280 +22,352 @@ type Guide = {
   note: string;
 };
 export const HELP_GUIDES: Record<HelpTopic, Guide> = {
+  overview: {
+    label: "Start here",
+    title: "From ideas to confirmed plans",
+    intro:
+      "Start with your event, collect ideas, then request the pieces and venue you need. You can browse before you know every detail.",
+    steps: [
+      {
+        title: "Plan your event",
+        body: "Wedding plan holds the dates, guest count, budget and venue for the event selected in Currently planning. Add event creates a separate plan for a ceremony, reception or another celebration.",
+      },
+      {
+        title: "Explore and collect",
+        body: "Catalogue is for supplier products. Find venues is for discovering spaces. Saved keeps your favourite items and AI looks; Boards brings those ideas together with photos and notes.",
+      },
+      {
+        title: "Visualise if you want to",
+        body: "Use a venue photo and describe your ideas in Visualise. This is optional: you can browse products and request supplier confirmation without generating an image.",
+      },
+      {
+        title: "Request, then confirm",
+        body: "Basket holds your unsubmitted choices. My bookings tracks requests you have sent. Suppliers and venue teams must confirm the details before a request becomes a booking.",
+      },
+    ],
+    note: "Venue hire and supplier products have separate request processes. No payment is taken by the request forms. Plan ahead and agree delivery, setup and payment with the relevant business.",
+  },
   wedding: {
     label: "Wedding plan",
-    title: "Your wedding plan guides your shopping",
+    title: "Set the details for this event",
     intro:
-      "The plan holds your dates, guests, supplier basket budget and chosen venue. Venues is a separate directory for discovering places and sending booking requests.",
+      "Your plan helps suggest quantities, check hire dates and keep track of your venue. It is your private planning space, not a booking.",
     steps: [
       {
-        title: "Choose your starting point",
-        body: "Tell us whether you already have a venue, are looking for one, or are just exploring. Add the wedding location postcode for relevant discovery.",
+        title: "Add the details you know",
+        body: "Set your guest count and supplier budget. Use the estimating or budget-not-set options if you are undecided. Add your event date to see its countdown in the top header.",
       },
       {
-        title: "Set your event and hire dates",
-        body: "Keep the wedding date as your event date. Choose default delivery and return days, then use Different dates for this item in your basket for exceptions. Stock is checked across each item’s full hire period.",
+        title: "Choose when you need the items",
+        body: "Your event date is when the celebration happens. Default hire dates cover delivery or collection through return. For a Sunday event, you might request Saturday delivery and Monday return. Override these dates per item in Basket.",
       },
       {
-        title: "Keep your photographs",
-        body: "Upload your venue rooms and angles. Set the first image as the visualiser starting point, then save wedding plan to continue on another device.",
+        title: "Record your venue",
+        body: "Already booked somewhere? Choose I have a venue and add its details and photos. Still looking? Use Find venues. Saving a venue to your plan only records your choice; send a separate venue request to enquire about booking it.",
+      },
+      {
+        title: "Keep events separate",
+        body: "Use Add event for a ceremony, reception or other celebration, then switch with Currently planning. Each event has its own dates, venue, basket and latest preview. Boards and Saved are shared. Cancel or Close dismisses an unfinished new event.",
+      },
+      {
+        title: "Save before you leave",
+        body: "Use Save changes or Save plan after editing. Switching events saves the current plan before opening the next. Each event basket is submitted separately.",
       },
     ],
-    note: "Your own venue and photos stay private. Delivery times, fees and collection are confirmed separately; selecting dates is not a confirmed booking.",
-  },
-  boards: {
-    label: "Boards",
-    title: "Collect ideas for your wedding",
-    intro:
-      "Private boards bring your products, inspiration, saved looks and notes into one place. Google Photos offers a download/upload guide. Pinterest opens a public preview or a separate window beside your board.",
-    steps: [
-      {
-        title: "Create a board",
-        body: "Open Boards in the main navigation. Name a board for your ceremony, reception or a style you want to explore.",
-      },
-      {
-        title: "Build the idea",
-        body: "Add catalogue pieces, upload your inspiration images, write notes or choose a look already saved in the visualiser. Board changes save to your account. Use board in visualiser prepares photos, catalogue pieces and notes without changing your venue or basket. For Pinterest, save a board or Pin link and choose View beside my board. Public previews show Pinterest content alongside Styled; private boards and full browsing open in a separate Pinterest window. Upload a downloaded image to use it in the visualiser. Google Photos uses a download/upload guide.",
-      },
-      {
-        title: "Shop when ready",
-        body: "Use Add to basket on real catalogue pieces. Inspiration images and generated looks are illustrative and cannot be ordered as photographs.",
-      },
-    ],
-    note: "Boards stay private. Adding a piece to a board does not reserve stock, change your basket or start image generation. Save wedding plan before navigating away if you have edited them.",
+    note: "A date in your plan does not reserve stock or a venue. Request early enough for supplier lead times and agree an arrival deadline before making firm arrangements.",
   },
   catalogue: {
     label: "Catalogue",
-    title: "Find pieces for your day",
+    title: "Find the pieces you need",
     intro:
-      "Start with the products. You can shop and save without using image generation.",
+      "Browse products for the event shown in the header. You do not need an AI preview to shop.",
     steps: [
       {
-        title: "Set your wedding plan",
-        body: "Use Wedding plan for your venue, guest count and budget. Set a wedding day and default delivery and return dates. Individual items can have their own hire periods in your basket. A venue choice is optional.",
+        title: "Search and narrow the results",
+        body: "Search for a product or supplier, choose a category, and use Filters for style, supplier or price. Browse by supplier groups products by business. A location and radius can help you find nearby suppliers; delivery coverage still needs confirmation.",
       },
       {
-        title: "Browse your way",
-        body: "Search by product or supplier, choose a category, or use Filters for supplier, style and price. Browse by supplier groups the same catalogue around the businesses behind each piece.",
+        title: "Check the product",
+        body: "Open Details, terms and boards for the description, dimensions and supplier conditions. Review whether it is for hire or sale, its pricing unit and any availability message.",
       },
       {
-        title: "Save or add",
-        body: "Use the heart to save an item to your account. Add to basket puts it into your quote instead. Saving an item does not add it to your basket or open the visualiser.",
+        title: "Save or add to your basket",
+        body: "The heart keeps an item in Saved, then Items. Add to basket selects it for your current event. Check the suggested quantity and change it to what you need.",
       },
       {
-        title: "Review as you go",
-        body: "Adjust quantities in a product card or your basket. On a phone, the bottom basket bar opens your basket. The Visualise shortcut opens the separate AI visualiser tab only when you choose it.",
+        title: "Check dates before requesting",
+        body: "Open Basket to review quantities and each item’s hire dates. Availability is checked again when you submit your request.",
       },
     ],
-    note: "Prices, date availability and supplier confirmation are checked again as your plans move forward.",
+    note: "Saving or adding a product does not hold stock or a price. Catalogue images may be illustrative; check the product details and confirm the final quote with the supplier.",
   },
   venues: {
     label: "Find venues",
-    title: "Choose a setting for your plans",
+    title: "Find a venue or record one you have",
     intro:
-      "Explore venues in their own section, then continue shopping for the pieces that suit your space.",
+      "Find venues is a directory. Wedding plan records the venue you are planning around. Recording a choice does not book it.",
     steps: [
       {
-        title: "Explore published venues",
-        body: "Search by name, county, date and guest count in the venue directory. More filters cover venue type, hire budget and facilities. Shortlisted venues are saved on this device. Venue listings appear after Styled reviews them. A separate demo collection previews the layout; these fictional venues cannot be booked and do not take part in date searches.",
+        title: "Search for a suitable space",
+        body: "Search by place, date and guests. Use the extra filters for budget, facilities and venue type. The demo collection shows fictional examples and cannot accept bookings. Venue shortlists stay on this device.",
       },
       {
-        title: "View details and dates",
-        body: "Open the venue page for hire information, facilities, photography, styling, a Venue video section and a 3D walkthrough section. Blank media spaces stay visible until the venue adds its content. Known unavailable dates are disabled; every other date still needs confirmation.",
+        title: "Explore the venue page",
+        body: "Review capacity, hire details, photos and facilities. Venue video and 360° & 3D walkthrough show media when the venue has added it. A blank placeholder means no video or tour is available yet.",
       },
       {
-        title: "Choose a venue for your design",
-        body: "Save to wedding plan records a venue as your personal planning choice and opens your Wedding plan. It does not send a request or confirm a booking. Use the venue detail page to request a date, and My bookings to track the response.",
+        title: "Save a choice or send a request",
+        body: "Save to wedding plan records your choice. To ask about availability or arrange a viewing, use the venue page’s request form and choose the relevant dates. Unblocked dates still need the venue’s confirmation.",
       },
       {
-        title: "Use your own space",
-        body: "If you already have a venue, use your own photograph in the AI visualiser. You can change your selected venue from the wedding plan bar.",
+        title: "Follow the response",
+        body: "Open My bookings, then Venue requests. Venue teams can respond, suggest alternatives or record a confirmed booking. Agree the hire terms, contract and payment separately.",
       },
     ],
-    note: "Sign in to send a booking or viewing request, then follow the response in My bookings, then Venue requests. Venue teams can suggest alternative dates or confirm a booking manually. Venue hire, contracts and payment are separate from supplier basket orders. Venue businesses have a separate workspace, accessible from For businesses on the public website.",
+    note: "Already booked a venue elsewhere? Add it and its photographs in Wedding plan. Venue operators use the separate venue workspace, reached through For businesses.",
   },
-  saved_items: {
-    label: "Saved items",
-    title: "Keep a shortlist of favourite pieces",
+  boards: {
+    label: "Boards",
+    title: "Bring your inspiration together",
     intro:
-      "Saved items are individual products, kept separately from your saved generated looks.",
+      "Create private collections for a ceremony, reception, colour palette or any idea. Boards are shared across your events.",
     steps: [
       {
-        title: "Save a piece",
-        body: "Choose the heart on a catalogue card. The button changes to Saved after the item has been saved successfully.",
+        title: "Create and choose a board",
+        body: "Enter a name under New board and choose Create board. Select a board by its name to view or add ideas. Board changes save to your account when they succeed.",
       },
       {
-        title: "Return to your shortlist",
-        body: "Open Saved, then Items. Your favourites are linked to your signed-in account and remain there after a refresh or when you sign in on another device.",
+        title: "Add products, images and notes",
+        body: "Use Add to board for catalogue pieces, notes, uploaded photos or a saved AI look. Saving a heart creates a favourite; adding to a board organises that idea. Neither action puts it into Basket.",
       },
       {
-        title: "Build your basket when ready",
-        body: "Use Add to basket and quantity controls on a saved product. A saved item is a favourite, not a reservation of stock.",
+        title: "Bring ideas from other services",
+        body: "Google Photos opens separately: download a photo, then upload it here. Paste a public Pinterest board or Pin link to save it or view it beside your board. Private boards open on Pinterest. Links alone do not import images; upload individual images you have permission to use.",
       },
       {
-        title: "Edit your shortlist",
-        body: "Choose the saved heart again to remove an item from the collection. Removing a favourite does not remove an item you have already added to your basket.",
+        title: "Use ideas in a preview",
+        body: "Use board in visualiser prepares its uploaded photos, catalogue items and notes for the current event. It does not replace your venue, change your basket or start generation. Pinterest links and saved looks are references, not automatically imported image files.",
       },
     ],
-    note: "Published products and their prices or availability can change. Saving a piece does not hold its price or stock.",
+    note: "Only real catalogue products can be added to Basket. Inspiration photos and AI looks cannot be ordered as images. Removing a board idea does not remove a separately saved favourite or basket item.",
+  },
+  saved: {
+    label: "Saved",
+    title: "Keep favourites, then organise or shop",
+    intro:
+      "One page, two collections: Items for catalogue products and Looks for generated previews. Both are shared across your events.",
+    steps: [
+      {
+        title: "Save individual products",
+        body: "Use a product’s heart in Catalogue or beneath a preview. Find it later under Saved, then Items. Add it to the current event’s Basket when ready.",
+      },
+      {
+        title: "Save a generated look",
+        body: "Choose Save on a finished visualiser preview. Find it under Saved, then Looks. Open a look to return to Visualise and explore its linked catalogue pieces.",
+      },
+      {
+        title: "Build a board",
+        body: "Use Boards to combine favourite pieces and saved looks with your own photos and notes. Saving something does not automatically add it to a board.",
+      },
+      {
+        title: "Remove a favourite",
+        body: "Choose the saved heart again, or the saved look’s removal action. This removes the favourite without changing products already in your Basket.",
+      },
+    ],
+    note: "Sign in to keep favourites across devices. Saving an idea does not reserve stock, hold a price or confirm a booking.",
   },
   visualiser: {
-    label: "AI visualiser",
-    title: "Explore how your ideas could look",
+    label: "Visualise",
+    title: "Preview an idea, then explore its pieces",
     intro:
-      "Choose the event you are planning at the top of the studio. Each event has its own venue, dates, basket and latest preview. Opening the visualiser does not generate an image.",
+      "The visualiser belongs to your currently selected event. Opening it does not generate an image or submit a request.",
     steps: [
       {
-        title: "Choose your starting image",
-        body: "Upload a venue photograph, use a sample room, or bring in a chosen partner venue. Add useful extra angles when you have them.",
+        title: "Start with the venue",
+        body: "Upload a clear venue photograph or choose an example room. A board can supply inspiration, while your venue photo remains the starting space.",
       },
       {
-        title: "Describe the scene",
-        body: "Choose the type of wedding scene and a style, or describe the look you want in your own words. You can include catalogue pieces from your basket.",
+        title: "Describe the look",
+        body: "Choose the scene, pick a style or describe your own. Include useful details such as colours, layout and the catalogue pieces you want to explore. Generate only when your description is ready.",
       },
       {
-        title: "Generate when you are ready",
-        body: "Use the generation control inside the visualiser to create a preview. You can refine a result or try a new look, and compare versions while working.",
+        title: "Review and refine",
+        body: "Use Tweak this look to refine a result or New style to try another direction. Choose a version in Compare to review it. A before-and-after comparison is available when the original photo is present.",
       },
       {
-        title: "Save and explore the pieces",
-        body: "Save a generated result to Saved looks if you want to return to it. Shop this look scrolls to the associated catalogue pieces directly below the image. Add them to your basket there, or use Browse the full catalogue to explore more. Find your product shortlist under Saved, then Items.",
+        title: "Shop or keep the idea",
+        body: "Shop this look takes you to Pieces from this look below the image. Review each real product and add it to Basket without leaving Visualise. Save keeps the preview under Saved, then Looks; Download saves an image file to your device.",
       },
     ],
-    note: "AI previews are illustrative. Check the actual catalogue products, quantities, prices and date availability before making plans.",
-  },
-  saved_looks: {
-    label: "Saved looks",
-    title: "Keep the looks you love",
-    intro:
-      "Saved looks holds generated designs, while Saved items holds individual products.",
-    steps: [
-      {
-        title: "Save a finished look",
-        body: "Use Save on a completed visualiser result. Saving a product heart in the catalogue does not create a saved look.",
-      },
-      {
-        title: "Open your collection",
-        body: "Open Saved, then Looks. Your signed-in account keeps the looks you have explicitly saved.",
-      },
-      {
-        title: "Return to a design",
-        body: "Choose a saved look to open it in the AI visualiser. Where an original venue image is available, use the before-and-after control to compare it.",
-      },
-      {
-        title: "Remove a look if needed",
-        body: "Remove from saved takes a look out of your saved collection. It does not remove your separately saved products or place an order.",
-      },
-    ],
-    note: "Saving a look keeps an idea, not a confirmed quote or reservation. Check current products and availability when you return.",
+    note: "AI preview only. Products, colours, scale, quantities and room details may differ. Catalogue references are not a guarantee that every visible object is available or exactly represented. Check the actual products with suppliers.",
   },
   basket: {
-    label: "Basket & checkout",
-    title: "Review your pieces and request a reservation",
-    intro: "Your basket brings supplier pieces into one itemised plan.",
+    label: "Basket",
+    title: "Review choices before sending a request",
+    intro:
+      "Basket contains unsubmitted supplier products for the current event. My bookings contains requests already sent.",
     steps: [
       {
-        title: "Review quantities and suppliers",
-        body: "The basket groups pieces by supplier and shows your estimated total. Change quantities or remove pieces before continuing.",
+        title: "Review products and quantities",
+        body: "Check the supplier, quantity and estimated line total for every item. Use the quantity controls or remove a piece. Opening Basket does not submit anything.",
       },
       {
-        title: "Check your wedding date",
-        body: "Set your date and review any availability messages. Having a product in the basket does not hold it for that date.",
+        title: "Set each hire period",
+        body: "Items start with the event’s default hire dates. Tick Different dates for this item to set its own delivery or collection date and return date. Availability is checked across the full hire period.",
       },
       {
-        title: "Enter your reservation details",
-        body: "Request supplier confirmation opens the checkout details. Review the latest estimate, your contact details and each item’s delivery and return dates before submitting. Different hire periods may change the final quote.",
+        title: "Resolve any availability messages",
+        body: "Set missing dates, reduce quantities, remove unavailable products or choose alternatives. Delivery coverage, timings and any extra hire charges still need supplier agreement.",
       },
       {
-        title: "Keep the confirmation",
-        body: "After a successful request, keep your reference and follow its progress in My bookings or Track order. Styled reviews supplier confirmation manually before a booking is confirmed. Suppliers can reply with alternative dates when needed.",
+        title: "Request supplier confirmation",
+        body: "Review your contact details, dates and estimate on the request form, then submit when ready. Keep the reference and follow the response in My bookings, then Supplier requests. Submit other event baskets separately.",
       },
     ],
-    note: "In this preview the card-payment step is a placeholder, and no card is charged. The deposit shown in your quote is not a completed payment.",
+    note: "Submitting is a request for manual review. It does not reserve stock or take payment. Final prices, deposits, payment dates and delivery or collection costs are agreed separately before booking.",
   },
   orders: {
     label: "My bookings",
-    title: "Follow your order request",
+    title: "Track requests and confirmed bookings",
     intro:
-      "Open My bookings for Supplier orders and Venue requests. The basket holds products that have not been submitted.",
+      "Supplier requests and Venue requests are kept separately here. Products still in Basket have not been submitted.",
     steps: [
       {
-        title: "Find your request",
-        body: "Open My bookings for requests associated with your account or current session. You can also use Track order with the reference and email used when ordering.",
+        title: "Choose the request type",
+        body: "Supplier requests shows product requests. Venue requests shows venue bookings and viewing enquiries. Open a request to review its details and current status.",
       },
       {
-        title: "Read the current status",
-        body: "Review the order and supplier-line statuses for the latest progress. A submitted request is not the same as every supplier having confirmed it.",
+        title: "Follow confirmation",
+        body: "A submitted or pending request is awaiting a response. It becomes a booking only after confirmation. Check supplier line statuses as different suppliers may respond separately.",
       },
       {
-        title: "Check the details",
-        body: "Review the products, quantities, venue and dates shown against the request. Keep your reference when discussing it with Styled.",
+        title: "Keep your reference",
+        body: "Keep the request reference and contact email. Track your order on the public website can also look up a supplier request using these details.",
+      },
+      {
+        title: "Discuss changes",
+        body: "Contact support@styleduk.com about supplier request changes, quoting your reference. Follow the venue request’s response for venue arrangements. Editing Wedding plan later does not amend a submitted request.",
       },
     ],
-    note: "This guide does not submit, change or cancel an order. Opening another help topic also leaves your order page unchanged.",
+    note: "No request form takes payment. Agree the final quote, deadlines, delivery arrangements and payment terms before treating anything as booked.",
   },
   suppliers: {
     label: "Suppliers",
-    title: "Explore or join the supplier collection",
+    title: "Explore the businesses behind the pieces",
     intro:
-      "Couples can discover suppliers; businesses can apply to join and then manage an approved supplier account.",
+      "Supplier profiles show the businesses and published products you can explore for your event.",
     steps: [
       {
-        title: "Explore a supplier",
-        body: "The supplier directory links to business profiles and their published products. Add in studio carries a piece into your design studio basket.",
+        title: "Explore a profile",
+        body: "Read the business information and browse its published catalogue products. Check each product’s pricing unit and conditions.",
       },
       {
-        title: "Apply to join",
-        body: "Use Join as a supplier or List your business to share your business details and product categories. Styled reviews the application and discusses the commercial terms.",
+        title: "Continue in your studio",
+        body: "Use Add in studio to carry a product into your current event’s Basket. Review quantities, dates and the estimate before requesting confirmation.",
       },
       {
-        title: "Set up an approved account",
-        body: "Once staff have linked your supplier login, use the supplier portal to add your logo and business story. Import a CSV stock list, review the preview, then apply the changes.",
-      },
-      {
-        title: "Keep products and dates current",
-        body: "Use Products for photos and product updates, and Availability for dates and calendar sync. Review incoming supplier order lines through the portal.",
+        title: "Run a supplier business?",
+        body: "Use For businesses, then Join as a supplier. An approved business uses a separate supplier workspace; your customer planning page does not manage stock or listings.",
       },
     ],
-    note: "A public application does not grant portal or staff access automatically. New listings and commercial terms are agreed with Styled.",
+    note: "Supplier coverage and final availability need confirmation. A profile or product favourite is not a booking.",
+  },
+  business: {
+    label: "Business workspaces",
+    title: "Choose the workspace for your business",
+    intro:
+      "Customer planning, supplier products and venue listings have separate tools.",
+    steps: [
+      {
+        title: "List a venue",
+        body: "Choose List your venue to prepare a private listing and submit it for review. Existing operators can open the venue workspace for listings, requests and calendar dates.",
+      },
+      {
+        title: "Offer products",
+        body: "Choose Join as a supplier to apply with your business details and range. Approved suppliers use the supplier workspace for products, stock and incoming requests.",
+      },
+      {
+        title: "Offer both",
+        body: "A business can use both workspaces with the same account once Styled links its supplier access. Your customer Wedding plan remains a separate personal space.",
+      },
+    ],
+    note: "An application does not publish a listing or grant business access automatically. Contact support@styleduk.com for help linking the correct business.",
+  },
+  supplier_partners: {
+    label: "Supplier workspace",
+    title: "Manage your business on Styled",
+    intro:
+      "This workspace is for approved supplier businesses. Customer plans and venue listings are managed separately.",
+    steps: [
+      {
+        title: "Apply or sign in",
+        body: "Join as a supplier sends your business details to Styled for review. Supplier workspace access is available once Styled links your approved business to your login.",
+      },
+      {
+        title: "Prepare your catalogue",
+        body: "Add your business profile and review Products for images, pricing units and product details. For a CSV stock list, preview the import before applying changes.",
+      },
+      {
+        title: "Keep availability current",
+        body: "Use Availability for stock and date updates and any configured calendar sync. Check the full requested hire period, including delivery and return, when reviewing a request.",
+      },
+      {
+        title: "Review incoming requests",
+        body: "Check the supplier order lines in your workspace and coordinate availability, costs and fulfilment with Styled. Agree commercial terms with Styled before taking bookings.",
+      },
+    ],
+    note: "Applying does not grant access or publish listings automatically. Contact support@styleduk.com if the correct business is not linked to your account.",
   },
   venue_partners: {
-    label: "Venue partners",
-    title: "Bring your venue to Styled",
+    label: "Venue workspace",
+    title: "Prepare your listing and manage enquiries",
     intro:
-      "Venue teams have their own workspace to prepare listings, manage enquiries and keep dates up to date.",
+      "This workspace is for venue operators. It is separate from the customer’s Wedding plan and the supplier product workspace.",
     steps: [
       {
-        title: "Share your venue",
-        body: "Choose List your venue, sign in and create a private listing. You can also use the partnership form to speak to Styled before getting started.",
+        title: "Start a private listing",
+        body: "Use For businesses, then List your venue. Sign in and create a draft, or contact Styled through the partnership form first.",
       },
       {
-        title: "Discuss the listing",
-        body: "Add photographs, guest capacities, venue hire prices, facilities and practical information. Save your draft at any time.",
+        title: "Describe the space",
+        body: "Add photos, capacity, hire prices, facilities and practical details. Save your draft while you prepare it, then submit for review. Approved changes are published by Styled; editing a draft does not change the live listing.",
       },
       {
-        title: "Prepare the public page",
-        body: "Add an optional captured Matterport or Kuula tour and a separate video. Submit your listing for review. Styled publishes approved changes; draft edits do not change your live page.",
+        title: "Add optional media",
+        body: "Add a public Matterport or Kuula link for a captured walkthrough and a YouTube or Vimeo link for video. These are separate fields. Photos do not automatically create a 3D tour; leave the fields empty until your media is ready.",
       },
       {
-        title: "Coordinate date enquiries",
-        body: "Use Requests to answer booking and viewing enquiries, record agreements and offer alternative dates. In Calendar, block dates booked elsewhere. Confirmed Styled bookings block their date automatically.",
+        title: "Manage requests and dates",
+        body: "Requests contains viewing and booking enquiries. Reply with availability or alternatives and record agreed bookings. Use Calendar to block dates booked elsewhere. Confirmed Styled bookings block their date automatically.",
       },
     ],
-    note: "Venue selection in the studio is not a booking. Venue operators are not automatically given access to Styled’s staff admin.",
+    note: "Agree venue contracts and payment separately. Saving a venue in a customer plan does not send a booking request. Contact support@styleduk.com for listing or workspace help.",
   },
 };
+
+/** Business guides stay in their workspace; customer help never changes pages. */
+export function helpTopicsFor(initial: HelpTopic): HelpTopic[] {
+  if (initial === "business")
+    return ["business", "venue_partners", "supplier_partners"];
+  if (initial === "supplier_partners" || initial === "venue_partners")
+    return ["business", initial];
+  return HELP_TOPICS.filter(
+    (key) =>
+      key !== "business" &&
+      key !== "supplier_partners" &&
+      key !== "venue_partners",
+  );
+}
 export function helpTopicForPage(
   pathname: string,
   studioSection?: string,
 ): HelpTopic {
   if (pathname === "/design" || pathname.startsWith("/design/")) {
-    if (studioSection === "looks") return "saved_looks";
+    if (studioSection === "looks" || studioSection === "saved") return "saved";
     if (studioSection === "orders") return "orders";
     if (studioSection === "wedding") return "wedding";
     if (studioSection === "boards") return "boards";
     if (studioSection === "checkout") return "basket";
-    if (studioSection === "saved") return "saved_items";
     if (studioSection === "venues") return "venues";
     if (studioSection === "visualiser") return "visualiser";
     return "catalogue";
@@ -306,13 +380,15 @@ export function helpTopicForPage(
     return "venue_partners";
   if (pathname === "/venues" || pathname.startsWith("/venues/"))
     return "venues";
+  if (pathname === "/business") return "business";
   if (
-    pathname === "/suppliers" ||
-    pathname.startsWith("/suppliers/") ||
     pathname === "/vendors" ||
+    pathname === "/suppliers/join" ||
     pathname.startsWith("/portal")
   )
+    return "supplier_partners";
+  if (pathname === "/suppliers" || pathname.startsWith("/suppliers/"))
     return "suppliers";
   if (pathname === "/order" || pathname.startsWith("/order/")) return "orders";
-  return "catalogue";
+  return "overview";
 }

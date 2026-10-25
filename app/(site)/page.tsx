@@ -89,7 +89,7 @@ export default function Page() {
               Picture your wedding. Build a selection you love.
             </h1>
             <p className="mt-4 max-w-xl text-base text-ink/70 sm:mt-5 sm:text-lg">
-              Explore an illustrative look from your venue photo. Browse flowers, furniture and lighting, then request supplier confirmation and a final quote. Agree payment and delivery or collection before booking.
+              Plan your events, collect ideas and explore how your venue could look. Find the pieces you love, then request availability and a quote from suppliers.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3 sm:mt-8">
               <Link

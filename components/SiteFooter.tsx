@@ -47,7 +47,7 @@ export default function SiteFooter() {
               href="/design?tab=wedding"
               className="text-ink/70 hover:text-ink"
             >
-              Design your wedding
+              Open your wedding plan
             </a>
             <a href="/order" className="text-ink/70 hover:text-ink">
               Track your order

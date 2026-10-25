@@ -151,7 +151,7 @@ export default function MyWedding({
                     [
                       "Your day",
                       dateLabel,
-                      `${estimated ? "Estimated " : ""}${brief.guestCount} guests · Default hire: ${dateRangeLabel(deliveryDay(brief), brief.returnDate || brief.weddingDate)}`,
+                      `${estimated ? "Estimated " : ""}${brief.guestCount} guests · Hire dates: ${dateRangeLabel(deliveryDay(brief), brief.returnDate || brief.weddingDate)}`,
                       "day",
                     ],
                     [
@@ -303,7 +303,7 @@ export default function MyWedding({
               <div className="space-y-5">
                 <div>
                   <label className="text-sm">
-                    Estimated wedding guests
+                    Guests for this event
                     <input
                       type="number"
                       min="1"
@@ -332,7 +332,7 @@ export default function MyWedding({
                   <p className="mt-2 text-xs text-ink/70">
                     {estimated
                       ? "Using this estimate to suggest quantities. Change it whenever you know more."
-                      : "Use the number you are planning for."}
+                      : "An estimate is fine. Update it when you know more."}
                   </p>
                 </div>
                 <div>

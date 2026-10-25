@@ -1186,6 +1186,7 @@ function DesignStudio() {
             )}
             {studioTab === "looks" && (
               <SavedLooks
+                onCreate={openVisualiser}
                 embedded
                 looks={savedLooks}
                 onClose={() => switchStudioTab("catalogue")}

@@ -25,7 +25,7 @@ export default function MyBookings({
       >
         {(
           [
-            ["suppliers", "Supplier orders"],
+            ["suppliers", "Supplier requests"],
             ["venues", "Venue requests"],
           ] as const
         ).map(([key, label]) => (

@@ -26,20 +26,17 @@ export default function MyOrders({ onBrowse }: { onBrowse: () => void }) {
   }, [retry]);
   return (
     <section className="rounded-2xl border border-sand bg-white p-5 sm:p-8">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-widest text-clay">
             Submitted to Styled
           </p>
-          <h2 className="mt-3 font-serif text-3xl">Supplier orders</h2>
+          <h2 className="mt-3 font-serif text-3xl">Supplier requests</h2>
         </div>
         <HelpButton topic="orders" />
       </div>
       <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink/60">
-        These are requests you have submitted and bookings confirmed by Styled.
-        We check products, delivery and wedding dates with suppliers manually
-        before confirming. Your basket is a separate collection of choices you
-        have not submitted.
+        Follow the requests you have sent. Styled checks availability and delivery with suppliers before confirming a booking.
       </p>
       <div className="mt-7 flex flex-wrap gap-3">
         <button

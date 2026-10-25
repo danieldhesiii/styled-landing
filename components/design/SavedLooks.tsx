@@ -22,6 +22,7 @@ interface Props extends BoardPickerProps {
   embedded?: boolean;
   looks: SavedLook[];
   onClose: () => void;
+  onCreate?: () => void;
   onLoad: (look: SavedLook, url: string, itemIds?: string[]) => void;
   onUnsave: (id: string) => void;
 }
@@ -35,6 +36,7 @@ export default function SavedLooks({
   embedded = false,
   looks,
   onClose,
+  onCreate,
   onLoad,
   onUnsave,
 }: Props) {
@@ -109,7 +111,7 @@ export default function SavedLooks({
             </p>
           </div>
           <HelpButton
-            topic="saved_looks"
+            topic="saved"
             className="ml-auto mr-3 rounded-full border border-sand px-3 py-2 text-xs"
           />
         </div>
@@ -131,6 +133,7 @@ export default function SavedLooks({
               <span className="text-clay">♥ Save</span> on the image and it'll
               be kept here so you can come back to it.
             </p>
+            {onCreate && <button type="button" onClick={onCreate} className="mt-2 min-h-11 rounded-full bg-ink px-5 py-2 text-sm text-cream">Open Visualise</button>}
           </div>
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
