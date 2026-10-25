@@ -308,7 +308,8 @@ export default function MyWedding({
                       type="number"
                       min="1"
                       max="1000"
-                      value={brief.guestCount}
+                      value={brief.guestCount ? String(brief.guestCount) : ""}
+                      placeholder="Enter guest count"
                       onChange={(e) =>
                         onChange({
                           guestCount: Number(e.target.value),
@@ -355,7 +356,8 @@ export default function MyWedding({
                         type="number"
                         min="0"
                         max="1000000"
-                        value={brief.budget}
+                        value={brief.budget ? String(brief.budget) : ""}
+                        placeholder="Enter budget"
                         onChange={(e) =>
                           onChange({
                             budget: Number(e.target.value),
