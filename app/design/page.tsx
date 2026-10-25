@@ -37,6 +37,8 @@ import { useShopAvailability } from "@/components/availability/useAvailability";
 
 import LocationFilter from "@/components/wedding/LocationFilter";
 import type { DiscoveryResults } from "@/lib/location";
+import EventCountdown from "@/components/wedding/EventCountdown";
+import { isValidDay } from "@/lib/availability";
 import EventPlans from "@/components/wedding/EventPlans";
 import { eventWorkspace, eventBrief, FIRST_EVENT_ID } from "@/lib/event-plans";
 import MyWedding from "@/components/wedding/MyWedding";
@@ -947,15 +949,29 @@ function DesignStudio() {
     });
   }
 
+  const headerHasEvent =
+    workspaceLoaded && restored && isValidDay(brief.weddingDate);
+  const activeEventName =
+    eventPlans.find((event) => event.id === activeEventId)?.name ||
+    "Wedding day";
+
   return (
     <div className="min-h-screen bg-cream">
       {/* Slim app header */}
       <header className="sticky top-0 z-30 border-b border-sand bg-cream/80 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-3 sm:px-5">
-          <Link href="/" className="font-serif text-xl tracking-wide text-ink">
+        <div
+          className={`mx-auto max-w-7xl items-center gap-2 px-3 py-3 sm:px-5 ${headerHasEvent ? "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]" : "flex justify-between"}`}
+        >
+          <Link
+            href="/"
+            className="justify-self-start font-serif text-xl tracking-wide text-ink"
+          >
             Styled<span className="text-clay">.</span>
           </Link>
-          <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
+          {headerHasEvent && (
+            <EventCountdown name={activeEventName} date={brief.weddingDate} />
+          )}
+          <div className="flex min-w-0 items-center justify-self-end gap-1.5 sm:gap-3">
             {step === "studio" && (
               <button
                 type="button"
@@ -973,9 +989,13 @@ function DesignStudio() {
                 >
                   <path d="M5 7h14l1 14H4L5 7z M9 7V5a3 3 0 0 1 6 0v2" />
                 </svg>
-                Basket{" "}
-                <span className="tabular-nums">
-                  ({basket.reduce((n, line) => n + line.quantity, 0)})
+                <span
+                  className={headerHasEvent ? "hidden lg:inline" : undefined}
+                >
+                  Basket{" "}
+                  <span className="tabular-nums">
+                    ({basket.reduce((n, line) => n + line.quantity, 0)})
+                  </span>
                 </span>
               </button>
             )}
@@ -984,7 +1004,7 @@ function DesignStudio() {
               onClick={() => {
                 setShowHowTo(true);
               }}
-              className="hidden sm:flex items-center gap-1.5 rounded-full border border-sand px-3 py-2 text-xs text-ink/70 hover:border-clay/50 hover:text-ink transition-colors"
+              className={`${headerHasEvent ? "hidden xl:flex" : "hidden sm:flex"} items-center gap-1.5 rounded-full border border-sand px-3 py-2 text-xs text-ink/70 hover:border-clay/50 hover:text-ink transition-colors`}
             >
               <span className="text-[11px]">?</span>{" "}
               <span className="hidden sm:inline">How it works</span>
@@ -994,7 +1014,7 @@ function DesignStudio() {
               <button
                 type="button"
                 onClick={() => setStep("studio")}
-                className="text-xs text-ink/50 hover:text-ink transition-colors"
+                className={`${headerHasEvent ? "hidden lg:inline-flex" : ""} text-xs text-ink/50 hover:text-ink transition-colors`}
               >
                 ← Back to design
               </button>
@@ -1003,7 +1023,7 @@ function DesignStudio() {
               type="button"
               onClick={() => openBookings()}
               aria-current={studioTab === "orders" ? "page" : undefined}
-              className="min-h-11 rounded-full border border-sand px-2 py-2 text-xs sm:px-3 md:hidden"
+              className={`${headerHasEvent ? "hidden" : "md:hidden"} min-h-11 rounded-full border border-sand px-2 py-2 text-xs sm:px-3`}
             >
               My bookings
             </button>

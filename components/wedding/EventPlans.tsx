@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { EventPlan, WeddingBrief } from "@/lib/wedding";
-import { daysToEvent } from "@/lib/event-plans";
+import { isValidDay } from "@/lib/availability";
 
 export default function EventPlans({
   events,
@@ -38,13 +38,6 @@ export default function EventPlans({
   }
   const [infoOpen, setInfoOpen] = useState(false);
   const infoId = useId();
-  const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => {
-    setNow(new Date());
-    const timer = setInterval(() => setNow(new Date()), 60000);
-    return () => clearInterval(timer);
-  }, []);
-  const days = now ? daysToEvent(brief.weddingDate, now) : null;
   const currentName =
     events.find((e) => e.id === activeId)?.name || "Wedding day";
   const options = events.length
@@ -55,8 +48,8 @@ export default function EventPlans({
       aria-label="Event plans"
       className="mt-4 border-b border-sand pb-4"
     >
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 sm:flex sm:items-center">
-        <label className="min-w-0 text-xs text-ink/60 sm:w-60 sm:shrink-0">
+      <div className="flex flex-wrap items-end gap-3 sm:items-center">
+        <label className="min-w-40 flex-1 text-xs text-ink/60 sm:w-60 sm:flex-none">
           Currently planning
           <select
             aria-label="Currently planning"
@@ -72,36 +65,19 @@ export default function EventPlans({
             ))}
           </select>
         </label>
-        <p
-          className="flex min-h-11 items-center gap-1 text-xs text-ink/60 sm:flex-1"
-          aria-live="polite"
-        >
-          {days === null ? (
-            onEditDates ? (
-              <button
-                type="button"
-                onClick={onEditDates}
-                className="min-h-11 whitespace-nowrap underline underline-offset-4"
-              >
-                Set date
-              </button>
-            ) : (
-              "Date not set"
-            )
-          ) : days > 0 ? (
-            <>
-              <strong className="tabular-nums text-ink">
-                {days} {days === 1 ? "day" : "days"}
-              </strong>{" "}
-              to go
-            </>
-          ) : days === 0 ? (
-            "Today"
+        {!isValidDay(brief.weddingDate) &&
+          (onEditDates ? (
+            <button
+              type="button"
+              onClick={onEditDates}
+              className="min-h-11 whitespace-nowrap text-xs text-ink/60 underline underline-offset-4"
+            >
+              Set date
+            </button>
           ) : (
-            "Event complete"
-          )}
-        </p>
-        <div className="col-span-2 flex items-center gap-2 sm:ml-auto">
+            <span className="text-xs text-ink/60">Date not set</span>
+          ))}
+        <div className="flex items-center gap-2 sm:ml-auto">
           <button
             type="button"
             ref={addButton}
