@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import AttentionQueue from "@/components/admin/AttentionQueue";
 import StatusPill from "@/components/admin/StatusPill";
 import { adminApi, ago, daysUntil, longDay, money, ORDER_STATUS_LABEL } from "@/lib/admin-client";
 
@@ -58,6 +59,7 @@ export default function InboxPage() {
 
   return (
     <div>
+      <AttentionQueue />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-serif text-4xl text-ink">Orders</h1>

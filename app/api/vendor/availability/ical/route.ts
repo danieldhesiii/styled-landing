@@ -20,9 +20,15 @@ export async function PUT(req: Request) {
     return fail(400, "Invalid request body.");
   }
   const url = typeof body.url === "string" ? body.url.trim() : "";
-  if (!/^https?:\/\/.+/i.test(url) || url.length > 2000) return fail(422, "Enter a valid calendar link (webcal links won't work — use the https version).");
+  if (!/^https?:\/\/.+/i.test(url) || url.length > 2000) return fail(422, "Enter a valid calendar link (webcal links won't work; use the https version).");
 
-  await admin.from("suppliers").update({ ical_url: url }).eq("id", supplierId);
+  const { data: previous, error: readError } = await admin.from("suppliers").select("ical_url").eq("id", supplierId).single();
+  if (readError) return fail(503, "Could not load your calendar connection. Please retry.");
+  const { error: saveError } = await admin.from("suppliers").update({
+    ical_url: url,
+    ...(previous.ical_url !== url ? { ical_synced_at: null } : {}),
+  }).eq("id", supplierId);
+  if (saveError) return fail(503, "Could not save your calendar connection. Please retry.");
   const result = await syncSupplierCalendar(admin, supplierId, url);
   if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 422 });
   return NextResponse.json({ ok: true, blockedDays: result.blockedDays });
@@ -34,7 +40,8 @@ export async function POST(req: Request) {
   if (!auth.ok) return auth.response;
   const { admin, supplierId } = auth;
 
-  const { data: supplier } = await admin.from("suppliers").select("ical_url").eq("id", supplierId).maybeSingle();
+  const { data: supplier, error: readError } = await admin.from("suppliers").select("ical_url").eq("id", supplierId).maybeSingle();
+  if (readError) return fail(503, "Could not load your calendar connection. Please retry.");
   const url = supplier?.ical_url as string | null;
   if (!url) return fail(400, "No calendar is connected yet.");
 
@@ -49,7 +56,9 @@ export async function DELETE(req: Request) {
   if (!auth.ok) return auth.response;
   const { admin, supplierId } = auth;
 
-  await admin.from("availability_overrides").delete().eq("supplier_id", supplierId).eq("source", "ical");
-  await admin.from("suppliers").update({ ical_url: null, ical_synced_at: null }).eq("id", supplierId);
+  const { error: blocksError } = await admin.from("availability_overrides").delete().eq("supplier_id", supplierId).eq("source", "ical");
+  if (blocksError) return fail(503, "Could not remove synced dates. Please retry disconnecting.");
+  const { error: saveError } = await admin.from("suppliers").update({ ical_url: null, ical_synced_at: null }).eq("id", supplierId);
+  if (saveError) return fail(503, "Dates removed, but the calendar is still connected. Please retry disconnecting.");
   return NextResponse.json({ ok: true });
 }

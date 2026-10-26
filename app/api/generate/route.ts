@@ -1,10 +1,10 @@
 import { NextResponse, after } from "next/server";
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
+import { readPublicImage } from "@/lib/server/public-images";
 import { requireUser } from "@/lib/server/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/server/env";
+import { deliveryError } from "@/lib/wedding";
 import { composeOrderableLook, usableDate } from "@/lib/server/look";
 import type { LookReport } from "@/lib/look";
 import { categoryMeta } from "@/lib/categories";
@@ -16,6 +16,11 @@ import {
   cleanBrief,
   MAX_ITEMS,
 } from "@/lib/server/render-prompt";
+import {
+  parsePhotoSelection,
+  inspirationInstruction,
+} from "@/lib/board-inspiration";
+import { loadSelectedPhotoBuffers } from "@/lib/server/selected-photos";
 import { sizeFor } from "@/lib/server/image-model";
 import {
   loadParentRender,
@@ -47,6 +52,8 @@ export const maxDuration = 300;
 // catalogue; spend limits are enforced here.
 
 interface GenerateRequest {
+  photoIds?: unknown;
+  inspirationPhotoIds?: unknown;
   prompt?: unknown;
   styleId?: unknown;
   venueId?: unknown;
@@ -57,6 +64,7 @@ interface GenerateRequest {
   parentRenderId?: unknown;
   setting?: unknown;
   weddingDate?: unknown;
+  deliveryDate?: unknown;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -77,50 +85,93 @@ export async function POST(req: Request) {
     return fail(400, "Invalid request body.");
   }
 
+  let photoIds: string[] | undefined, inspirationPhotoIds: string[];
+  try {
+    photoIds =
+      body.photoIds === undefined
+        ? undefined
+        : parsePhotoSelection(body.photoIds, 20);
+    inspirationPhotoIds = parsePhotoSelection(body.inspirationPhotoIds);
+  } catch {
+    return fail(400, "Choose valid private photos within the image limit.");
+  }
+
   // "none" means description-led: the couple skipped the preset styles and the
   // design comes entirely from their own description.
-  const styleId = typeof body.styleId === "string" ? body.styleId : "garden_romance";
+  const styleId =
+    typeof body.styleId === "string" ? body.styleId : "garden_romance";
   const descriptionLed = styleId === "none";
-  if (!descriptionLed && !STYLES.some((s) => s.id === styleId)) return fail(400, "Unknown style.");
+  if (!descriptionLed && !STYLES.some((s) => s.id === styleId))
+    return fail(400, "Unknown style.");
   const style = descriptionLed ? null : getStyle(styleId);
 
   const brief = cleanBrief(body.prompt);
   // Description-led renders need a description to work from.
   if (descriptionLed && !brief) {
-    return fail(422, "Add a description of the look you want, or pick a style to start from.");
+    return fail(
+      422,
+      "Add a description of the look you want, or pick a style to start from.",
+    );
   }
   const sampleVenueId = typeof body.venueId === "string" ? body.venueId : "";
-  const useUpload = Array.isArray(body.images) && body.images.length > 0;
-  const primaryIndex = typeof body.primaryIndex === "number" ? body.primaryIndex : 0;
+  const useUpload =
+    photoIds !== undefined
+      ? photoIds.length > 0
+      : Array.isArray(body.images) && body.images.length > 0;
+  const primaryIndex =
+    typeof body.primaryIndex === "number" ? body.primaryIndex : 0;
   const guestCount = Math.min(
     500,
-    Math.max(1, Math.round(typeof body.guestCount === "number" ? body.guestCount : 80))
+    Math.max(
+      1,
+      Math.round(typeof body.guestCount === "number" ? body.guestCount : 80),
+    ),
   );
-  const parentRenderId = typeof body.parentRenderId === "string" ? body.parentRenderId : null;
+  const parentRenderId =
+    typeof body.parentRenderId === "string" ? body.parentRenderId : null;
   // The wedding date availability is checked against. Missing or in the past means
   // "unchecked": we then only keep pieces the supplier could ever supply for this
   // guest count, and tell the couple the date wasn't checked.
   const weddingDate = usableDate(body.weddingDate);
-  if (parentRenderId && !UUID.test(parentRenderId)) return fail(400, "Invalid render id.");
+  const deliveryDate =
+    body.deliveryDate === undefined
+      ? weddingDate
+      : usableDate(body.deliveryDate);
+  if (
+    weddingDate &&
+    (!deliveryDate || deliveryError(weddingDate, deliveryDate))
+  )
+    return fail(
+      400,
+      "Check your wedding and delivery dates before generating a look.",
+    );
+  if (parentRenderId && !UUID.test(parentRenderId))
+    return fail(400, "Invalid render id.");
 
   // Which wedding scene to set the room for (reception, ceremony, party, drinks,
   // proposal). Drives the layout instruction and which catalogue categories
   // compose the look.
-  const setting: SceneId = isSceneId(body.setting) ? body.setting : DEFAULT_SCENE;
+  const setting: SceneId = isSceneId(body.setting)
+    ? body.setting
+    : DEFAULT_SCENE;
 
   const itemIds = Array.isArray(body.itemIds)
-    ? body.itemIds.filter((x): x is string => typeof x === "string").slice(0, MAX_ITEMS)
+    ? body.itemIds
+        .filter((x): x is string => typeof x === "string")
+        .slice(0, MAX_ITEMS)
     : [];
 
   // No image key configured: keep the studio usable with the illustrative render.
   if (!env.openaiApiKeyIfSet) {
-    console.warn("[generate] OPENAI_API_KEY not set; returning placeholder render.");
+    console.warn(
+      "[generate] OPENAI_API_KEY not set; returning placeholder render.",
+    );
     return NextResponse.json({
       ok: true,
       pending: true,
       imageUrl: style?.render ?? STYLES[0].render ?? null,
       message:
-        "Render engine not connected yet. Showing an illustrative look for now — your brief has been captured.",
+        "Render engine not connected yet. Showing an illustrative look for now. Your brief has been captured.",
     });
   }
 
@@ -140,10 +191,10 @@ export async function POST(req: Request) {
       chosenIds: itemIds,
       setting,
       weddingDate,
+      deliveryDate,
       guestCount,
       autoFill: !parentRenderId,
       substitute: !parentRenderId,
-      ownerId: user.id,
     });
     items = composed.items;
     look = composed.report;
@@ -155,7 +206,12 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
   const ipHash = clientIpHash(req);
 
-  const limited = await checkRenderLimits({ supabase, admin, userId: user.id, ipHash });
+  const limited = await checkRenderLimits({
+    supabase,
+    admin,
+    userId: user.id,
+    ipHash,
+  });
   if (limited) return fail(limited.status, limited.error);
 
   // ---- Work out what to edit, and the instruction to give the model.
@@ -168,12 +224,19 @@ export async function POST(req: Request) {
   let renderSampleVenueId: string | null = null;
 
   if (parentRenderId) {
-    const parent = await loadParentRender({ supabase, parentId: parentRenderId });
-    if (!parent) return fail(404, "That render couldn't be found. Please start a new look.");
+    const parent = await loadParentRender({
+      supabase,
+      parentId: parentRenderId,
+    });
+    if (!parent)
+      return fail(
+        404,
+        "That render couldn't be found. Please start a new look.",
+      );
     if (parent.depth + 1 > env.maxRefinements) {
       return fail(
         422,
-        `You've refined this look ${env.maxRefinements} times, which is as far as it can go before quality drops. Start a new look from your venue photo.`
+        `You've refined this look ${env.maxRefinements} times, which is as far as it can go before quality drops. Start a new look from your venue photo.`,
       );
     }
     base = parent.base;
@@ -188,9 +251,21 @@ export async function POST(req: Request) {
     renderSampleVenueId = parent.sampleVenueId;
   } else {
     try {
-      const uploaded = useUpload ? await loadUploadedPhotos({ supabase, primaryIndex }) : null;
+      const uploaded = useUpload
+        ? await loadUploadedPhotos({
+            supabase,
+            primaryIndex,
+            userId: user.id,
+            photoIds,
+          })
+        : null;
       // Fall back to the sample venue if the upload can't be found.
-      base = uploaded ?? (await loadSampleVenue({ origin: new URL(req.url).origin, sampleVenueId }));
+      base =
+        uploaded ??
+        (await loadSampleVenue({
+          origin: new URL(req.url).origin,
+          sampleVenueId,
+        }));
       if (!uploaded) renderSampleVenueId = sampleVenueId || null;
     } catch (err) {
       console.error("[generate] couldn't load base image:", err);
@@ -201,13 +276,24 @@ export async function POST(req: Request) {
     for (const item of items.slice(0, 6)) {
       if (!item.image) continue;
       try {
-        const buf = await readFile(path.join(process.cwd(), "public", item.image));
+        const buf = await readPublicImage(item.image);
         itemImages.push(buf);
       } catch {
         // Missing image file — skip silently.
       }
     }
 
+    let inspirationImages: Buffer[] = [];
+    try {
+      inspirationImages = (
+        await loadSelectedPhotoBuffers(supabase, user.id, inspirationPhotoIds)
+      ).buffers;
+    } catch {
+      return fail(
+        400,
+        "One of your board inspiration photos is no longer available. Return to Boards and choose it again.",
+      );
+    }
     prompt = buildRenderPrompt({
       style,
       brief,
@@ -219,6 +305,11 @@ export async function POST(req: Request) {
       leftPlain: look.leftPlain.map((c) => categoryMeta(c).label),
     });
 
+    if (inspirationImages.length)
+      prompt += "\n\n" + inspirationInstruction(inspirationImages.length);
+    // Keep source venue ids first so saved looks still know their original room.
+    (base as typeof base & { inspirationImages: Buffer[] }).inspirationImages =
+      inspirationImages;
     // Stash item images so runRenderJob can append them as reference images.
     (base as typeof base & { itemImages: Buffer[] }).itemImages = itemImages;
 
@@ -234,7 +325,11 @@ export async function POST(req: Request) {
     // briefs.style_id column is NOT NULL (default 'garden_romance'), so only set it
     // when we actually have one — otherwise let the default stand (on insert) or
     // leave the existing value untouched (on update).
-    const fields: { guest_count: number; venue_id: string | null; style_id?: string } = {
+    const fields: {
+      guest_count: number;
+      venue_id: string | null;
+      style_id?: string;
+    } = {
       guest_count: guestCount,
       venue_id: base.dbVenueId,
     };
@@ -243,7 +338,11 @@ export async function POST(req: Request) {
       briefId = existing.id as string;
       await supabase.from("briefs").update(fields).eq("id", briefId);
     } else {
-      const { data: created, error } = await supabase.from("briefs").insert(fields).select("id").single();
+      const { data: created, error } = await supabase
+        .from("briefs")
+        .insert(fields)
+        .select("id")
+        .single();
       if (error || !created) return fail(500, "Couldn't start your render.");
       briefId = created.id as string;
     }
@@ -271,17 +370,35 @@ export async function POST(req: Request) {
   if (insertError) {
     // The database allows one render in flight per guest; losing that race is a 409.
     if (insertError.code === "23505") {
-      return fail(409, "Your last render is still being created. Hang on a moment.");
+      return fail(
+        409,
+        "Your last render is still being created. Hang on a moment.",
+      );
     }
     console.error("[generate] couldn't create render row:", insertError);
     return fail(500, "Couldn't start your render.");
   }
 
-  const itemImages: Buffer[] = (base as typeof base & { itemImages?: Buffer[] }).itemImages ?? [];
-  after(() => runRenderJob({ admin, renderId, userId: user.id, images: [...base.images, ...itemImages], prompt, size }));
+  const itemImages: Buffer[] =
+    (base as typeof base & { itemImages?: Buffer[] }).itemImages ?? [];
+  after(() =>
+    runRenderJob({
+      admin,
+      renderId,
+      userId: user.id,
+      images: [
+        ...base.images,
+        ...itemImages,
+        ...((base as typeof base & { inspirationImages?: Buffer[] })
+          .inspirationImages || []),
+      ],
+      prompt,
+      size,
+    }),
+  );
 
   return NextResponse.json(
     { ok: true, pending: false, status: "running", renderId, depth, look },
-    { status: 202 }
+    { status: 202 },
   );
 }

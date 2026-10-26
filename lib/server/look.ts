@@ -1,5 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { loadCatalogue, SCENE_CATEGORIES, type ServerCatalogueItem } from "@/lib/server/catalogue";
+import {
+  loadCatalogue,
+  SCENE_CATEGORIES,
+  type ServerCatalogueItem,
+} from "@/lib/server/catalogue";
 import { loadAvailability } from "@/lib/server/availability";
 import { composeLook, type DayAvailability, type LookReport } from "@/lib/look";
 import { isValidDay, todayUtc } from "@/lib/availability";
@@ -25,19 +29,28 @@ export async function composeOrderableLook(opts: {
   chosenIds: string[];
   setting: SceneId;
   weddingDate: string | null;
+  deliveryDate?: string | null;
   guestCount: number;
   autoFill?: boolean;
   substitute?: boolean;
-  ownerId?: string; // the couple, so their own basket holds don't count against them
 }): Promise<OrderableLook> {
   const catalogue = await loadCatalogue();
   const date = usableDate(opts.weddingDate);
 
   let availability: Map<string, DayAvailability> | null = null;
   if (date && catalogue.length > 0) {
-    const raw = await loadAvailability(createAdminClient(), catalogue.map((i) => i.id), date, { ownerId: opts.ownerId });
+    const raw = await loadAvailability(
+      createAdminClient(),
+      catalogue.map((i) => i.id),
+      date,
+      undefined,
+      opts.deliveryDate || date,
+    );
     availability = new Map(
-      [...raw].map(([id, a]) => [id, { effectiveCapacity: a.effectiveCapacity, available: a.available }])
+      [...raw].map(([id, a]) => [
+        id,
+        { effectiveCapacity: a.effectiveCapacity, available: a.available },
+      ]),
     );
   }
 

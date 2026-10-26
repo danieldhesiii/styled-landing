@@ -1,24 +1,26 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import SupportProvider from "@/components/support/SupportProvider";
 
 const DESCRIPTION =
-  "Upload your venue, choose your style, and see exactly how your wedding will look. Then shop every item and have it delivered straight to your door.";
+  "Explore an illustrative wedding look from your venue photo, build a supplier selection and request manual confirmation and a final quote. Payment and delivery or collection are agreed separately.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "https://styled-landing-zeta.vercel.app"
+    process.env.NEXT_PUBLIC_SITE_URL ||
+      "https://styledukprodprogress.vercel.app",
   ),
-  title: "Styled — see your wedding before the day",
+  title: "Styled: see your wedding before the day",
   description: DESCRIPTION,
   openGraph: {
-    title: "Styled — see your wedding before the day",
+    title: "Styled: see your wedding before the day",
     description: DESCRIPTION,
     type: "website",
     images: [{ url: "/img/renders/garden_romance.jpg" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Styled — see your wedding before the day",
+    title: "Styled: see your wedding before the day",
     description: DESCRIPTION,
   },
 };
@@ -42,7 +44,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased"><SupportProvider>{children}</SupportProvider></body>
     </html>
   );
 }

@@ -1,113 +1,194 @@
 "use client";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import {SupportButton} from "@/components/support/SupportProvider";
+import { HELP_GUIDES, helpTopicsFor, type HelpTopic } from "@/lib/help";
 
-import { useEffect } from "react";
-
-const STEPS = [
-  {
-    n: "01",
-    title: "Set your details",
-    body: "Enter your guest count, budget, and wedding date using the bar at the top of the page. These can be updated at any time and your quote will adjust automatically.",
-  },
-  {
-    n: "02",
-    title: "Visualise your venue",
-    body: "On the Visualise tab, upload your own venue photos or pick one of our sample rooms. Tell our AI stylist how you'd like the room to look — describe a stage, the table layout, a flower arch — and we'll generate a styled render around your brief. Once it's ready you can tweak that render with small changes (\"make the flowers blush pink\", \"add more candles\") or generate a whole new style — every version is saved side by side so you can compare.",
-  },
-  {
-    n: "03",
-    title: "Shop the look",
-    body: "Switch to the Shop tab to browse everything you need across all 11 categories: florals, furniture, lighting, linen, attire, signage, bar hire, stationery, cake and more. Add items and your quote builds live on the right.",
-  },
-  {
-    n: "04",
-    title: "Review your quote",
-    body: "The quote panel groups everything by supplier, shows your running total and tracks how much of your budget is left. Adjust quantities or remove anything as you go.",
-  },
-  {
-    n: "05",
-    title: "Reserve with a deposit",
-    body: "When you're happy, click Reserve. We collect a 25% deposit to hold your items and confirm availability with each supplier. The rest is due closer to the date.",
-  },
-];
-
-interface Props {
+export default function HowItWorks({
+  onClose,
+  initialTopic = "overview",
+}: {
   onClose: () => void;
-}
-
-export default function HowItWorks({ onClose }: Props) {
-  // Close on Escape
+  initialTopic?: HelpTopic;
+}) {
+  const [topic, setTopic] = useState<HelpTopic>(initialTopic);
+  const dialog = useRef<HTMLDialogElement>(null),
+    content = useRef<HTMLDivElement>(null),
+    tabs = useRef<(HTMLButtonElement | null)[]>([]),
+    id = useId();
+  const topics = helpTopicsFor(initialTopic);
+  const guide = HELP_GUIDES[topic];
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
+    const node = dialog.current;
+    node?.showModal();
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      node?.close();
+      document.body.style.overflow = previous;
+    };
+  }, []);
+  function close() {
+    dialog.current?.close();
+    onClose();
+  }
+  function select(next: HelpTopic) {
+    setTopic(next);
+    content.current?.scrollTo({ top: 0 });
+  }
+  function navigate(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    let next = index;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown")
+      next = (index + 1) % topics.length;
+    else if (event.key === "ArrowLeft" || event.key === "ArrowUp")
+      next = (index + topics.length - 1) % topics.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = topics.length - 1;
+    else return;
+    event.preventDefault();
+    select(topics[next]);
+    tabs.current[next]?.focus();
+  }
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden
-      />
-
-      {/* Drawer */}
-      <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col bg-cream shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-sand px-6 py-4">
+    <dialog
+      ref={dialog}
+      aria-labelledby={`${id}-title`}
+      aria-describedby={`${id}-description`}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          e.nativeEvent.stopImmediatePropagation();
+        }
+      }}
+      onClose={(e) => e.stopPropagation()}
+      onCancel={(e) => {
+        e.preventDefault();
+        close();
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          const bounds = e.currentTarget.getBoundingClientRect();
+          if (
+            e.clientX < bounds.left ||
+            e.clientX > bounds.right ||
+            e.clientY < bounds.top ||
+            e.clientY > bounds.bottom
+          )
+            close();
+        }
+      }}
+      className="fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-full max-w-2xl flex-col border-l border-sand bg-cream p-0 text-ink shadow-2xl open:flex backdrop:bg-ink/40 backdrop:backdrop-blur-sm"
+    >
+      <header className="shrink-0 border-b border-sand px-5 py-5 sm:px-7">
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="font-serif text-2xl text-ink">How it works</h2>
-            <p className="mt-0.5 text-xs text-ink/50">Five steps to your perfect day</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-sand text-ink/40 hover:border-clay hover:text-ink transition-colors"
-          >
-            ×
-          </button>
-        </div>
-
-        {/* Steps */}
-        <div className="flex-1 overflow-y-auto px-6 py-6">
-          <ol className="space-y-8">
-            {STEPS.map((s) => (
-              <li key={s.n} className="flex gap-5">
-                <span className="mt-0.5 shrink-0 font-serif text-2xl leading-none text-clay/50">
-                  {s.n}
-                </span>
-                <div>
-                  <h3 className="font-serif text-lg text-ink">{s.title}</h3>
-                  <div className="mt-1 h-px w-6 bg-clay/30" />
-                  <p className="mt-2 text-sm leading-relaxed text-ink/60">{s.body}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-
-          <div className="mt-10 rounded-2xl border border-sand bg-white px-5 py-4">
-            <p className="text-xs text-ink/50 leading-relaxed">
-              <strong className="text-ink">Need help?</strong> Our team reviews every order before
-              it's confirmed. If anything doesn't look right we'll be in touch before charging your
-              card.
+            <h2 id={`${id}-title`} className="font-serif text-3xl">
+              How it works
+            </h2>
+            <p
+              id={`${id}-description`}
+              className="mt-2 max-w-lg text-sm leading-relaxed text-ink/60"
+            >
+              Step-by-step help for your current page.
             </p>
           </div>
-        </div>
-
-        {/* Footer CTA */}
-        <div className="border-t border-sand px-6 py-4">
           <button
             type="button"
-            onClick={onClose}
-            className="w-full rounded-full bg-ink py-3 text-sm font-medium text-cream hover:bg-ink/90 transition-colors"
+            onClick={close}
+            aria-label="Close how it works"
+            className="min-h-11 shrink-0 rounded-full border border-sand px-3 py-2 text-sm"
           >
-            Start designing
+            Close ×
           </button>
         </div>
-      </aside>
-    </>
+        {topics.length > 1 && (
+          <label className="mt-4 block text-xs text-ink/70 sm:hidden">
+            Help topic
+            <select
+              value={topic}
+              onChange={(e) => select(e.target.value as HelpTopic)}
+              className="mt-2 block min-h-11 w-full rounded-xl border border-sand bg-white px-3 text-sm text-ink"
+            >
+              {topics.map((key) => (
+                <option key={key} value={key}>
+                  {HELP_GUIDES[key].label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <div
+          role="tablist"
+          aria-label="How it works topics"
+          className="mt-5 hidden grid-cols-5 gap-2 sm:grid"
+        >
+          {topics.map((key, index) => (
+            <button
+              key={key}
+              ref={(node) => {
+                tabs.current[index] = node;
+              }}
+              id={`${id}-tab-${key}`}
+              type="button"
+              role="tab"
+              aria-selected={topic === key}
+              aria-controls={`${id}-panel`}
+              tabIndex={topic === key ? 0 : -1}
+              onKeyDown={(e) => navigate(e, index)}
+              onClick={() => select(key)}
+              className={`min-h-11 rounded-full border px-3 py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay ${topic === key ? "border-ink bg-ink text-cream" : "border-sand hover:border-clay"}`}
+            >
+              {HELP_GUIDES[key].label}
+            </button>
+          ))}
+        </div>
+      </header>
+      <div
+        ref={content}
+        id={`${id}-panel`}
+        role="tabpanel"
+        aria-label={guide.label}
+        tabIndex={0}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay sm:px-7"
+      >
+        <p className="mb-4 text-xs text-ink/60">
+          Changing help topics leaves your page and plan unchanged.
+        </p>
+        <h3 className="font-serif text-3xl">{guide.title}</h3>
+        <p className="mt-3 text-sm leading-relaxed text-ink/60">
+          {guide.intro}
+        </p>
+        <ol className="mt-7 space-y-6">
+          {guide.steps.map((step, index) => (
+            <li key={step.title} className="flex gap-4">
+              <span
+                aria-hidden="true"
+                className="shrink-0 font-serif text-2xl text-clay"
+              >
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <div>
+                <h4 className="font-serif text-xl">{step.title}</h4>
+                <p className="mt-2 text-sm leading-relaxed text-ink/60">
+                  {step.body}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-8 rounded-xl border border-sand bg-white p-4 text-sm leading-relaxed text-ink/60">
+          {guide.note}
+        </p>
+      </div>
+      <footer className="shrink-0 border-t border-sand px-5 py-4 sm:px-7">
+        <SupportButton label="Need help? Contact Styled" className="mb-3 inline-flex min-h-11 items-center text-sm text-ink/70 underline underline-offset-4" />
+        <button
+          type="button"
+          onClick={close}
+          className="w-full rounded-full bg-ink px-5 py-3 text-sm text-cream"
+        >
+          Back to my page
+        </button>
+      </footer>
+    </dialog>
   );
 }

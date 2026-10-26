@@ -1,72 +1,151 @@
 "use client";
-
 import { useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { authError } from "@/lib/auth/messages";
+import { supplierAccessStatus } from "@/lib/auth/navigation";
 
-// Supplier sign-in. Accounts are set up by the Styled team (admin → Suppliers →
-// Create login); there is no sign-up here.
 export default function PortalLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
+  const [signedIn, setSignedIn] = useState(false);
+  async function checkAccess() {
+    const response = await fetch("/auth/supplier-access", {
+      cache: "no-store",
+    });
+    const status = supplierAccessStatus(response.status);
+    if (status === "allowed") {
+      window.location.assign("/portal");
+      return;
+    }
+    if (status === "signed-out") {
+      setSignedIn(false);
+      setError(
+        "Your session could not be verified. Please log in again or recover access below.",
+      );
+    } else if (status === "denied")
+      setError(
+        "You are signed in, but this account does not have supplier workspace access. Ask Styled to check the email linked to your supplier.",
+      );
+    else
+      setError(
+        "You are signed in, but supplier access could not be checked right now. Please retry; your session has been kept.",
+      );
+  }
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
     setBusy(true);
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (signInError) {
+    setError(null);
+    try {
+      const { error: signInError } =
+        await createClient().auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+      if (signInError) throw signInError;
+      setSignedIn(true);
+      setPassword("");
+      try {
+        await checkAccess();
+      } catch {
+        setError(
+          "You are signed in, but supplier access is temporarily unavailable. Please retry; your session has been kept.",
+        );
+      }
+    } catch (err) {
+      setError(authError(err));
+    } finally {
       setBusy(false);
-      return setError("That email and password don't match.");
     }
-    // A valid login isn't enough — it has to be a supplier account.
-    const me = await fetch("/api/vendor/me", { cache: "no-store" });
-    if (!me.ok) {
-      await supabase.auth.signOut();
-      setBusy(false);
-      return setError("That account isn't linked to a supplier.");
-    }
-    window.location.assign("/portal");
   }
-
+  async function retry() {
+    setBusy(true);
+    setError(null);
+    try {
+      await checkAccess();
+    } catch {
+      setError(
+        "Supplier access is temporarily unavailable. Please retry; your session has been kept.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
-    <div className="flex min-h-screen items-center justify-center px-5">
-      <form onSubmit={submit} className="w-full max-w-sm rounded-3xl border border-sand bg-white p-8 shadow-sm">
-        <p className="font-serif text-2xl text-ink">
-          Styled<span className="text-clay">.</span>
-          <span className="ml-2 rounded-full bg-clay px-2 py-0.5 align-middle font-sans text-[10px] font-medium uppercase tracking-wider text-cream">Supplier</span>
+    <main className="flex min-h-screen items-center justify-center px-5 py-12">
+      <div className="w-full max-w-sm rounded-3xl border border-sand bg-white p-8 shadow-sm">
+        <Link href="/" className="font-serif text-2xl">
+          Styled. <span className="font-sans text-sm">Supplier</span>
+        </Link>
+        <h1 className="mt-6 font-serif text-3xl">Supplier log in</h1>
+        <p className="mt-2 text-sm text-ink/70">
+          Accounts are linked to suppliers by the Styled team.
         </p>
-        <h1 className="mt-6 font-serif text-3xl text-ink">Sign in</h1>
-        <p className="mt-2 text-sm text-ink/50">Manage your orders and products on Styled.</p>
-
-        <label htmlFor="email" className="mt-6 block text-sm font-medium text-ink">Email</label>
-        <input
-          id="email" type="email" autoComplete="username" required value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="mt-2 w-full rounded-xl border border-sand bg-cream/50 px-4 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-clay/30"
-        />
-        <label htmlFor="password" className="mt-4 block text-sm font-medium text-ink">Password</label>
-        <input
-          id="password" type="password" autoComplete="current-password" required value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="mt-2 w-full rounded-xl border border-sand bg-cream/50 px-4 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-clay/30"
-        />
+        <form onSubmit={submit} className="mt-6 space-y-3">
+          <label htmlFor="supplier-email" className="block text-sm">
+            Email
+          </label>
+          <input
+            id="supplier-email"
+            type="email"
+            autoComplete="username"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-xl border border-sand px-4 py-3 focus:ring-2 focus:ring-clay"
+          />
+          <label htmlFor="supplier-password" className="block text-sm">
+            Password
+          </label>
+          <input
+            id="supplier-password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full rounded-xl border border-sand px-4 py-3 focus:ring-2 focus:ring-clay"
+          />
+          <button
+            disabled={busy}
+            className="w-full rounded-full bg-ink px-6 py-3 text-cream disabled:opacity-50"
+          >
+            {busy ? "Checking access…" : "Log in"}
+          </button>
+        </form>
         {error && (
-          <p role="alert" className="mt-4 rounded-xl bg-blush/30 px-4 py-3 text-sm text-ink/80">{error}</p>
+          <p role="alert" className="mt-4 text-sm text-ink/80">
+            {error}
+          </p>
         )}
-        <button
-          type="submit" disabled={busy || !email || !password}
-          className="mt-6 w-full rounded-full bg-ink px-6 py-3 text-sm text-cream hover:bg-ink/90 disabled:bg-ink/30"
+        {signedIn && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={retry}
+            className="mt-4 text-sm underline"
+          >
+            Retry supplier access check
+          </button>
+        )}
+        <Link
+          href="/auth/recovery?next=%2Fportal"
+          className="mt-5 block text-sm underline"
         >
-          {busy ? "Signing in…" : "Sign in"}
-        </button>
-        <p className="mt-4 text-center text-xs text-ink/40">Logins are set up by the Styled team.</p>
-        <p className="mt-2 text-center text-xs">
-          <a href="/" className="text-ink/50 hover:text-ink">← Back to the site</a>
-        </p>
-      </form>
-    </div>
+          Forgot password or need a confirmation email?
+        </Link>
+        <Link
+          href="/service-info#support"
+          className="mt-3 block text-sm underline"
+        >
+          Get help with supplier access
+        </Link>
+        <Link href="/design" className="mt-3 block text-sm underline">
+          Continue to your customer account
+        </Link>
+      </div>
+    </main>
   );
 }

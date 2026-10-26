@@ -31,11 +31,13 @@ export async function POST(req: Request) {
   } catch {
     return fail(400, "Invalid request body.");
   }
-  if (!body || typeof body !== "object") return fail(400, "Invalid request body.");
+  if (!body || typeof body !== "object")
+    return fail(400, "Invalid request body.");
 
   // Honeypot: a real person leaves this blank. Pretend it worked so bots don't
   // learn anything.
-  if (str(body.company)) return NextResponse.json({ ok: true }, { status: 201 });
+  if (str(body.company))
+    return NextResponse.json({ ok: true }, { status: 201 });
 
   const businessName = str(body.businessName);
   const email = str(body.email).toLowerCase();
@@ -46,27 +48,39 @@ export async function POST(req: Request) {
   const website = str(body.website);
   const message = str(body.message);
 
-  if (businessName.length < 2 || businessName.length > 120) return fail(422, "Please enter your business name.");
-  if (!EMAIL.test(email) || email.length > 160) return fail(422, "Please enter a valid email address.");
-  if (contactName.length > 120) return fail(422, "That contact name is too long.");
+  if (businessName.length < 2 || businessName.length > 120)
+    return fail(422, "Please enter your business name.");
+  if (!EMAIL.test(email) || email.length > 160)
+    return fail(422, "Please enter a valid email address.");
+  if (contactName.length > 120)
+    return fail(422, "That contact name is too long.");
   if (phone.length > 40) return fail(422, "That phone number is too long.");
-  if (category && !VENDOR_CATEGORY_VALUES.has(category)) return fail(422, "Please choose a category from the list.");
+  if (category && category !== "venue" && !VENDOR_CATEGORY_VALUES.has(category))
+    return fail(422, "Please choose a category from the list.");
   if (area.length > 120) return fail(422, "That area is too long.");
-  if (website.length > 200) return fail(422, "That website address is too long.");
-  if (message.length > 2000) return fail(422, "Please keep your message under 2000 characters.");
+  if (website.length > 200)
+    return fail(422, "That website address is too long.");
+  if (message.length > 2000)
+    return fail(422, "Please keep your message under 2000 characters.");
 
   const admin = createAdminClient();
 
   // Cap submissions per network so the form can't be flooded. Uses the existing
   // fixed-window counter (same as order lookup). Fail open if the check errors —
   // a genuine application shouldn't be lost to a limiter hiccup.
-  const { data: allowed, error: limitError } = await admin.rpc("hit_rate_limit", {
-    p_key: `vendor_app:${clientIpHash(req)}`,
-    p_limit: 5,
-    p_window_seconds: 3600,
-  });
+  const { data: allowed, error: limitError } = await admin.rpc(
+    "hit_rate_limit",
+    {
+      p_key: `vendor_app:${clientIpHash(req)}`,
+      p_limit: 5,
+      p_window_seconds: 3600,
+    },
+  );
   if (!limitError && allowed === false) {
-    return fail(429, "We've had a few applications from your network. Please try again later.");
+    return fail(
+      429,
+      "We've had a few applications from your network. Please try again later.",
+    );
   }
 
   // If this email already has an application we haven't finished reviewing, don't
@@ -80,8 +94,12 @@ export async function POST(req: Request) {
     .maybeSingle();
   if (existing) {
     return NextResponse.json(
-      { ok: true, repeated: true, message: "We've already got your application and will be in touch." },
-      { status: 200 }
+      {
+        ok: true,
+        repeated: true,
+        message: "We've already got your application and will be in touch.",
+      },
+      { status: 200 },
     );
   }
 

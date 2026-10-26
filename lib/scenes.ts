@@ -15,7 +15,7 @@ export interface Scene {
 }
 
 export const SCENES: Scene[] = [
-  { id: "reception", label: "Reception dinner", icon: "🍽", blurb: "Seated meal — dining tables & centrepieces" },
+  { id: "reception", label: "Reception dinner", icon: "🍽", blurb: "Seated meal: dining tables & centrepieces" },
   { id: "ceremony", label: "Ceremony", icon: "💍", blurb: "Aisle of chairs facing an arch" },
   { id: "party", label: "Evening party", icon: "🎉", blurb: "Dancefloor, band & bar, after dark" },
   { id: "drinks", label: "Drinks reception", icon: "🥂", blurb: "Standing tables, bar & lounge for mingling" },

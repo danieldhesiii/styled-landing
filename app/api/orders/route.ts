@@ -4,9 +4,18 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/server/env";
 import { clientIpHash } from "@/lib/server/limits";
 import { priceBasket, publicQuote } from "@/lib/server/quote";
-import { itemsBookedTooLate, isValidDeliveryDate, loadOrderView, validateOrderFields } from "@/lib/server/orders";
+import {
+  itemsBookedTooLate,
+  loadOrderView,
+  validateOrderFields,
+} from "@/lib/server/orders";
+import { resolveHireDates, type HireDates } from "@/lib/booking-dates";
+import { deliveryError } from "@/lib/wedding";
 import { checkQuantities } from "@/lib/server/availability";
-import { notifySuppliersOfOrder } from "@/lib/server/notify";
+import {
+  notifySuppliersOfOrder,
+  notifyStaffOfOrder,
+} from "@/lib/server/notify";
 
 // POST /api/orders
 //
@@ -26,7 +35,11 @@ import { notifySuppliersOfOrder } from "@/lib/server/notify";
 // No payment is taken here yet: the order starts as "requested" and a stylist
 // confirms each supplier for the date.
 
-function fail(status: number, error: string, extra: Record<string, unknown> = {}) {
+function fail(
+  status: number,
+  error: string,
+  extra: Record<string, unknown> = {},
+) {
   return NextResponse.json({ ok: false, error, ...extra }, { status });
 }
 
@@ -41,25 +54,42 @@ export async function POST(req: Request) {
   } catch {
     return fail(400, "Invalid request body.");
   }
-  if (!body || typeof body !== "object") return fail(400, "Invalid request body.");
+  if (!body || typeof body !== "object")
+    return fail(400, "Invalid request body.");
 
   const parsed = validateOrderFields(body);
   if (!parsed.ok) return fail(parsed.status, parsed.error);
   const f = parsed.fields;
 
-  // Per-supplier delivery dates (keyed by supplier name, as grouped in checkout).
-  // Each supplier's items are delivered on their date; the default — and the only
-  // option without a wedding date set — is the wedding day itself. Availability is
-  // still reserved against the wedding date (see create_order); this is logistics.
+  // A dated event and delivery are required for a stock-aware order request.
+  if (!f.weddingDate)
+    return fail(400, "Choose your wedding date before requesting an order.");
+  const defaultDelivery =
+    body.deliveryDate === undefined ? f.weddingDate : body.deliveryDate;
+  if (typeof defaultDelivery !== "string")
+    return fail(400, "Choose a valid delivery date.");
+  const dateIssue = deliveryError(f.weddingDate, defaultDelivery);
+  if (dateIssue) return fail(400, dateIssue);
   const deliveryBySupplier = new Map<string, string>();
-  if (f.weddingDate && body.deliveryDates && typeof body.deliveryDates === "object") {
-    for (const [supplier, date] of Object.entries(body.deliveryDates as Record<string, unknown>)) {
-      if (!date || date === f.weddingDate) continue; // default day — nothing to record
-      if (!isValidDeliveryDate(date)) return fail(400, "One of your delivery dates isn't valid.");
+  if (body.deliveryDates !== undefined) {
+    if (
+      !body.deliveryDates ||
+      typeof body.deliveryDates !== "object" ||
+      Array.isArray(body.deliveryDates)
+    )
+      return fail(400, "Invalid supplier delivery dates.");
+    for (const [supplier, date] of Object.entries(
+      body.deliveryDates as Record<string, unknown>,
+    )) {
+      if (typeof date !== "string")
+        return fail(400, "Choose valid supplier delivery dates.");
+      const issue = deliveryError(f.weddingDate, date);
+      if (issue) return fail(400, issue);
       deliveryBySupplier.set(supplier, date);
     }
   }
-  const deliveryDateFor = (supplierName: string): string | null => deliveryBySupplier.get(supplierName) ?? f.weddingDate;
+  const deliveryDateFor = (supplierName: string): string =>
+    deliveryBySupplier.get(supplierName) ?? defaultDelivery;
 
   const admin = createAdminClient();
 
@@ -77,7 +107,10 @@ export async function POST(req: Request) {
       .maybeSingle();
     if (!existing) return null;
     const order = await loadOrderView(supabase, existing.id as string);
-    return NextResponse.json({ ok: true, repeated: true, order }, { status: 200 });
+    return NextResponse.json(
+      { ok: true, repeated: true, order },
+      { status: 200 },
+    );
   };
   {
     const again = await replayExisting();
@@ -95,7 +128,10 @@ export async function POST(req: Request) {
   if ((mine ?? 0) >= env.maxOrdersPerDay) {
     const again = await replayExisting();
     if (again) return again;
-    return fail(429, "You've placed several orders today. Please wait, or contact us if you need more.");
+    return fail(
+      429,
+      "You've placed several orders today. Please wait, or contact us if you need more.",
+    );
   }
   const { count: network } = await admin
     .from("orders")
@@ -105,7 +141,10 @@ export async function POST(req: Request) {
   if ((network ?? 0) >= env.maxOrdersPerIpPerDay) {
     const again = await replayExisting();
     if (again) return again;
-    return fail(429, "There have been a lot of orders from your network today. Please try again tomorrow.");
+    return fail(
+      429,
+      "There have been a lot of orders from your network today. Please try again tomorrow.",
+    );
   }
 
   // Price the basket from the live catalogue.
@@ -118,46 +157,95 @@ export async function POST(req: Request) {
   }
   if (!priced.ok) return fail(priced.status, priced.error, priced.extra);
 
+  let itemDates: Map<string, HireDates>;
+  try {
+    itemDates = resolveHireDates(body.itemDates, priced.lines.map(l => l.itemId), {
+      start: defaultDelivery, end: (body.returnDate === undefined ? f.weddingDate : body.returnDate) as string,
+    });
+    // Older callers may still specify a date for an entire supplier.
+    if (body.itemDates === undefined && deliveryBySupplier.size) {
+      for (const line of priced.quote.lines) {
+        const dates = resolveHireDates(undefined, [line.item.id], { start: deliveryDateFor(line.item.supplier), end: f.weddingDate });
+        itemDates.set(line.item.id, dates.get(line.item.id)!);
+      }
+    }
+  } catch (error) {
+    return fail(400, error instanceof Error ? error.message : "Invalid hire dates.");
+  }
+
   // Notice period: each item must be bookable far enough before the date it's
   // actually needed — its delivery date, which can be earlier than the wedding.
-  const itemsOnOrder = [...priced.items.values()].filter((i) => priced.lines.some((l) => l.itemId === i.id));
+  const itemsOnOrder = [...priced.items.values()].filter((i) =>
+    priced.lines.some((l) => l.itemId === i.id),
+  );
   const tooSoon: { itemId: string; name: string; leadTimeDays: number }[] = [];
   if (f.weddingDate) {
     const byDate = new Map<string, typeof itemsOnOrder>();
     for (const item of itemsOnOrder) {
-      const d = deliveryDateFor(item.supplier) ?? f.weddingDate;
+      const d = itemDates.get(item.id)!.start;
       (byDate.get(d) ?? byDate.set(d, []).get(d)!).push(item);
     }
-    for (const [d, items] of byDate) tooSoon.push(...itemsBookedTooLate(d, items));
+    for (const [d, items] of byDate)
+      tooSoon.push(...itemsBookedTooLate(d, items));
   }
   if (tooSoon.length > 0) {
-    return fail(422, "Some items need more notice than you have before their delivery date.", { tooSoon });
+    return fail(
+      422,
+      "Some items need more notice than you have before their delivery date.",
+      { tooSoon },
+    );
   }
 
-  // Is everything actually free on their wedding date? (The database re-checks this
+  // Is every item free for its full requested hire period? (The database re-checks this
   // under a lock when the order is written, so this is for a clear early answer.)
-  const soldOutView = (rows: { itemId: string; requested?: number; availableUnits?: number | null }[]) =>
+  const soldOutView = (
+    rows: {
+      itemId: string;
+      requested?: number;
+      availableUnits?: number | null;
+    }[],
+  ) =>
     rows.map((r) => ({
       itemId: r.itemId,
       name: priced.items.get(r.itemId)?.name ?? r.itemId,
-      requested: r.requested ?? priced.lines.find((l) => l.itemId === r.itemId)?.quantity ?? null,
+      requested:
+        r.requested ??
+        priced.lines.find((l) => l.itemId === r.itemId)?.quantity ??
+        null,
       availableUnits: r.availableUnits ?? 0,
     }));
   if (f.weddingDate) {
     try {
-      const checks = await checkQuantities(
-        admin,
-        priced.quote.lines.map((l) => ({ itemId: l.item.id, quantity: l.quantity })),
-        f.weddingDate,
-        { ownerId: user.id } // their own basket holds are what they're ordering
+      const byStart = new Map<string, { dates: HireDates; lines: { itemId: string; quantity: number }[] }>();
+      for (const line of priced.quote.lines) {
+        const dates = itemDates.get(line.item.id)!;
+        const key = `${dates.start}:${dates.end}`;
+        const group = byStart.get(key) ?? { dates, lines: [] };
+        group.lines.push({ itemId: line.item.id, quantity: line.quantity });
+        byStart.set(key, group);
+      }
+      const results = await Promise.all(
+        [...byStart.values()].map(({ dates, lines }) =>
+          checkQuantities(admin, lines, dates.end, undefined, dates.start),
+        ),
       );
+      const checks = new Map(results.flatMap((r) => [...r]));
       const short = [...checks].filter(([, a]) => a.status === "unavailable");
       if (short.length > 0) {
         const again = await replayExisting();
         if (again) return again;
-        return fail(409, "Some items aren't available on your wedding date.", {
-          soldOut: soldOutView(short.map(([itemId, a]) => ({ itemId, availableUnits: a.availableUnits }))),
-        });
+        return fail(
+          409,
+          "Some items aren't available for their requested hire periods.",
+          {
+            soldOut: soldOutView(
+              short.map(([itemId, a]) => ({
+                itemId,
+                availableUnits: a.availableUnits,
+              })),
+            ),
+          },
+        );
       }
     } catch (err) {
       console.error("[orders] availability check failed:", err);
@@ -202,7 +290,8 @@ export async function POST(req: Request) {
       quantity: l.quantity,
       line_total_pence: l.lineTotalPence,
       // Delivery date, if different from the wedding day (else create_order defaults it).
-      needed_date: deliveryBySupplier.get(l.item.supplier) ?? null,
+      needed_date: itemDates.get(l.item.id)!.start,
+      return_date: itemDates.get(l.item.id)!.end,
     })),
   });
 
@@ -217,9 +306,19 @@ export async function POST(req: Request) {
     } catch {
       // fall through with no detail
     }
-    return fail(409, "Some items aren't available on your wedding date.", {
-      soldOut: soldOutView(rows.map((r) => ({ itemId: r.itemId, requested: r.requested, availableUnits: r.available }))),
-    });
+    return fail(
+      409,
+      "Some items aren't available for their requested hire periods.",
+      {
+        soldOut: soldOutView(
+          rows.map((r) => ({
+            itemId: r.itemId,
+            requested: r.requested,
+            availableUnits: r.available,
+          })),
+        ),
+      },
+    );
   }
 
   if (error || !orderId) {
@@ -235,10 +334,23 @@ export async function POST(req: Request) {
   // Tell each supplier they have items to confirm. Best effort and only on a
   // genuinely new order (replays return earlier), so a couple is never emailed
   // about, nor a supplier double-notified for, the same order twice.
-  await notifySuppliersOfOrder(admin, orderId as string);
+  const [staffNotified] = await Promise.all([
+    notifyStaffOfOrder(admin, orderId as string),
+    notifySuppliersOfOrder(admin, orderId as string),
+  ]);
+  await admin
+    .from("order_events")
+    .insert({
+      order_id: orderId,
+      type: "review_notification",
+      detail: { staffEmailSent: staffNotified },
+    });
 
   const order = await loadOrderView(supabase, orderId as string);
-  return NextResponse.json({ ok: true, repeated: false, order, quote: publicQuote(quote) }, { status: 201 });
+  return NextResponse.json(
+    { ok: true, repeated: false, order, quote: publicQuote(quote) },
+    { status: 201 },
+  );
 }
 
 // GET /api/orders: the signed-in guest's own orders, newest first (for the

@@ -43,6 +43,8 @@ export interface CatalogueItem {
   category: Category;
   slot?: Slot; // present when the item appears in the render
   supplier: string;
+  supplierId?: string;
+  supplierLogo?: string;
   supplierArea: string;
   unitPrice: number; // GBP per unit
   unit: string; // e.g. "each", "per table", "package"
@@ -50,7 +52,15 @@ export interface CatalogueItem {
   styles: string[]; // style ids this item suits
   icon: string; // emoji fallback when there's no photo
   swatch: string; // hex colour used in the preview / fallback
-  image?: string; // real catalogue photo (public path)
+  image?: string;
+  /** Set only when provenance is known. Seed imagery remains illustrative. */
+  imageKind?: "supplier" | "illustrative";
+  reviewsVerified?: boolean;
+  dimensions?: string;
+  material?: string;
+  hireUnits?: string;
+  deliveryTerms?: string;
+  damageTerms?: string;
   rating: number; // supplier item rating out of 5
   reviewCount: number;
   leadTimeDays: number; // how far ahead it must be booked
@@ -88,6 +98,7 @@ export interface SampleVenue {
 export interface BasketLine {
   itemId: string;
   quantity: number;
+  hireDates?: import("./booking-dates").HireDates;
 }
 
 export interface QuoteLine {
@@ -101,7 +112,12 @@ export interface Quote {
   subtotal: number;
   commission: number; // what the platform earns (internal, not shown to couples)
   deposit: number; // what the couple pays now to secure the date
-  bySupplier: { supplier: string; area: string; total: number; lines: QuoteLine[] }[];
+  bySupplier: {
+    supplier: string;
+    area: string;
+    total: number;
+    lines: QuoteLine[];
+  }[];
 }
 
 export interface Order {

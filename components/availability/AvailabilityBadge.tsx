@@ -32,7 +32,7 @@ export default function AvailabilityBadge({
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${TONE[info.tone]}`}
-      title="Checked against what the supplier has free on your wedding date"
+      title={availability ? "Checked for the selected dates; final supplier confirmation is required" : "Made to order; dates have not been checked"}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${DOT[info.tone]}`} />
       {info.label}

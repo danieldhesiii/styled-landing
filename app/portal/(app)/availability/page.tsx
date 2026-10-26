@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { vendorApi } from "@/lib/vendor-client";
+import { calendarHealth } from "@/lib/calendar-health";
 import { longDay } from "@/lib/admin-client";
 
 interface Block {
@@ -20,6 +21,8 @@ export default function PortalAvailabilityPage() {
   const [blocks, setBlocks] = useState<Block[] | null>(null);
   const [ical, setIcal] = useState<Ical>({ url: null, syncedAt: null });
   const [icalInput, setIcalInput] = useState("");
+  const [syncFailed, setSyncFailed] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [icalBusy, setIcalBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -29,48 +32,56 @@ export default function PortalAvailabilityPage() {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  function load() {
-    vendorApi("/api/vendor/availability").then((r) => {
-      if (!r.ok) return setError(r.data?.error ?? "Couldn't load your blocked dates.");
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await vendorApi("/api/vendor/availability");
+      if (!r.ok) throw Error(r.data?.error ?? "Could not load availability.");
       setBlocks(r.data.blocks as Block[]);
       if (r.data.ical) setIcal(r.data.ical as Ical);
-    });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load availability. Please retry.");
+    } finally { setLoading(false); }
+  }
+
+  // Keep network failures recoverable and always release busy controls.
+  async function calendarAction(method: "PUT" | "POST" | "DELETE", body?: unknown) {
+    setError(null);
+    setNotice(null);
+    setIcalBusy(true);
+    try {
+      const r = await vendorApi("/api/vendor/availability/ical", method, body);
+      if (!r.ok) throw Error(r.data?.error ?? "Calendar update failed. Please retry.");
+      setSyncFailed(false);
+      return r;
+    } catch (e) {
+      setSyncFailed(method !== "DELETE");
+      setError(e instanceof Error ? e.message : "Calendar update failed. Please retry.");
+      return null;
+    } finally {
+      // A connection may have been saved even when its initial sync failed.
+      await load();
+      setIcalBusy(false);
+    }
   }
   useEffect(() => { load(); }, []);
 
   async function connectIcal(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    setNotice(null);
-    setIcalBusy(true);
-    const r = await vendorApi("/api/vendor/availability/ical", "PUT", { url: icalInput.trim() });
-    setIcalBusy(false);
-    if (!r.ok) return setError(r.data?.error ?? "Couldn't connect that calendar.");
-    setNotice(`Calendar connected — ${r.data.blockedDays} busy ${r.data.blockedDays === 1 ? "day" : "days"} synced.`);
+    const r = await calendarAction("PUT", { url: icalInput.trim() });
+    if (!r) return;
+    setNotice(`Calendar connected. ${r.data.blockedDays} busy days synced.`);
     setIcalInput("");
-    load();
   }
 
   async function syncNow() {
-    setError(null);
-    setNotice(null);
-    setIcalBusy(true);
-    const r = await vendorApi("/api/vendor/availability/ical", "POST");
-    setIcalBusy(false);
-    if (!r.ok) return setError(r.data?.error ?? "Couldn't sync your calendar.");
-    setNotice(`Synced — ${r.data.blockedDays} busy ${r.data.blockedDays === 1 ? "day" : "days"} from your calendar.`);
-    load();
+    const r = await calendarAction("POST");
+    if (r) setNotice(`Synced ${r.data.blockedDays} busy days from your calendar.`);
   }
 
   async function disconnectIcal() {
-    setError(null);
-    setNotice(null);
-    setIcalBusy(true);
-    const r = await vendorApi("/api/vendor/availability/ical", "DELETE");
-    setIcalBusy(false);
-    if (!r.ok) return setError(r.data?.error ?? "Couldn't disconnect.");
-    setNotice("Calendar disconnected. Its synced dates have been removed.");
-    load();
+    const r = await calendarAction("DELETE");
+    if (r) setNotice("Calendar disconnected. Its synced dates have been removed.");
   }
 
   async function block(e: React.FormEvent) {
@@ -79,35 +90,43 @@ export default function PortalAvailabilityPage() {
     setNotice(null);
     if (!day) return;
     setSaving(true);
-    const r = await vendorApi("/api/vendor/availability", "POST", { day, note: note.trim() || undefined });
-    setSaving(false);
-    if (!r.ok) return setError(r.data?.error ?? "Couldn't block that date.");
-    if (r.data.liveOrders > 0) {
-      setNotice(`Date blocked. Heads up: you already have ${r.data.liveOrders} order${r.data.liveOrders === 1 ? "" : "s"} on that day — blocking won't cancel them, it just stops new requests.`);
-    } else {
-      setNotice("Date blocked — couples can no longer request you then.");
-    }
-    setDay("");
-    setNote("");
-    load();
+    try {
+      const r = await vendorApi("/api/vendor/availability", "POST", { day, note: note.trim() || undefined });
+      if (!r.ok) throw Error(r.data?.error ?? "Could not block that date.");
+      setNotice(r.data.liveOrders > 0
+        ? `Date blocked. You already have ${r.data.liveOrders} existing orders on this date; blocking stops new requests and does not cancel them.`
+        : "Date blocked. Couples can no longer request you then.");
+      setDay("");
+      setNote("");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not block that date. Please retry.");
+    } finally { setSaving(false); }
   }
 
   async function unblock(id: string) {
     setError(null);
     setNotice(null);
-    const r = await vendorApi(`/api/vendor/availability/${id}`, "DELETE");
-    if (!r.ok) return setError(r.data?.error ?? "Couldn't unblock that date.");
-    setBlocks((prev) => (prev ?? []).filter((b) => b.id !== id));
+    setSaving(true);
+    try {
+      const r = await vendorApi(`/api/vendor/availability/${id}`, "DELETE");
+      if (!r.ok) throw Error(r.data?.error ?? "Could not unblock that date.");
+      setBlocks((prev) => (prev ?? []).filter((b) => b.id !== id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not unblock that date. Please retry.");
+    } finally { setSaving(false); }
   }
+
+  const health = calendarHealth(!!ical.url, ical.syncedAt);
 
   return (
     <div className="max-w-2xl">
       <h1 className="font-serif text-4xl text-ink">Availability</h1>
       <p className="mt-1 text-sm text-ink/50">
-        Block dates you&apos;re already booked or away, so couples can&apos;t request you then. Everything else stays bookable.
+        Block dates you&apos;re already booked or away, so couples can&apos;t request you then. Other dates remain subject to stock, notice periods and your confirmation.
       </p>
 
-      {error && <p role="alert" className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
+      {error && <p role="alert" className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{error} {blocks !== null && "Previously loaded dates may be out of date."}<button type="button" disabled={loading} className="ml-3 underline" onClick={() => { setError(null); void load(); }}>Reload availability</button></p>}
       {notice && <p className="mt-6 rounded-xl bg-sage/15 px-4 py-3 text-sm text-ink/80">{notice}</p>}
 
       <form onSubmit={block} className="mt-6 flex flex-wrap items-end gap-3 rounded-3xl border border-sand bg-white p-5 shadow-sm">
@@ -131,17 +150,25 @@ export default function PortalAvailabilityPage() {
         <h2 className="font-serif text-xl text-ink">Sync your calendar</h2>
         <p className="mt-1 text-sm text-ink/50">
           Paste a read-only link (iCal / .ics) from Google Calendar, Booqable, Current RMS or similar, and the days you&apos;re
-          busy there will block automatically — nothing to keep up to date by hand.
+          busy there will block after a successful sync. Scheduled updates depend on the service being configured and running; use Sync now before relying on recent changes.
         </p>
-        {ical.url ? (
+        <p className="mt-2 text-xs text-ink/60">Sync blocks whole days. Repeating events are not expanded; review those dates manually. Manual blocks are preserved during sync.</p>
+        {blocks === null ? <p role="status" className="mt-4 text-sm">{error ? "Calendar status unavailable. Reload availability to retry." : "Loading calendar status…"}</p> : ical.url ? (
           <div className="mt-4">
             <p className="truncate text-sm text-ink/70">Connected: <span className="font-mono text-xs">{ical.url}</span></p>
-            <p className="mt-0.5 text-xs text-ink/40">
-              {ical.syncedAt ? `Last synced ${longDay(ical.syncedAt.slice(0, 10))}` : "Not synced yet"} · updates automatically each day
+            <p role="status" className="mt-2 text-sm text-ink/70">
+              {syncFailed ? "Latest manual sync failed. Retry, check the feed link, or use Block a date above." :
+                health === "stale" ? "Calendar data is stale (48 hours or more). Sync now or block recent bookings manually." :
+                health === "never_synced" ? "No successful sync recorded. Sync now before relying on this calendar." :
+                "Calendar synced within the last 48 hours. New changes still need a sync."}
+            </p>
+            <p className="mt-1 text-xs text-ink/60">
+              Last successful sync: {ical.syncedAt ? new Date(ical.syncedAt).toLocaleString("en-GB") : "never recorded"}.
+              Failure history is not stored; this time records successful syncs only.
             </p>
             <div className="mt-3 flex gap-2">
               <button type="button" onClick={syncNow} disabled={icalBusy} className="rounded-full bg-ink px-4 py-2 text-sm text-cream hover:bg-ink/90 disabled:bg-ink/30">
-                {icalBusy ? "Syncing…" : "Sync now"}
+                {icalBusy ? "Syncing…" : syncFailed ? "Retry sync" : "Sync now"}
               </button>
               <button type="button" onClick={disconnectIcal} disabled={icalBusy} className="rounded-full border border-sand px-4 py-2 text-sm text-ink/60 hover:border-red-300 hover:text-red-700 disabled:opacity-40">
                 Disconnect
@@ -164,10 +191,10 @@ export default function PortalAvailabilityPage() {
 
       <h2 className="mt-8 font-serif text-xl text-ink">Blocked dates</h2>
       {blocks === null ? (
-        <p className="mt-2 text-sm text-ink/40">Loading…</p>
+        <p role="status" className="mt-2 text-sm text-ink/60">{error ? "Dates unavailable. Reload availability to retry." : "Loading blocked dates…"}</p>
       ) : blocks.length === 0 ? (
         <div className="mt-3 rounded-3xl border border-dashed border-sand px-6 py-12 text-center text-sm text-ink/50">
-          No blocked dates. Every upcoming day is bookable.
+          No blocked dates recorded. Stock, notice periods and supplier confirmation still apply.
         </div>
       ) : (
         <ul className="mt-3 divide-y divide-sand overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
@@ -188,7 +215,7 @@ export default function PortalAvailabilityPage() {
               {b.source === "ical" ? (
                 <span className="text-xs text-ink/30">auto</span>
               ) : (
-                <button type="button" onClick={() => unblock(b.id)}
+                <button type="button" disabled={saving} onClick={() => unblock(b.id)}
                   className="rounded-full border border-sand px-3 py-1 text-xs text-ink/60 hover:border-clay/50 hover:text-ink">
                   Unblock
                 </button>
@@ -199,7 +226,7 @@ export default function PortalAvailabilityPage() {
       )}
 
       <p className="mt-6 text-xs text-ink/40">
-        Need to limit a single product on a date (rather than your whole business)? Ask the Styled team — they can set per-product limits.
+        Need to limit a single product on a date (rather than your whole business)? Ask the Styled team. They can set per-product limits.
       </p>
     </div>
   );

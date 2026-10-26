@@ -58,24 +58,34 @@ export default function VendorsPage() {
   function load(status: string) {
     setApps(null);
     setError(null);
-    adminApi(`/api/admin/vendor-applications${status ? `?status=${status}` : ""}`).then((r) => {
-      if (!r.ok) return setError(r.data?.error ?? "Couldn't load applications.");
+    adminApi(
+      `/api/admin/vendor-applications${status ? `?status=${status}` : ""}`,
+    ).then((r) => {
+      if (!r.ok)
+        return setError(r.data?.error ?? "Couldn't load applications.");
       setApps(r.data.applications as Application[]);
     });
   }
 
-  useEffect(() => { load(filter); }, [filter]);
+  useEffect(() => {
+    load(filter);
+  }, [filter]);
 
   async function setStatus(app: Application, status: Application["status"]) {
     setSavingId(app.id);
-    const r = await adminApi(`/api/admin/vendor-applications/${app.id}`, "PATCH", { status });
+    const r = await adminApi(
+      `/api/admin/vendor-applications/${app.id}`,
+      "PATCH",
+      { status },
+    );
     setSavingId(null);
-    if (!r.ok) return setError(r.data?.error ?? "Couldn't update the application.");
+    if (!r.ok)
+      return setError(r.data?.error ?? "Couldn't update the application.");
     // Reflect the change in place; drop it if it no longer matches the filter.
     setApps((prev) =>
       (prev ?? [])
         .map((a) => (a.id === app.id ? { ...a, status } : a))
-        .filter((a) => (filter ? a.status === filter : true))
+        .filter((a) => (filter ? a.status === filter : true)),
     );
   }
 
@@ -83,7 +93,9 @@ export default function VendorsPage() {
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-serif text-4xl text-ink">Vendors</h1>
+          <h1 className="font-serif text-4xl text-ink">
+            Business applications
+          </h1>
           <p className="mt-1 text-sm text-ink/50">
             {apps === null
               ? "Loading…"
@@ -92,7 +104,11 @@ export default function VendorsPage() {
                 : `${apps.length} ${apps.length === 1 ? "application" : "applications"}`}
           </p>
         </div>
-        <div className="flex flex-wrap gap-1" role="tablist" aria-label="Filter by status">
+        <div
+          className="flex flex-wrap gap-1"
+          role="tablist"
+          aria-label="Filter by status"
+        >
           {FILTERS.map((f) => (
             <button
               key={f.value}
@@ -100,7 +116,9 @@ export default function VendorsPage() {
               onClick={() => setFilter(f.value)}
               aria-pressed={filter === f.value}
               className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
-                filter === f.value ? "bg-ink text-cream" : "border border-sand text-ink/60 hover:text-ink"
+                filter === f.value
+                  ? "bg-ink text-cream"
+                  : "border border-sand text-ink/60 hover:text-ink"
               }`}
             >
               {f.label}
@@ -110,24 +128,37 @@ export default function VendorsPage() {
       </div>
 
       {error && (
-        <p role="alert" className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
+        <p
+          role="alert"
+          className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800"
+        >
+          {error}
+        </p>
       )}
 
       {apps && apps.length === 0 && !error && (
         <div className="mt-10 rounded-3xl border border-dashed border-sand px-6 py-14 text-center text-sm text-ink/50">
-          Applications from the “List your business” form on the site land here for you to review.
+          Applications from the “List your business” form on the site land here
+          for you to review.
         </div>
       )}
 
       {apps && apps.length > 0 && (
         <ul className="mt-6 space-y-4">
           {apps.map((a) => (
-            <li key={a.id} className="rounded-3xl border border-sand bg-white p-5 shadow-sm">
+            <li
+              key={a.id}
+              className="rounded-3xl border border-sand bg-white p-5 shadow-sm"
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="font-serif text-xl text-ink">{a.business_name}</h2>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${STATUS_STYLE[a.status]}`}>
+                    <h2 className="font-serif text-xl text-ink">
+                      {a.business_name}
+                    </h2>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${STATUS_STYLE[a.status]}`}
+                    >
                       {a.status}
                     </span>
                   </div>
@@ -141,25 +172,49 @@ export default function VendorsPage() {
 
               <dl className="mt-4 grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
                 {a.contact_name && (
-                  <div className="flex gap-2"><dt className="text-ink/40">Contact</dt><dd className="text-ink/80">{a.contact_name}</dd></div>
+                  <div className="flex gap-2">
+                    <dt className="text-ink/40">Contact</dt>
+                    <dd className="text-ink/80">{a.contact_name}</dd>
+                  </div>
                 )}
                 <div className="flex gap-2">
                   <dt className="text-ink/40">Email</dt>
-                  <dd><a href={`mailto:${a.email}`} className="text-clay hover:underline">{a.email}</a></dd>
+                  <dd>
+                    <a
+                      href={`mailto:${a.email}`}
+                      className="text-clay hover:underline"
+                    >
+                      {a.email}
+                    </a>
+                  </dd>
                 </div>
                 {a.phone && (
-                  <div className="flex gap-2"><dt className="text-ink/40">Phone</dt><dd className="text-ink/80">{a.phone}</dd></div>
+                  <div className="flex gap-2">
+                    <dt className="text-ink/40">Phone</dt>
+                    <dd className="text-ink/80">{a.phone}</dd>
+                  </div>
                 )}
                 {a.website && (
                   <div className="flex gap-2">
                     <dt className="text-ink/40">Web</dt>
-                    <dd className="truncate"><a href={normalizeUrl(a.website)} target="_blank" rel="noreferrer noopener" className="text-clay hover:underline">{a.website}</a></dd>
+                    <dd className="truncate">
+                      <a
+                        href={normalizeUrl(a.website)}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="text-clay hover:underline"
+                      >
+                        {a.website}
+                      </a>
+                    </dd>
                   </div>
                 )}
               </dl>
 
               {a.message && (
-                <p className="mt-3 whitespace-pre-wrap rounded-2xl bg-cream/70 px-4 py-3 text-sm text-ink/70">{a.message}</p>
+                <p className="mt-3 whitespace-pre-wrap rounded-2xl bg-cream/70 px-4 py-3 text-sm text-ink/70">
+                  {a.message}
+                </p>
               )}
 
               <div className="mt-4 flex flex-wrap gap-2">
@@ -179,7 +234,10 @@ export default function VendorsPage() {
                   </button>
                 ))}
                 {a.status === "accepted" && (
-                  <Link href={supplierSetupHref(a)} className="rounded-full bg-ink px-4 py-1.5 text-sm text-cream hover:bg-ink/90">
+                  <Link
+                    href={supplierSetupHref(a)}
+                    className="rounded-full bg-ink px-4 py-1.5 text-sm text-cream hover:bg-ink/90"
+                  >
                     Set up as supplier →
                   </Link>
                 )}
@@ -200,7 +258,11 @@ function normalizeUrl(url: string): string {
 // Deep-link to the Suppliers screen with the create form prefilled from the
 // application. Creating the supplier there marks this application accepted.
 function supplierSetupHref(a: Application): string {
-  const q = new URLSearchParams({ new: "1", name: a.business_name, application: a.id });
+  const q = new URLSearchParams({
+    new: "1",
+    name: a.business_name,
+    application: a.id,
+  });
   if (a.area) q.set("area", a.area);
   if (a.email) q.set("email", a.email);
   return `/admin/suppliers?${q.toString()}`;

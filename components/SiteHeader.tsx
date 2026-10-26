@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import HelpButton from "@/components/help/HelpButton";
 import { useState } from "react";
 
 const NAV_LINKS = [
-  { href: "/#how", label: "How it works" },
-  { href: "/#features", label: "Features" },
+  { href: "/login?mode=login", label: "Log in" },
+  { href: "/venues", label: "Find venues" },
   { href: "/suppliers", label: "Suppliers" },
-  { href: "/order", label: "Track order" },
+  { href: "/design?tab=orders", label: "My bookings" },
+  { href: "/business", label: "For businesses" },
 ];
 
 export default function SiteHeader() {
@@ -21,19 +23,29 @@ export default function SiteHeader() {
         </Link>
 
         {/* Desktop nav */}
-        <nav aria-label="Primary" className="hidden items-center gap-6 text-sm md:flex">
+        <nav
+          aria-label="Primary"
+          className="hidden items-center gap-6 text-sm lg:flex"
+        >
+          <HelpButton hideOnHome className="text-ink/70 hover:text-ink" />
           {NAV_LINKS.map((l) => (
-            <a key={l.href} href={l.href} className="text-ink/70 hover:text-ink">
+            <a
+              key={l.href}
+              href={l.href}
+              className="text-ink/70 hover:text-ink"
+            >
               {l.label}
             </a>
           ))}
           <a
-            href="/design"
+            href="/design?tab=wedding"
             className="rounded-full bg-ink px-4 py-2 text-cream hover:bg-ink/90"
           >
-            Get started
+            Plan your wedding
           </a>
         </nav>
+
+        <Link href="/login?mode=login" className="ml-auto mr-3 text-sm text-ink underline underline-offset-4 lg:hidden">Log in</Link>
 
         {/* Mobile toggle */}
         <button
@@ -42,13 +54,29 @@ export default function SiteHeader() {
           aria-expanded={open}
           aria-controls="mobile-menu"
           aria-label={open ? "Close menu" : "Open menu"}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-sand text-ink md:hidden"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-sand text-ink lg:hidden"
         >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 18 18"
+            fill="none"
+            aria-hidden="true"
+          >
             {open ? (
-              <path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              <path
+                d="M4 4l10 10M14 4L4 14"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
             ) : (
-              <path d="M2 5h14M2 9h14M2 13h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              <path
+                d="M2 5h14M2 9h14M2 13h14"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
             )}
           </svg>
         </button>
@@ -58,9 +86,13 @@ export default function SiteHeader() {
         <nav
           id="mobile-menu"
           aria-label="Mobile"
-          className="border-t border-sand bg-cream/95 px-5 py-4 md:hidden"
+          className="border-t border-sand bg-cream/95 px-5 py-4 lg:hidden"
         >
           <div className="mx-auto flex max-w-6xl flex-col gap-1">
+            <HelpButton
+              hideOnHome
+              className="rounded-xl px-3 py-3 text-left text-ink/80 hover:bg-sand/60"
+            />
             {NAV_LINKS.map((l) => (
               <a
                 key={l.href}
@@ -72,11 +104,11 @@ export default function SiteHeader() {
               </a>
             ))}
             <a
-              href="/design"
+              href="/design?tab=wedding"
               onClick={() => setOpen(false)}
               className="mt-1 rounded-full bg-ink px-4 py-3 text-center text-cream hover:bg-ink/90"
             >
-              Get started
+              Plan your wedding
             </a>
           </div>
         </nav>

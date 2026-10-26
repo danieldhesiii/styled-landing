@@ -1,5 +1,8 @@
+import { loadSelectedPhotoBuffers } from "./selected-photos";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import sharp from "sharp";
+import { readPublicImage } from "@/lib/server/public-images";
+import { createAnonClient } from "@/lib/supabase/anon";
 import { getVenue } from "@/lib/styles";
 import { env } from "@/lib/server/env";
 import { VENUE_BUCKET, normaliseVenuePhoto } from "@/lib/server/photos";
@@ -19,15 +22,45 @@ export interface BaseImages {
   photoIds: string[]; // venue_photos used, in the order sent
 }
 
-async function describe(images: Buffer[], extra: Pick<BaseImages, "dbVenueId" | "photoIds">): Promise<BaseImages> {
+async function describe(
+  images: Buffer[],
+  extra: Pick<BaseImages, "dbVenueId" | "photoIds">,
+): Promise<BaseImages> {
   const meta = await sharp(images[0]).metadata();
-  return { images, width: meta.width ?? 1024, height: meta.height ?? 1024, ...extra };
+  return {
+    images,
+    width: meta.width ?? 1024,
+    height: meta.height ?? 1024,
+    ...extra,
+  };
 }
 
 export async function loadUploadedPhotos(opts: {
   supabase: SupabaseClient; // runs as the guest, so RLS limits it to their data
   primaryIndex: number;
+  userId: string;
+  photoIds?: string[];
 }): Promise<BaseImages | null> {
+  if (opts.photoIds !== undefined) {
+    if (!opts.photoIds.length) return null;
+    const primary = Math.min(
+      Math.max(0, Math.floor(opts.primaryIndex) || 0),
+      opts.photoIds.length - 1,
+    );
+    const ordered = [
+      opts.photoIds[primary],
+      ...opts.photoIds.filter((_, i) => i !== primary),
+    ].slice(0, env.maxReferencePhotos);
+    const selected = await loadSelectedPhotoBuffers(
+      opts.supabase,
+      opts.userId,
+      ordered,
+    );
+    return describe(selected.buffers, {
+      dbVenueId: selected.rows[0].venue_id,
+      photoIds: ordered,
+    });
+  }
   const { supabase } = opts;
   const { data: venue } = await supabase
     .from("venues")
@@ -47,27 +80,56 @@ export async function loadUploadedPhotos(opts: {
 
   // The couple's chosen view first, then the others in upload order. Extra
   // photos beyond the limit are dropped (they cost input tokens).
-  const primary = Math.min(Math.max(0, Math.floor(opts.primaryIndex) || 0), photos.length - 1);
-  const ordered = [photos[primary], ...photos.filter((_, i) => i !== primary)].slice(
-    0,
-    env.maxReferencePhotos
+  const primary = Math.min(
+    Math.max(0, Math.floor(opts.primaryIndex) || 0),
+    photos.length - 1,
   );
+  const ordered = [
+    photos[primary],
+    ...photos.filter((_, i) => i !== primary),
+  ].slice(0, env.maxReferencePhotos);
 
   const buffers: Buffer[] = [];
   for (const p of ordered) {
-    const { data: blob } = await supabase.storage.from(VENUE_BUCKET).download(p.storage_path);
+    const { data: blob } = await supabase.storage
+      .from(VENUE_BUCKET)
+      .download(p.storage_path);
     if (!blob) return null;
     buffers.push(Buffer.from(await blob.arrayBuffer()));
   }
-  return describe(buffers, { dbVenueId: venue.id as string, photoIds: ordered.map((p) => p.id as string) });
+  return describe(buffers, {
+    dbVenueId: venue.id as string,
+    photoIds: ordered.map((p) => p.id as string),
+  });
 }
 
-export async function loadSampleVenue(opts: { origin: string; sampleVenueId: string }): Promise<BaseImages> {
+export async function loadSampleVenue(opts: {
+  origin: string;
+  sampleVenueId: string;
+}): Promise<BaseImages> {
+  if (opts.sampleVenueId.startsWith("listing:")) {
+    const { data: venue, error } = await createAnonClient()
+      .from("venue_listings")
+      .select("hero_image")
+      .eq("slug", opts.sampleVenueId.slice(8))
+      .eq("active", true)
+      .maybeSingle();
+    if (error || !venue?.hero_image)
+      throw new Error(
+        "This venue has no source photo. Please upload a venue photo.",
+      );
+    const buffer = await readPublicImage(String(venue.hero_image));
+    const processed = await normaliseVenuePhoto(buffer);
+    return describe([processed.data], { dbVenueId: null, photoIds: [] });
+  }
   const sample = getVenue(opts.sampleVenueId);
   if (!sample.image) throw new Error(`Sample venue ${sample.id} has no image`);
   const res = await fetch(new URL(sample.image, opts.origin));
-  if (!res.ok) throw new Error(`Couldn't load sample venue image (${res.status})`);
-  const processed = await normaliseVenuePhoto(Buffer.from(await res.arrayBuffer()));
+  if (!res.ok)
+    throw new Error(`Couldn't load sample venue image (${res.status})`);
+  const processed = await normaliseVenuePhoto(
+    Buffer.from(await res.arrayBuffer()),
+  );
   return describe([processed.data], { dbVenueId: null, photoIds: [] });
 }
 
@@ -89,12 +151,17 @@ export async function loadParentRender(opts: {
 }): Promise<ParentRender | null> {
   const { data: parent } = await opts.supabase
     .from("renders")
-    .select("id, brief_id, depth, style_id, sample_venue_id, image_path, status, look_report")
+    .select(
+      "id, brief_id, depth, style_id, sample_venue_id, image_path, status, look_report",
+    )
     .eq("id", opts.parentId)
     .maybeSingle();
-  if (!parent || parent.status !== "succeeded" || !parent.image_path) return null;
+  if (!parent || parent.status !== "succeeded" || !parent.image_path)
+    return null;
 
-  const { data: blob } = await opts.supabase.storage.from("renders").download(parent.image_path);
+  const { data: blob } = await opts.supabase.storage
+    .from("renders")
+    .download(parent.image_path);
   if (!blob) return null;
 
   return {
@@ -104,6 +171,9 @@ export async function loadParentRender(opts: {
     styleId: (parent.style_id as string | null) ?? null,
     sampleVenueId: (parent.sample_venue_id as string | null) ?? null,
     lookReport: parent.look_report ?? null,
-    base: await describe([Buffer.from(await blob.arrayBuffer())], { dbVenueId: null, photoIds: [] }),
+    base: await describe([Buffer.from(await blob.arrayBuffer())], {
+      dbVenueId: null,
+      photoIds: [],
+    }),
   };
 }
