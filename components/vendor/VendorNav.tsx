@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import {SupportButton} from "@/components/support/SupportProvider";
 import HelpButton from "@/components/help/HelpButton";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -79,6 +80,7 @@ export default function VendorNav({
           <Link href="/business" className="underline">
             Workspaces
           </Link>
+          <SupportButton label="Contact support" className="min-h-11 underline underline-offset-4" />
           <HelpButton
             topic="supplier_partners"
             className="shrink-0 rounded-full border border-sand px-3 py-1.5 text-ink/70"

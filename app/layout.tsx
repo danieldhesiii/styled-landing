@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import SupportProvider from "@/components/support/SupportProvider";
 
 const DESCRIPTION =
   "Explore an illustrative wedding look from your venue photo, build a supplier selection and request manual confirmation and a final quote. Payment and delivery or collection are agreed separately.";
@@ -43,7 +44,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased"><SupportProvider>{children}</SupportProvider></body>
     </html>
   );
 }

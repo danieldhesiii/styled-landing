@@ -21,3 +21,5 @@ test('supplier message preserves different full hire periods on items from one s
   assert.match(body.htmlContent,/full requested hire period/);
  } finally {env.brevoApiKeyIfSet=undefined;global.fetch=old;}
 });
+
+test('support can reply to a verified customer without changing default order replies',async()=>{const old=global.fetch;let body;env.brevoApiKeyIfSet='test-only-key';global.fetch=async(_url,o)=>{body=JSON.parse(o.body);return {ok:true};};try{assert.equal(await sendEmail({...message,replyTo:'customer@example.com'}),true);assert.equal(body.replyTo.email,'customer@example.com');assert.equal(await sendEmail(message),true);assert.equal(body.replyTo.email,'support@styleduk.com');}finally{env.brevoApiKeyIfSet=undefined;global.fetch=old;}});

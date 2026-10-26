@@ -1,4 +1,6 @@
 "use client";
+import SkipLink from "@/components/ui/SkipLink";
+import {SupportButton} from "@/components/support/SupportProvider";
 
 import {
   useCallback,
@@ -957,6 +959,7 @@ function DesignStudio() {
 
   return (
     <div className="min-h-screen bg-cream">
+      <SkipLink target="studio-content" />
       {/* Slim app header */}
       <header className="sticky top-0 z-30 border-b border-sand bg-cream/80 backdrop-blur">
         <div
@@ -1048,6 +1051,7 @@ function DesignStudio() {
         id="studio-content"
         className="mx-auto max-w-7xl px-4 pb-24 sm:px-5 md:pb-8"
       >
+        <div className="flex justify-end pt-2"><SupportButton label="Help & support" className="min-h-11 text-sm text-ink/70 underline underline-offset-4 hover:text-ink" /></div>
         {workspaceLoaded && restored && (
           <EventPlans
             events={eventPlans}
@@ -1647,6 +1651,10 @@ function DesignStudio() {
             }}
           />
         )}
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-sand pt-4 text-xs text-ink/70">
+          <SupportButton label="Ask a question or contact support" className="min-h-11 text-left text-sm underline underline-offset-4" />
+          <div className="flex flex-wrap gap-4"><a href="/service-info" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center">Service information ↗</a><a href="/privacy" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center">Privacy ↗</a><a href="/terms" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center">Terms ↗</a></div>
+        </div>
       </main>
 
       {step === "studio" && (

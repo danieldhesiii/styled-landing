@@ -1,3 +1,4 @@
+import SkipLink from "@/components/ui/SkipLink";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -22,8 +23,9 @@ export default async function PortalAppLayout({ children }: { children: React.Re
 
   return (
     <>
+      <SkipLink />
       <VendorNav email={user.email ?? ""} supplier={supplier?.name ?? "Your business"} />
-      <main className="mx-auto max-w-5xl px-5 py-8">{children}</main>
+      <main id="main-content" className="mx-auto max-w-5xl px-5 py-8">{children}</main>
     </>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/components/session/useUser";
+import {SupportButton} from "@/components/support/SupportProvider";
 import AuthDialog from "@/components/auth/AuthDialog";
 
 const CHIP =
@@ -168,6 +169,7 @@ export default function AccountMenu({
                 How it works
               </button>
             )}
+            <SupportButton label="Contact support" className="block min-h-11 w-full px-4 py-2 text-left text-sm text-ink/70 hover:bg-cream" />
             {workspaces.venue && (
               <a
                 href="/venue-portal"

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import {SupportButton} from "@/components/support/SupportProvider";
 import { HELP_GUIDES, helpTopicsFor, type HelpTopic } from "@/lib/help";
 
 export default function HowItWorks({
@@ -179,12 +180,7 @@ export default function HowItWorks({
         </p>
       </div>
       <footer className="shrink-0 border-t border-sand px-5 py-4 sm:px-7">
-        <a
-          href="mailto:support@styleduk.com"
-          className="mb-3 inline-flex min-h-11 items-center text-sm text-ink/70 underline underline-offset-4"
-        >
-          Need help? Email Styled
-        </a>
+        <SupportButton label="Need help? Contact Styled" className="mb-3 inline-flex min-h-11 items-center text-sm text-ink/70 underline underline-offset-4" />
         <button
           type="button"
           onClick={close}

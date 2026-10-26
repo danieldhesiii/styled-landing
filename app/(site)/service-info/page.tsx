@@ -17,6 +17,7 @@ export default function ServiceInfoPage() {
       <p>Demo venues are examples for exploring the service and cannot be booked.</p>
     </section>
     <section id="support" className="scroll-mt-28 space-y-3"><h2 className="font-serif text-2xl text-ink">Contact support</h2>
+      <Link href="/support" className="inline-flex min-h-11 items-center rounded-full bg-ink px-5 text-sm text-cream">Ask a question or report a problem</Link>
       <p>Email <a href="mailto:support@styleduk.com" className="underline">support@styleduk.com</a> for account access, supplier or venue access, request questions, corrections or privacy enquiries.</p>
       <p>Include your account email, request reference or listing name, and a short description of what happened. Never send your password, recovery link, card details or a one-time code. Screenshots should hide private details.</p>
       <p>Supplier and venue workspace access is linked separately from a customer account. If your business already has a listing, ask support to check the linked email before creating another listing.</p>

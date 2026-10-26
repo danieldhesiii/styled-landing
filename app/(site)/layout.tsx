@@ -1,3 +1,4 @@
+import SkipLink from "@/components/ui/SkipLink";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 
@@ -7,8 +8,9 @@ import SiteFooter from "@/components/SiteFooter";
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      <SkipLink />
       <SiteHeader />
-      <main className="mx-auto max-w-6xl px-5">{children}</main>
+      <main id="main-content" className="mx-auto max-w-6xl px-5">{children}</main>
       <SiteFooter />
     </>
   );

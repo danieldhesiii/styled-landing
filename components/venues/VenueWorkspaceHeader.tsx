@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import {SupportButton} from "@/components/support/SupportProvider";
 import HelpButton from "@/components/help/HelpButton";
 import { createClient } from "@/lib/supabase/client";
 
@@ -19,6 +20,7 @@ export default function VenueWorkspaceHeader() {
         >
           <Link href="/venues">View customer site ↗</Link>
           <Link href="/business">Business workspaces</Link>
+          <SupportButton label="Contact support" className="min-h-11 underline underline-offset-4" />
           <HelpButton
             topic="venue_partners"
             label="Help"

@@ -17,6 +17,7 @@ const escapeHtml = (s: string) =>
     .replace(/"/g, "&quot;");
 
 interface Email {
+  replyTo?: string;
   to: string[];
   subject: string;
   html: string;
@@ -27,6 +28,7 @@ export async function sendEmail(email: Email): Promise<boolean> {
   const to = [...new Set(email.to.map((e) => e.trim()).filter(Boolean))];
   if (to.length === 0) return false;
 
+  const replyTo = email.replyTo || env.notifyReplyToEmailIfSet;
   const key = env.resendApiKeyIfSet;
   const brevoKey = env.brevoApiKeyIfSet;
   if (!key && !brevoKey) {
@@ -59,8 +61,8 @@ export async function sendEmail(email: Email): Promise<boolean> {
           subject: email.subject,
           htmlContent: email.html,
           textContent: email.text,
-          ...(env.notifyReplyToEmailIfSet
-            ? { replyTo: { email: env.notifyReplyToEmailIfSet } }
+          ...(replyTo
+            ? { replyTo: { email: replyTo } }
             : {}),
         }),
       });
@@ -78,8 +80,8 @@ export async function sendEmail(email: Email): Promise<boolean> {
       },
       body: JSON.stringify({
         from: env.notifyFromEmail,
-        ...(env.notifyReplyToEmailIfSet
-          ? { reply_to: env.notifyReplyToEmailIfSet }
+        ...(replyTo
+          ? { reply_to: replyTo }
           : {}),
         to,
         subject: email.subject,

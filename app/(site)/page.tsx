@@ -202,21 +202,9 @@ export default function Page() {
       </section>
 
       {/* ------------------------------------------------- Final CTA */}
-      <section
-        id="cta"
-        className="mb-4 rounded-3xl border border-clay/30 bg-blush/20 px-6 py-14 text-center sm:px-10"
-      >
-        <h2 className="mx-auto max-w-2xl font-serif text-4xl text-ink sm:text-5xl">
-          Make room for your wedding ideas.
-        </h2>
-        <p className="mx-auto mt-4 max-w-xl text-ink/70">
-          Create a free account, upload your venue photo and start putting your
-          look together. When you are ready, submit your selection for manual confirmation.
-        </p>
+      <section id="cta" className="my-10 flex flex-wrap items-center justify-between gap-6 border-t border-sand pt-8">
+        <div><h2 className="font-serif text-3xl">Ready to start planning?</h2><p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/70">Create a free account to keep your ideas. No payment is taken when you submit a supplier request.</p></div>
         <CtaEmailForm />
-        <p className="mt-4 text-xs text-ink/40">
-          No payment is taken when you submit a supplier request.
-        </p>
       </section>
     </>
   );

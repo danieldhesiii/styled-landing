@@ -45,7 +45,7 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
         body: "Basket holds your unsubmitted choices. My bookings tracks requests you have sent. Suppliers and venue teams must confirm the details before a request becomes a booking.",
       },
     ],
-    note: "Venue hire and supplier products have separate request processes. No payment is taken by the request forms. Plan ahead and agree delivery, setup and payment with the relevant business.",
+    note: "Venue hire and supplier products have separate request processes. No payment is taken by the request forms. Use Help & support to ask Styled a question without leaving your plan.",
   },
   wedding: {
     label: "Wedding plan",
