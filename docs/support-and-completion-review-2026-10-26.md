@@ -14,16 +14,18 @@ Reviewed customer planning, the public landing page and footer, in-workspace hel
 - Added a branded error boundary with retry and support, instead of a generic failure screen. It does not expose technical diagnostics or promise unsaved edits are recovered.
 - Updated privacy information for support messages and added /support to the public sitemap.
 
-## Direct website email
+## Durable support inbox
 
-The support endpoint uses the existing server-verified account session. Anonymous, missing and unconfirmed sessions cannot send. Its recipient is fixed to support@styleduk.com; the reply-to comes from the verified account, never a supplied email or user ID. Input/body limits, same-origin enforcement, HTML escaping and a bounded per-instance throttle guard the new endpoint. No new tables, database grants or RLS changes are required.
+Support submissions are now saved in the current website database (Wedding Planner Dev, qkyeitvwscrxbiwamxan). This replaces direct email transport for this form because no Brevo or Resend key is configured. No email integration or booking behaviour is changed.
 
-Existing order email defaults remain unchanged. An optional reply-to parameter allows support staff to reply to the customer when direct email is configured. Tests verify both default and explicit reply behaviour.
+Confirmed, non-anonymous accounts submit questions with a server-verified owner and email. Body limits and same-origin checks apply. The server-only submit function atomically enforces three requests per ten minutes, and deduplicates retries by account and client-generated submission ID. It uses invoker privileges and is executable only by service_role. Failed storage never reports success. No email notification is sent automatically.
 
-Production inspection found sender/reply settings but no BREVO_API_KEY or RESEND_API_KEY. Until one is configured, the interface offers Prepare email and Copy message, rather than a send button that would fail. GET /api/support reports only whether email is configured, never a credential. Once configured and deployed, direct sending is enabled automatically. A successful provider response is required before the form reports a sent message. A provider failure retains the draft. Provider acceptance is not a delivery receipt.
+The isolated support_requests table has RLS enabled. Authenticated customers have only SELECT permission, with an owner-only policy. All writes go through verified server routes. Staff access uses the existing staff membership guard, never user metadata. The admin inbox at /admin/support shows the latest 100 requests. Staff can update status and a latest reply; optimistic concurrency checks refuse overwriting another saved change. This is a simple request inbox, not a multi-message chat or email delivery service.
 
-The throttle is process-local and is not a durable distributed ticketing or deduplication service. Support replies are handled in the mailbox, not a new in-account conversation history. A support message never changes or cancels a booking automatically.
+Customers use Help & support > Your requests to review their latest 50 requests, status and latest staff replies. The page tells them to check back and provides Refresh; no email notification or response time is promised. For a follow-up they can submit another question with the reference. Email preparation and copy remain alternatives, including for signed-out users.
 
-## Review boundaries
+## Verification boundaries
 
-No live support messages, supplier emails, booking requests or paid images are sent during verification. Route tests use mocked sessions and email transport. Credentials are not read or committed. A full ticketing inbox, live chat, automated refunds/cancellations and account deletion are not added: they need agreed operations and data policies; the support area provides a route for those requests now.
+No real support messages, supplier emails, booking requests or paid images are sent during verification. API tests mock verified sessions and database operations. Database checks run in rolled-back transactions. Existing order email defaults remain unchanged. Automatic refunds/cancellations, stock changes and booking edits are outside this feature.
+
+Validation: 119 tests passed; TypeScript and the production build passed. A rolled-back database check verified retry deduplication, persistent throttling, owner-only reads and denied direct client writes. No test requests remain. Supabase advisors reported no findings for the new table/function; existing is_staff and leaked-password-protection warnings were left outside this change. The old generated build cache stalled during cleanup; a fresh cache built successfully.

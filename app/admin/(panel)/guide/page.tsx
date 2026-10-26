@@ -27,6 +27,7 @@ function Step({ n, children }: { n: string; children: React.ReactNode }) {
 const CONTENTS = [
   ["big-picture", "The big picture"],
   ["orders", "Orders"],
+  ["support", "Support inbox"],
   ["customers", "Customers"],
   ["vendors", "Vendors: applications"],
   ["suppliers", "Suppliers: onboarding & catalogue"],
@@ -65,6 +66,10 @@ export default function GuidePage() {
           <p>Your job in the middle: bring good suppliers on, keep their catalogue and availability honest, and move each order from request to confirmed to delivered.</p>
         </Section>
 
+        <Section id="support" title="Support inbox">
+          <p>Open <Link href="/admin/support" className="text-clay underline">Support</Link> to review questions from customers, suppliers and venues. Expand a request, write the latest reply and save its status. The reply appears in their Help &amp; support area under Your requests. No email is sent automatically, so use the account email separately when needed.</p>
+          <p>Support messages do not change bookings. Handle any requested cancellation or amendment through the existing order workflow after checking the details. Check this inbox regularly while email notifications are not configured.</p>
+        </Section>
         <Section id="orders" title="Orders">
           <p>The <Link href="/admin" className="text-clay hover:underline">Orders</Link> tab is the main queue. An order is a couple&apos;s request to book a basket of products for their wedding date.</p>
           <p className="font-medium text-ink">Status meanings</p>

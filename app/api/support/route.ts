@@ -1,30 +1,14 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/server/session";
-import { env } from "@/lib/server/env";
-import { sendEmail } from "@/lib/server/notify";
-import {
-  SUPPORT_EMAIL,
-  SUPPORT_TOPICS,
-  supportDraft,
-  supportEmailBody,
-} from "@/lib/support";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+import { supportDraft } from "@/lib/support";
 
 export const runtime = "nodejs";
-// A bounded, per-instance throttle in addition to real account authentication.
-// No new customer tables, stock changes or background jobs are needed.
-const attempts = new Map<string, { count: number; until: number }>();
 const fail = (status: number, error: string) =>
   NextResponse.json(
     { ok: false, error },
     { status, headers: { "Cache-Control": "no-store" } },
-  );
-const escape = (s: string) =>
-  s.replace(
-    /[&<>"']/g,
-    (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
-        c
-      ]!,
   );
 export async function POST(req: Request) {
   if (req.headers.get("origin") !== new URL(req.url).origin)
@@ -77,33 +61,37 @@ export async function POST(req: Request) {
         422,
         "Choose a topic and enter 10 to 4,000 characters. Keep the reference under 120 characters.",
       );
-    const now = Date.now();
-    for (const [key, entry] of attempts) {
-      if (entry.until <= now) attempts.delete(key);
-    }
-    const entry = attempts.get(auth.user.id);
-    if ((entry?.count ?? 0) >= 3 || (!entry && attempts.size >= 2000))
+    const clientId = (parsed as { clientId?: unknown }).clientId;
+    if (
+      typeof clientId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        clientId,
+      )
+    )
+      return fail(
+        422,
+        "Refresh Support and try again. Your draft is still here.",
+      );
+    const { data: reference, error } = await createAdminClient().rpc(
+      "submit_support_request",
+      {
+        p_user: auth.user.id,
+        p_email: auth.user.email,
+        p_client: clientId,
+        p_topic: draft.topic,
+        p_related: draft.reference,
+        p_message: draft.message,
+      },
+    );
+    if (error?.message?.includes("support_rate_limit"))
       return fail(
         429,
-        "Please wait a little before sending another message, or email support@styleduk.com.",
+        "Please wait ten minutes before submitting another request, or email support@styleduk.com.",
       );
-    attempts.set(auth.user.id, {
-      count: (entry?.count ?? 0) + 1,
-      until: entry?.until ?? now + 10 * 60 * 1000,
-    });
-    const reference = `SUP-${crypto.randomUUID().replaceAll("-", "").slice(0, 12).toUpperCase()}`;
-    const text = `Support reference: ${reference}\nReply to: ${auth.user.email}\n\n${supportEmailBody(draft)}`;
-    const sent = await sendEmail({
-      to: [SUPPORT_EMAIL],
-      replyTo: auth.user.email,
-      subject: `[${reference}] ${SUPPORT_TOPICS[draft.topic]}`,
-      text,
-      html: `<pre style="white-space:pre-wrap;font-family:sans-serif">${escape(text)}</pre>`,
-    });
-    if (!sent)
+    if (error || typeof reference !== "string")
       return fail(
         503,
-        "We could not send your message. Your draft is still here. Please try again later or use the email option below.",
+        "Your request could not be saved. Your draft is still here. Try again or use email below.",
       );
     return NextResponse.json(
       { ok: true, reference },
@@ -117,9 +105,26 @@ export async function POST(req: Request) {
   }
 }
 
-export function GET() {
-  return NextResponse.json(
-    { emailEnabled: !!(env.brevoApiKeyIfSet || env.resendApiKeyIfSet) },
-    { headers: { "Cache-Control": "no-store" } },
-  );
+export async function GET() {
+  try {
+    const auth = await requireUser();
+    if (!auth.ok || auth.user.is_anonymous || !auth.user.email_confirmed_at)
+      return fail(401, "Sign in to see your support requests.");
+    const { data, error } = await auth.supabase
+      .from("support_requests")
+      .select(
+        "reference,topic,related_reference,message,status,reply,created_at,updated_at",
+      )
+      .eq("user_id", auth.user.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error)
+      return fail(503, "Could not load your requests. Please try again.");
+    return NextResponse.json(
+      { ok: true, requests: data ?? [] },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  } catch {
+    return fail(503, "Could not load your requests. Please try again.");
+  }
 }

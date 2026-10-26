@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const LINKS = [
+  {href:"/admin/support",label:"Support",match:(p:string)=>p.startsWith("/admin/support")},
   {
     href: "/admin/locations",
     label: "Locations",

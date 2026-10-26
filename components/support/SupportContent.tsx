@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import {
   SUPPORT_EMAIL,
   SUPPORT_TOPICS,
@@ -8,6 +8,7 @@ import {
   supportEmailBody,
   type SupportTopic,
 } from "@/lib/support";
+import SupportRequests from "./SupportRequests";
 export default function SupportContent() {
   const id = useId(),
     notice = useRef<HTMLDivElement>(null);
@@ -19,21 +20,7 @@ export default function SupportContent() {
     [error, setError] = useState(""),
     [sent, setSent] = useState(""),
     [copied, setCopied] = useState("");
-  const [emailEnabled, setEmailEnabled] = useState<boolean | null>(null);
-  useEffect(() => {
-    let active = true;
-    fetch("/api/support")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (active) setEmailEnabled(data?.emailEnabled === true);
-      })
-      .catch(() => {
-        if (active) setEmailEnabled(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const submission = useRef({ id: "", body: "" });
   const draft = { topic, reference, message };
   const field =
     "mt-2 block min-h-11 w-full min-w-0 rounded-xl border border-sand bg-white px-3 py-2.5 text-base text-ink";
@@ -41,10 +28,11 @@ export default function SupportContent() {
     <div className="min-w-0">
       <nav
         aria-label="Support options"
-        className="mb-6 flex gap-5 border-b border-sand text-sm"
+        className="mb-6 grid grid-cols-3 gap-2 border-b border-sand text-sm"
       >
         {[
           ["contact", "Ask a question"],
+          ["requests", "Your requests"],
           ["answers", "Quick answers"],
         ].map(([key, label]) => (
           <button
@@ -58,6 +46,7 @@ export default function SupportContent() {
           </button>
         ))}
       </nav>
+      {tab === "requests" && <SupportRequests />}
       <div hidden={tab !== "answers"} className="space-y-3">
         {SUPPORT_ANSWERS.map((a) => (
           <details
@@ -88,9 +77,9 @@ export default function SupportContent() {
             tabIndex={-1}
             className="rounded-xl border border-sage/40 bg-sage/10 p-5"
           >
-            <h3 className="font-serif text-2xl">Your message has been sent</h3>
+            <h3 className="font-serif text-2xl">Your request is saved</h3>
             <p className="mt-3 text-sm leading-relaxed">
-              We will reply to your account email. Keep reference{" "}
+              You can check replies in Your requests. Keep reference{" "}
               <strong>{sent}</strong> when following up.
             </p>
             <p className="mt-3 text-sm text-ink/70">
@@ -100,6 +89,7 @@ export default function SupportContent() {
               type="button"
               onClick={() => {
                 setSent("");
+                submission.current = { id: "", body: "" };
                 setMessage("");
                 setReference("");
               }}
@@ -113,14 +103,20 @@ export default function SupportContent() {
             className="space-y-5"
             onSubmit={async (e) => {
               e.preventDefault();
-              if (busy || !emailEnabled) return;
+              if (busy) return;
+              const body = JSON.stringify(draft);
+              if (submission.current.body !== body)
+                submission.current = { id: crypto.randomUUID(), body };
               setBusy(true);
               setError("");
               try {
                 const res = await fetch("/api/support", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(draft),
+                  body: JSON.stringify({
+                    ...draft,
+                    clientId: submission.current.id,
+                  }),
                 });
                 const data = await res.json();
                 if (!res.ok || !data.ok)
@@ -141,8 +137,8 @@ export default function SupportContent() {
             }}
           >
             <p className="text-sm leading-relaxed text-ink/70">
-              Ask about your plans, a request or your business workspace.
-              Messages go to the Styled team, who reply by email.
+              Ask about your plans, a request or your business workspace. Send
+              directly to the Styled team and check replies in Your requests.
             </p>
             <label className="block text-sm" htmlFor={`${id}-topic`}>
               What can we help with?
@@ -199,40 +195,18 @@ export default function SupportContent() {
                 {error}
               </p>
             )}
-            {emailEnabled ? (
-              <>
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="min-h-11 w-full rounded-full bg-ink px-5 py-3 text-sm text-cream disabled:opacity-50"
-                >
-                  {busy ? "Sending your message…" : "Send to Styled support"}
-                </button>
-                <p className="text-xs leading-relaxed text-ink/60">
-                  Replies go to your signed-in account email. Sending here
-                  requires a confirmed account. Closing Support keeps this draft
-                  while the page stays open.
-                </p>
-              </>
-            ) : emailEnabled === null ? (
-              <p role="status" className="text-sm text-ink/70">
-                Loading contact options…
-              </p>
-            ) : (
-              <>
-                <a
-                  href={supportMailto(draft)}
-                  className="flex min-h-11 w-full items-center justify-center rounded-full bg-ink px-5 py-3 text-sm text-cream"
-                >
-                  Prepare email to Styled
-                </a>
-                <p className="text-xs leading-relaxed text-ink/70">
-                  Opens your email app with this draft. Review and send it
-                  there. Nothing is sent by opening the draft. You can also copy
-                  the message below.
-                </p>
-              </>
-            )}
+            <button
+              type="submit"
+              disabled={busy}
+              className="min-h-11 w-full rounded-full bg-ink px-5 py-3 text-sm text-cream disabled:opacity-50"
+            >
+              {busy ? "Saving your request…" : "Send to Styled support"}
+            </button>
+            <p className="text-xs leading-relaxed text-ink/60">
+              A confirmed account is needed to send here. Your request stays in
+              Styled. Closing Support keeps this draft while the page stays
+              open.
+            </p>
           </form>
         )}
         <div className="mt-7 border-t border-sand pt-5 text-sm">
