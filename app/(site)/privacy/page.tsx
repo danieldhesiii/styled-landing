@@ -1,19 +1,35 @@
 import Link from "next/link";
-export const metadata = { title: "Privacy information · Styled" };
+export const metadata = {
+  title: "Privacy policy · Styled UK",
+  description: "Styled UK's privacy policy for Styled Wedding Planner, account information, private boards, photos and the optional Pinterest connection.",
+  alternates: { canonical: "/privacy" },
+};
 export default function PrivacyPage() {
   return <article className="mx-auto max-w-3xl space-y-8 py-12 text-ink/80">
-    <h1 className="font-serif text-4xl text-ink">Privacy information</h1>
-    <p>This page explains the information used by the current Styled service. If you need more detail before sharing personal information, contact <a href="mailto:support@styleduk.com" className="underline">support@styleduk.com</a>.</p>
+    <h1 className="font-serif text-4xl text-ink">Privacy policy</h1>
+    <p className="text-sm text-ink/60">Styled UK · Last updated 2 November 2026</p>
+    <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Who we are and what this policy covers</h2>
+      <p>Styled UK operates Styled Wedding Planner, the wedding-planning application also called Styled. Our company website is <a href="https://styleduk.com" className="underline">styleduk.com</a>. This policy also covers our development application at <a href="https://styledukprodprogress.vercel.app" className="underline">styledukprodprogress.vercel.app</a>, where we test new features before release.</p>
+      <p>This policy explains the information we collect, how it is used and shared, how connections to other services work, and how to ask for access, correction or deletion. For privacy questions, contact <a href="mailto:support@styleduk.com" className="underline">support@styleduk.com</a>. You can read this policy without creating an account or connecting Pinterest.</p>
+    </section>
     <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Account and planning information</h2>
       <p>Account access uses your email address and authentication credentials through Supabase Auth. Session cookies keep you signed in. Your wedding details, basket, saved looks, boards, uploaded photos and generated images may be stored with your account so you can return to them.</p>
       <p>Requests can include your names, email, venue, wedding or delivery dates, selected items and messages. Styled uses these details to check availability, manage the request and contact you. Relevant request details are made available to the supplier or venue team handling the request.</p>
     </section>
     <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Photos, generated images and service providers</h2>
-      <p>When you generate a look, selected images and styling instructions are sent to the image-generation service configured for Styled. Supabase provides account, database and file-storage functions; hosting and email services also process information needed to run the service.</p>
+      <p>When you generate a look, selected images and styling instructions are sent to the image-generation service configured for Styled. Supabase provides account, database and file-storage functions, and Vercel hosts the application. Our configured email service processes information needed to deliver account and service messages. These providers process information needed for the functions you request; contact support for the current provider details.</p>
       <p>Upload only photos you have permission to use. Avoid including faces, names, addresses or other sensitive information in photos and prompts where they are not needed. Contact support if you need details of the current providers or their processing arrangements.</p>
       <p>Venue listing media can have publicly accessible file URLs even while the listing is unpublished. An unpublished listing does not make its uploaded files private. Do not upload confidential material as listing media.</p>
     </section>
     <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Support messages</h2><p>If you contact support through the website, your message, chosen topic, optional request or listing reference and verified account email are saved in your account’s support requests. Authorised Styled staff can review the request and respond in the support area. Only you and authorised staff can access it. Email is available as a separate contact option. An unsent draft stays in memory while the page remains open.</p></section>
+    <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Optional Pinterest connection</h2>
+      <p>Connecting Pinterest is optional. Direct importing is enabled only when the necessary Pinterest permissions and service configuration are in place. A Pinterest link or preview alone does not connect your account, copy its images or send them to the visualiser.</p>
+      <p>When you choose Connect Pinterest, Pinterest handles sign-in and asks you to authorise read-only access to your boards and Pins. Styled does not ask for or collect your Pinterest password. Access to secret boards is requested only if you choose that additional option. Styled cannot publish, edit or delete your Pins or boards.</p>
+      <p>To let you choose images, Styled reads board identifiers and names, Pin identifiers, image titles, image addresses and source Pin links from Pinterest using your authorised access. Board lists are loaded when requested rather than saved as a copy of your Pinterest account.</p>
+      <p>Only images you select and confirm permission to use are copied into private Styled photo storage, with their titles and source Pin links, for your inspiration board. They are not automatically published as supplier listings. When you separately choose Generate, selected inspiration is sent to the configured image-generation provider alongside your venue photograph and instructions to create a wedding-styling preview. Importing alone does not generate a look. Styled does not use Pinterest data to train or fine-tune models.</p>
+      <p>The access token is encrypted in an HttpOnly cookie on this browser for up to one hour, or less if Pinterest's token expires sooner. Styled does not retain a refresh token or store the access token in its database. Disconnect clears this browser's connection. You can also revoke Styled access in Pinterest settings.</p>
+      <p>Disconnecting or removing a board link does not delete already imported photo files or generated looks. Contact support to request deletion of those saved copies and associated source references. Tell us the relevant board or photo and account email, without sending passwords, access tokens or sign-in links.</p>
+    </section>
     <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Browser storage and access</h2>
       <p>The service uses cookies and browser storage for account sessions and workspace behaviour. Clearing browser data can sign you out and can remove local drafts or guest access. Save important work to your account and keep your recovery email secure.</p>
       <p>Business users should keep listing and contact information appropriate for publication. A private customer board is different from media uploaded for a public business listing.</p>
