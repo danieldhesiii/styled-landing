@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { vendorApi } from "@/lib/vendor-client";
 import { calendarHealth } from "@/lib/calendar-health";
 import { longDay } from "@/lib/admin-client";
+import ProductDayLimits from "@/components/availability/ProductDayLimits";
 
 interface Block {
   id: string;
@@ -26,6 +27,7 @@ export default function PortalAvailabilityPage() {
   const [icalBusy, setIcalBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [reviewing,setReviewing]=useState(false);
   const [day, setDay] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
@@ -129,8 +131,10 @@ export default function PortalAvailabilityPage() {
       {error && <p role="alert" className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{error} {blocks !== null && "Previously loaded dates may be out of date."}<button type="button" disabled={loading} className="ml-3 underline" onClick={() => { setError(null); void load(); }}>Reload availability</button></p>}
       {notice && <p className="mt-6 rounded-xl bg-sage/15 px-4 py-3 text-sm text-ink/80">{notice}</p>}
 
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-xl bg-sage/10 p-4"><p className="max-w-xl text-sm text-ink/70">Set the days you cannot supply. Product quantities live in Products; always check delivery through return dates before responding to a request.</p><button type="button" disabled={reviewing} onClick={async()=>{setReviewing(true);setError(null);try{const r=await vendorApi("/api/vendor/profile","POST",{confirmAvailability:true});if(!r.ok)throw Error(r.data?.error||"Could not save review.");setNotice("Availability review saved in your setup checklist.");}catch(e){setError(e instanceof Error?e.message:"Could not save review.");}finally{setReviewing(false);}}} className="min-h-11 rounded-full border border-sage/40 px-4 py-2 text-sm">{reviewing?"Saving…":"I’ve checked my availability"}</button></div>
       <form onSubmit={block} className="mt-6 flex flex-wrap items-end gap-3 rounded-3xl border border-sand bg-white p-5 shadow-sm">
         <div>
+
           <label htmlFor="block-day" className="block text-sm font-medium text-ink">Block a date</label>
           <input id="block-day" type="date" required min={today} value={day} onChange={(e) => setDay(e.target.value)}
             className="mt-1.5 rounded-xl border border-sand bg-white px-4 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-clay/30" />
@@ -145,14 +149,15 @@ export default function PortalAvailabilityPage() {
         </button>
       </form>
 
+      <ProductDayLimits />
+
       {/* Calendar sync */}
       <div className="mt-6 rounded-3xl border border-sand bg-white p-5 shadow-sm">
         <h2 className="font-serif text-xl text-ink">Sync your calendar</h2>
         <p className="mt-1 text-sm text-ink/50">
-          Paste a read-only link (iCal / .ics) from Google Calendar, Booqable, Current RMS or similar, and the days you&apos;re
-          busy there will block after a successful sync. Scheduled updates depend on the service being configured and running; use Sync now before relying on recent changes.
+          Connect a read-only iCal link, then use Sync now to update blocked dates.
         </p>
-        <p className="mt-2 text-xs text-ink/60">Sync blocks whole days. Repeating events are not expanded; review those dates manually. Manual blocks are preserved during sync.</p>
+        <p className="mt-2 text-sm text-ink/65">Repeating events are not supported. Block them manually.</p><details className="mt-2 text-sm text-ink/65"><summary className="min-h-11 cursor-pointer py-3">Calendar sync details</summary><p className="max-w-2xl pb-3">Sync blocks whole days for the next 18 months. A feed containing repeating events cannot update dates. Existing blocks stay if a feed fails. Automatic updates depend on the scheduler; use Sync now for recent bookings.</p></details>
         {blocks === null ? <p role="status" className="mt-4 text-sm">{error ? "Calendar status unavailable. Reload availability to retry." : "Loading calendar status…"}</p> : ical.url ? (
           <div className="mt-4">
             <p className="truncate text-sm text-ink/70">Connected: <span className="font-mono text-xs">{ical.url}</span></p>
@@ -226,7 +231,7 @@ export default function PortalAvailabilityPage() {
       )}
 
       <p className="mt-6 text-xs text-ink/40">
-        Need to limit a single product on a date (rather than your whole business)? Ask the Styled team. They can set per-product limits.
+        Product date limits apply alongside whole-business blocks and Styled reservations. Contact support if you need help checking an affected request.
       </p>
     </div>
   );

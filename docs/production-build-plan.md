@@ -4,6 +4,8 @@
 
 ---
 
+> **Current priority update, 30 October 2026:** [Supplier meeting action plan](supplier-meeting-action-plan-2026-10-30.md) is the implementation priority following the Simon and Sarah Mae calls. Venues, supplier workspaces and manual requests now exist in development. The original sections below are historical design context, not an instruction to rebuild them. Prioritise no-payment supplier approval, complete quotes, optional manual workflows without private-system access, supplier-scoped generation and package/minimum rules. No supplier-specific model training, equal exposure, fixed commission or guaranteed external availability has been verified or agreed. Live-domain release requires an explicit instruction.
+
 ## Overview
 
 Styled is a **wedding décor marketplace + AI visualiser**. Couples upload their venue, design their look with real supplier products, see an AI-rendered preview, and order everything in one go.

@@ -1,3 +1,11 @@
+# Development prototype: supplier request tracking, 30 October 2026
+
+See [Request tracker prototype](request-tracker-prototype-2026-10-30.md). Adds staff-only monitoring of current supplier requests and an isolated fictional example workspace for testing assignments, follow-ups, notes and response stages. Prototype edits are not yet shared/persisted; existing order management remains authoritative. No payments, notification sending, schema changes or live-domain release.
+
+# Planning update: supplier calls, 30 October 2026
+
+See [the supplier meeting action plan](supplier-meeting-action-plan-2026-10-30.md) for evidence, priorities, code gaps and acceptance tests. Planning documents only were updated; no runtime features, database changes, outbound messages or deployment were made. Existing features were inspected, not re-certified as live-pilot ready. Payment collection, supplier publication and live-domain promotion remain gated separately.
+
 See [boards-workspace.md](boards-workspace.md) for the independent Boards tab, Saved/visualiser links and provider import guides.
 
 See [studio-navigation.md](studio-navigation.md) for the navigation simplification and planned Google Photos/Pinterest inspiration imports inside Boards.
@@ -70,3 +78,8 @@ This implementation has been exercised locally against development. It has not b
 Before release, staff need to supply the actual venue photography, packages and business content. External display-image URLs are supported, but server generation uses uploaded/bundled images rather than fetching arbitrary third-party hosts. No paid image-generation run, supplier notification or customer order was triggered during verification.
 
 Existing untracked work, including `styled-landing/` and `20261020100000_basket_holds.sql`, remains untouched. The existing HEIC dependency emits a build warning; it does not prevent the build. The copied local TypeScript launcher is broken, so verification invokes the installed compiler directly.
+
+
+## 30 October: supplier pilot templates (development only)
+
+See [supplier pilot workspace](supplier-pilot-workspace-2026-10-30.md). Added a fictional complete quote/acceptance/return-review journey, shared private staff follow-ups, server-side supplier visualisation scope and per-supplier minimum checks. Real quotes/payments, supplier material and notification delivery remain gated. No live-domain or live-database release.

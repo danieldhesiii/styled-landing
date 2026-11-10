@@ -36,7 +36,7 @@ export default function VenueRequestCard({
     <article className="border-b border-sand py-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-widest text-clay">
+          <p className="text-sm uppercase tracking-widest text-clay">
             {r.request_kind === "viewing" ? "Viewing" : "Venue booking"} ·{" "}
             {r.id.slice(0, 8).toUpperCase()}
           </p>
@@ -45,7 +45,7 @@ export default function VenueRequestCard({
             {r.email}
           </a>
         </div>
-        <span className="rounded-lg bg-cream px-3 py-2 text-xs">
+        <span className="rounded-lg bg-cream px-3 py-2 text-sm">
           {ENQUIRY_STATUSES[r.status] || r.status}
         </span>
       </div>
@@ -119,7 +119,7 @@ export default function VenueRequestCard({
                 placeholder="2027-06-12, 2027-06-19"
                 className="mt-2 block w-full rounded-lg border border-sand bg-white p-3"
               />
-              <span className="mt-1 block text-xs text-ink/60">
+              <span className="mt-1 block text-sm text-ink/60">
                 Up to five dates, YYYY-MM-DD, separated by commas.
               </span>
             </label>
@@ -136,11 +136,8 @@ export default function VenueRequestCard({
                 className="mt-2 block w-full rounded-lg border border-sand bg-white p-3"
               />
             </label>
-            <p className="text-xs leading-relaxed text-ink/60 sm:col-span-2">
-              Confirm a booking only after agreeing availability and
-              arrangements with the couple. This records your decision and
-              blocks the wedding date. Payment and your hire agreement are
-              arranged separately. Confirming a viewing records an appointment only; it never blocks a wedding date.
+            <p className="text-sm leading-relaxed text-ink/60 sm:col-span-2">
+              Agree arrangements before confirming. Booking confirmation blocks the date; a viewing does not. Contract and payment are arranged separately.
             </p>
             <button
               disabled={busy}

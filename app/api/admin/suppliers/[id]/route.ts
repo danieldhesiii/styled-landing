@@ -4,7 +4,14 @@ import { parseProfile } from "@/lib/server/supplier-profile";
 
 export const dynamic = "force-dynamic";
 
-const fail = (status: number, error: string) => NextResponse.json({ ok: false, error }, { status });
+const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "private, no-store" } });
+const fail = (status: number, error: string) => json({ ok: false, error }, status);
+const SUPPLIER_COLUMNS = "id, name, area, contact_email, logo_url, commission_rate, active, created_at";
+function supplierView(s: Record<string, any>) {
+  return { id: s.id, name: s.name, area: s.area, contactEmail: s.contact_email,
+    logoUrl: s.logo_url, commissionRate: s.commission_rate === null ? null : Number(s.commission_rate),
+    active: s.active, createdAt: s.created_at };
+}
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -15,32 +22,33 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { admin } = auth;
   const { id } = await params;
 
-  const { data: supplier } = await admin
+  const { data: supplier, error: supplierError } = await admin
     .from("suppliers")
-    .select("id, name, area, contact_email, logo_url, commission_rate, active, created_at")
+    .select(SUPPLIER_COLUMNS)
     .eq("id", id)
     .maybeSingle();
+  if (supplierError) return fail(503, "Could not load the supplier. Try again.");
   if (!supplier) return fail(404, "Supplier not found.");
+  const { data: review, error: reviewError } = await admin.from("supplier_reviews")
+    .select("state,declarations").eq("supplier_id", id).maybeSingle();
+  if (reviewError) return fail(503, "Could not verify publication approval. Refresh before changing visibility.");
+  const permissions = review?.declarations as Record<string, unknown> | null;
+  const canReactivate = review?.state === "approved" && permissions?.listingPermission === true &&
+    permissions?.publicImagePermission === true && permissions?.imageRights === true;
 
-  const { data: products } = await admin
+  const { data: products, error: productError } = await admin
     .from("products")
-    .select("id, name, category, unit, unit_price_pence, qty_rule, capacity, lead_time_days, active, sort_order")
+    .select("id, name, category, unit, unit_price_pence, qty_rule, capacity, lead_time_days, active, sort_order, note, updated_at")
     .eq("supplier_id", id)
     .order("category")
     .order("sort_order");
 
-  return NextResponse.json({
+  if (productError) return fail(503, "Could not load the supplier products.");
+  return json({
     ok: true,
-    supplier: {
-      id: supplier.id,
-      name: supplier.name,
-      area: supplier.area,
-      contactEmail: supplier.contact_email,
-      logoUrl: supplier.logo_url,
-      commissionRate: supplier.commission_rate === null ? null : Number(supplier.commission_rate),
-      active: supplier.active,
-      createdAt: supplier.created_at,
-    },
+    supplier: supplierView(supplier),
+    publication: { reviewState: review?.state || "unreviewed", canReactivate,
+      reason: canReactivate ? null : "Review and approve the current range and photo permissions before reactivating." },
     products: (products ?? []).map((p) => ({
       id: p.id,
       name: p.name,
@@ -51,6 +59,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       capacity: p.capacity,
       leadTimeDays: p.lead_time_days,
       active: p.active,
+      note: p.note || "",
+      updatedAt: p.updated_at,
     })),
   });
 }
@@ -66,7 +76,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   let body: Record<string, unknown>;
   try {
-    body = await req.json();
+    const parsed = await req.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return fail(400, "Invalid request body.");
+    body = parsed;
   } catch {
     return fail(400, "Invalid request body.");
   }
@@ -98,12 +110,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   if (Object.keys(patch).length === 0) return fail(400, "Nothing to change.");
 
-  const { data, error } = await admin.from("suppliers").update(patch).eq("id", id).select("id").maybeSingle();
+  const { data, error } = await admin.from("suppliers").update(patch).eq("id", id).select(SUPPLIER_COLUMNS).maybeSingle();
   if (error) {
+    if(error.code==="P0001")return fail(409,"Supplier remains hidden. Review and approve its current range and photo permissions before reactivating.");
+    if(error.code==="55P03" || error.code==="40P01")return fail(409,"Publication is being updated. Refresh and try again.");
     if (error.code === "23505") return fail(409, "A supplier with that name already exists.");
     console.error("[admin/suppliers PATCH]", error);
     return fail(500, "Couldn't update the supplier.");
   }
   if (!data) return fail(404, "Supplier not found.");
-  return NextResponse.json({ ok: true });
+  return json({ ok: true, supplier: supplierView(data),
+    requestedActiveApplied: body.active === undefined || data.active === body.active,
+    message: body.active !== undefined && data.active !== body.active
+      ? "Details saved. The listing remains hidden pending approval of these changes."
+      : body.active === false ? "Supplier paused. Its products are hidden from the shop."
+      : body.active === true ? "Supplier reactivated. Enabled products can appear in the shop."
+      : "Supplier details saved." });
 }

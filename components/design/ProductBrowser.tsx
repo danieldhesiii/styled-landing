@@ -1,27 +1,27 @@
 "use client";
+import { supplierProfileId } from "@/lib/supplier-profile";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { BasketLine, Category, CatalogueItem } from "@/lib/types";
 import { CATEGORY_META } from "@/lib/categories";
 import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 import { formatGBP } from "@/lib/quote";
+import { cataloguePriceForSort, oneDayDemoTotal } from "@/lib/demo-pricing";
 import { STYLES } from "@/lib/styles";
 import ResponsivePanel from "@/components/ui/ResponsivePanel";
 import AvailabilityBadge from "@/components/availability/AvailabilityBadge";
 import type { ShopAvailability } from "@/components/availability/useAvailability";
-import DeliveryDates from "@/components/wedding/DeliveryDates";
 import type { PlanningDetails } from "@/lib/wedding";
 import { deliveryDay } from "@/lib/wedding";
 import { isValidDay } from "@/lib/availability";
 import type { DiscoveryMatch } from "@/lib/location";
 import ProductDetails from "./ProductDetails";
-import ProductPurchase from "./ProductPurchase";
-import BoardPicker, {
-  type BoardPickerProps,
-} from "@/components/wedding/BoardPicker";
-import { imageDisclosure, reviewDisclosure } from "@/lib/shopping";
+import type { BoardPickerProps } from "@/components/wedding/BoardPicker";
+import ProductPreviewSelection from "./ProductPreviewSelection";
 interface Props extends PlanningDetails, BoardPickerProps {
   matches?: Record<string, DiscoveryMatch>;
+  placeMatches?: Record<string, string>;
   searchRadius?: number;
   onDates: (patch: Partial<PlanningDetails> & { weddingDate?: string }) => void;
   styleId: string;
@@ -32,6 +32,8 @@ interface Props extends PlanningDetails, BoardPickerProps {
   lookItemIds?: string[];
   onWeddingDate: (date: string) => void;
   onAdd: (item: CatalogueItem) => void;
+  onVisualise?: (item: CatalogueItem) => void;
+  selectedVisualiserIds?: string[];
   onRemove: (id: string) => void;
   onQty?: (id: string, quantity: number) => void;
   savedItemIds: string[];
@@ -41,22 +43,20 @@ interface Props extends PlanningDetails, BoardPickerProps {
   onToggleSave: (id: string) => void;
 }
 export default function ProductBrowser({
-  boards,
-  boardsBusy,
-  onAddToBoard,
   matches,
+  placeMatches,
   searchRadius = 50,
   basket,
   weddingDate,
   availability,
   lookSignal = 0,
   lookItemIds,
-  onWeddingDate,
-  onDates,
   deliverySameDay,
   deliveryDate,
   returnDate,
   onAdd,
+  onVisualise,
+  selectedVisualiserIds = [],
   onRemove,
   onQty,
   savedItemIds,
@@ -70,17 +70,28 @@ export default function ProductBrowser({
     loading: catalogueLoading,
     error: catalogueError,
   } = useCatalogue();
-  const [detailId, setDetailId] = useState<string | null>(null);
+  const params = useSearchParams();
+  const [detailId, setSelectedDetailId] = useState<string | null>(params.get("product"));
+  const routeProduct = params.get("product");
+  useEffect(() => { setSelectedDetailId(routeProduct); }, [routeProduct]);
+  useEffect(() => {
+    const restore = () => setSelectedDetailId(new URL(window.location.href).searchParams.get("product"));
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, []);
   const detail = catalogue.find((item) => item.id === detailId);
-  const dates = useRef<HTMLDetailsElement>(null);
-  const showDates = () => {
-    setDetailId(null);
-    setSavedToolsOpen(true);
-    window.setTimeout(() => {
-      if (dates.current) dates.current.open = true;
-      dates.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      dates.current?.querySelector("input")?.focus({ preventScroll: true });
-    }, 0);
+  const setDetailId = (id: string | null) => {
+    setSelectedDetailId(id);
+    const url = new URL(window.location.href);
+    if (id) {
+      url.searchParams.set("product", id);
+      for (const [key, value] of Object.entries({ category, supplier, q: query, styleFilter: style, min, max, sort })) {
+        if (value) url.searchParams.set(key, value);
+        else url.searchParams.delete(key);
+      }
+    } else url.searchParams.delete("product");
+    window.history.pushState(null, "", url);
+    window.scrollTo({ top: 0, behavior: "instant" });
   };
   const delivery = deliveryDay({ weddingDate, deliverySameDay, deliveryDate });
   const formatDate = (date: string) =>
@@ -96,6 +107,7 @@ export default function ProductBrowser({
         ? `${formatDate(weddingDate)} · Same-day delivery`
         : `${formatDate(delivery)} to ${formatDate(weddingDate)} · Delivery to wedding`
       : "Dates undecided";
+  const hireDatesLabel = `${datesLabel}${isValidDay(returnDate || "") ? ` · Collection ${formatDate(returnDate!)}` : ""}`;
   const alternatives = (item: CatalogueItem) => {
     setDetailId(null);
     setCategory(item.category);
@@ -106,6 +118,7 @@ export default function ProductBrowser({
     setQuery("");
     setView("browse");
   };
+  const [allCategoriesOpen, setAllCategoriesOpen] = useState(false);
   const [category, setCategory] = useState<Category | "">(""),
     [supplier, setSupplier] = useState(""),
     [sort, setSort] = useState("featured"),
@@ -136,24 +149,43 @@ export default function ProductBrowser({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("supplier")) setSupplier(params.get("supplier")!);
+    if (params.get("category")) setCategory(params.get("category") as Category);
+    if (params.get("q")) setQuery(params.get("q")!);
+    if (params.get("styleFilter")) setStyle(params.get("styleFilter")!);
+    if (params.get("min")) setMin(params.get("min")!);
+    if (params.get("max")) setMax(params.get("max")!);
+    if (params.get("sort")) setSort(params.get("sort")!);
   }, []);
+  const [supplierSearch, setSupplierSearch] = useState("");
+  const [supplierLimit, setSupplierLimit] = useState(8);
+  function servesVenue(id: string) {
+    const match = matches?.[id];
+    if (!match || match.delivery === "unknown" || match.delivery === "nationwide") return true;
+    return match.delivery !== "outside_area" && (!searchRadius || match.miles <= searchRadius);
+  }
   const suppliers = useMemo(() => {
     const grouped = new Map<
       string,
       {
         id: string;
         name: string;
+        profileId?: string;
         logo?: string;
         count: number;
         categories: Set<Category>;
+        area: string;
       }
     >();
     for (const item of catalogue) {
+      if (placeMatches && !savedOnly && !Object.hasOwn(placeMatches, item.supplierId || "")) continue;
+      if (matches && !placeMatches && !savedOnly && !servesVenue(item.supplierId || "")) continue;
       const id = item.supplierId || item.supplier;
       const group = grouped.get(id) || {
         id,
         name: item.supplier,
+        profileId: supplierProfileId(item),
         logo: item.supplierLogo,
+        area: !savedOnly && typeof placeMatches?.[item.supplierId || ""] === "string" ? placeMatches[item.supplierId || ""] : item.supplierArea,
         count: 0,
         categories: new Set<Category>(),
       };
@@ -162,33 +194,29 @@ export default function ProductBrowser({
       grouped.set(id, group);
     }
     return [...grouped.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [catalogue]);
-  const maxPrice = Math.max(
-    100,
-    ...catalogue.map((i) => Math.ceil(i.unitPrice)),
-  );
+  }, [catalogue, placeMatches, savedOnly, matches, searchRadius]);
+  const matchingSuppliers = suppliers.filter(s => {
+    const categoryNames = [...s.categories].map(c => CATEGORY_META.find(meta => meta.category === c)?.label).join(" ");
+    return [s.name, s.area, categoryNames].join(" ").toLowerCase().includes(supplierSearch.trim().toLowerCase());
+  }).sort((a, b) => (matches?.[a.id]?.miles ?? Infinity) - (matches?.[b.id]?.miles ?? Infinity));
 
   let items = catalogue.filter(
     (i) =>
       (!category || i.category === category) &&
       (!supplier || (i.supplierId || i.supplier) === supplier) &&
       (!style || i.styles.includes(style)) &&
-      (!min || i.unitPrice >= Number(min)) &&
-      (!max || i.unitPrice <= Number(max)) &&
+      (!min || (cataloguePriceForSort(i) !== null && cataloguePriceForSort(i)! >= Number(min))) &&
+      (!max || (cataloguePriceForSort(i) !== null && cataloguePriceForSort(i)! <= Number(max))) &&
       (!query ||
         `${i.name} ${i.supplier}`.toLowerCase().includes(query.toLowerCase())),
   );
-  if (matches) {
+  if (placeMatches && !savedOnly) {
+    items = items.filter((i) => Object.hasOwn(placeMatches, i.supplierId || ""));
+  }
+  if (matches && !placeMatches) {
     items = items.filter((i) => {
       if (savedOnly) return true;
-      const m = matches[i.supplierId || ""];
-      return (
-        !m ||
-        m.delivery === "nationwide" ||
-        m.delivery === "unknown" ||
-        (m.delivery !== "outside_area" &&
-          (!searchRadius || m.miles <= searchRadius))
-      );
+      return servesVenue(i.supplierId || "");
     });
     items.sort(
       (a, b) =>
@@ -204,9 +232,9 @@ export default function ProductBrowser({
     items = items.filter((i) => ids.has(i.id));
   }
   if (sort === "price_up")
-    items = [...items].sort((a, b) => a.unitPrice - b.unitPrice);
+    items = [...items].sort((a, b) => (cataloguePriceForSort(a) ?? Infinity) - (cataloguePriceForSort(b) ?? Infinity));
   if (sort === "price_down")
-    items = [...items].sort((a, b) => b.unitPrice - a.unitPrice);
+    items = [...items].sort((a, b) => (cataloguePriceForSort(b) ?? -Infinity) - (cataloguePriceForSort(a) ?? -Infinity));
   if (sort === "rated")
     items = [...items].sort(
       (a, b) =>
@@ -214,20 +242,48 @@ export default function ProductBrowser({
         (a.reviewsVerified && a.reviewCount ? a.rating : 0),
     );
   const [savedToolsOpen, setSavedToolsOpen] = useState(false);
-  const field = "rounded-lg border border-sand bg-cream px-3 py-2 text-sm";
+  const field = "min-h-11 min-w-0 rounded-lg border border-sand bg-cream px-3 py-2 text-sm";
+  const browseParams = new URLSearchParams(params.toString());
+  browseParams.delete("product");
+  for (const [key, value] of Object.entries({ category, supplier, q: query, styleFilter: style, min, max, sort })) {
+    if (value) browseParams.set(key, value);
+    else browseParams.delete(key);
+  }
+  const browseHref = `/design?${browseParams}`;
+  if (detail) return (
+    <div key={detail.id} className="view-fade min-w-0 p-3 sm:p-6">
+      <ProductDetails
+        presentation="page"
+        item={detail}
+        line={basket.find((line) => line.itemId === detail.id)}
+        availability={availability.items?.[detail.id]}
+        datesLabel={hireDatesLabel}
+        onVisualise={onVisualise}
+        selectedVisualiserIds={selectedVisualiserIds}
+        onAdd={onAdd}
+        onRemove={onRemove}
+        onQty={onQty}
+        onClose={() => setDetailId(null)}
+        onAlternatives={() => alternatives(detail)}
+        browseHref={browseHref}
+      />
+    </div>
+  );
+
   return (
-    <div className="p-4 sm:p-6">
+    <div className={savedOnly ? "view-fade min-w-0 p-3 sm:p-6" : "view-fade catalogue-gallery min-w-0 p-4 sm:p-8"}>
+      {detailId && !catalogueLoading && !catalogueError && <p role="status" className="mb-4 text-sm text-clay">This product is no longer in the current catalogue. Explore other pieces below.</p>}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2
-          className={savedOnly ? "font-serif text-2xl" : "font-serif text-3xl"}
+          className={savedOnly ? "sr-only" : "font-serif text-2xl sm:text-3xl"}
         >
-          {savedOnly
+          <span className="sm:hidden">{savedOnly ? "Saved items" : view === "look" ? "Shop this look" : "Catalogue"}</span><span className="hidden sm:inline">{savedOnly
             ? "Saved items"
             : view === "look"
               ? "Shop this look"
-              : "Browse the catalogue"}
+              : "Browse the catalogue"}</span>
         </h2>
-        {savedOnly && (
+        {savedOnly && savedItemIds.length>0 && (
           <button
             type="button"
             onClick={() => setSavedToolsOpen((v) => !v)}
@@ -243,7 +299,7 @@ export default function ProductBrowser({
               type="button"
               onClick={() => setView("browse")}
               aria-pressed={view === "browse"}
-              className={`min-h-11 rounded-full border px-4 py-2 text-sm font-medium text-ink transition-colors ${view === "browse" ? "border-sage bg-sage" : "border-transparent hover:bg-sage/20"}`}
+              className={`min-h-11 rounded-full border px-3 py-2 text-xs font-medium text-ink transition-colors sm:px-4 sm:text-sm ${view === "browse" ? "border-sage bg-sage" : "border-transparent hover:bg-sage/20"}`}
             >
               All pieces
             </button>
@@ -251,7 +307,7 @@ export default function ProductBrowser({
               type="button"
               onClick={() => setView("look")}
               aria-pressed={view === "look"}
-              className={`min-h-11 rounded-full border px-4 py-2 text-sm font-medium text-ink transition-colors ${view === "look" ? "border-sage bg-sage" : "border-transparent hover:bg-sage/20"}`}
+              className={`min-h-11 rounded-full border px-3 py-2 text-xs font-medium text-ink transition-colors sm:px-4 sm:text-sm ${view === "look" ? "border-sage bg-sage" : "border-transparent hover:bg-sage/20"}`}
             >
               This look
             </button>
@@ -259,64 +315,72 @@ export default function ProductBrowser({
         )}
       </div>
       <div hidden={savedOnly && !savedToolsOpen}>
-        <div className="mt-5 flex gap-2 overflow-x-auto pb-3">
+        <fieldset className="category-index mt-5 min-w-0">
+          <legend className="mb-2 text-sm font-medium">Browse by category</legend>
+          <div className="category-options">
+            {[{ category: "" as const, label: "All categories" }, ...CATEGORY_META].map(({ category: value, label }) => (
+              <button
+                type="button"
+                key={value}
+                aria-pressed={category === value}
+                data-secondary={!["", "florals", "furniture", "lighting", category].includes(value) && !allCategoriesOpen || undefined}
+                onClick={() => {
+                  setCategory(value);
+                  if (value) setView("browse");
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
-            onClick={() => setCategory("")}
-            aria-pressed={!category}
-            className={`shrink-0 rounded-full border px-4 py-2 text-sm ${!category ? "border-ink bg-ink text-cream" : "border-sand"}`}
+            aria-expanded={allCategoriesOpen}
+            className="category-expand min-h-11 text-sm underline underline-offset-4"
+            onClick={() => setAllCategoriesOpen(open => !open)}
           >
-            All categories
+            {allCategoriesOpen ? "Show fewer categories" : "Show all categories"}
           </button>
-          {CATEGORY_META.map((c) => (
-            <button
-              key={c.category}
-              type="button"
-              aria-pressed={category === c.category}
-              onClick={() => {
-                setCategory(c.category);
-                setView("browse");
-              }}
-              className={`shrink-0 rounded-full border px-4 py-2 text-sm ${category === c.category ? "border-ink bg-ink text-cream" : "border-sand"}`}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-        <div className="mt-2 flex flex-wrap gap-2">
+        </fieldset>
+        <div className="mt-4 flex flex-wrap items-end gap-2">
           <label className="sr-only" htmlFor="catalogue-search">
             Search products
           </label>
           <input
             id="catalogue-search"
-            placeholder="Search pieces or suppliers"
+            placeholder="Search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className={`${field} min-w-0 flex-1`}
           />
           <button
             type="button"
-            aria-expanded={filtersOpen}
-            onClick={() => setFiltersOpen(!filtersOpen)}
+            aria-controls="catalogue-filters-panel" aria-expanded={filtersOpen}
+            onClick={() => { setFiltersOpen(!filtersOpen); setByVendor(false); }}
             className={`min-h-11 rounded-full border px-4 py-2 text-sm font-medium text-ink transition-colors ${filtersOpen ? "border-clay bg-clay hover:bg-clay/90" : "border-clay/40 bg-clay/15 hover:bg-clay/25"}`}
           >
             Filters
           </button>
           <button
             type="button"
-            aria-pressed={byVendor}
-            onClick={() => setByVendor(!byVendor)}
+            aria-controls="catalogue-suppliers-panel" aria-expanded={byVendor}
+            onClick={() => { setByVendor(!byVendor); setFiltersOpen(false); }}
             className={`min-h-11 rounded-full border px-4 py-2 text-sm font-medium text-ink transition-colors ${byVendor ? "border-clay bg-clay hover:bg-clay/90" : "border-clay/40 bg-clay/15 hover:bg-clay/25"}`}
           >
             Suppliers
           </button>
         </div>
-        <ResponsivePanel
+        <ResponsivePanel id="catalogue-filters-panel"
           open={filtersOpen}
           onClose={() => setFiltersOpen(false)}
           title="Catalogue filters"
         >
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <section aria-label="Catalogue filters" className="mt-4 rounded-xl border border-sand p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="font-serif text-xl">Filters</h3>
+            <button type="button" onClick={() => setFiltersOpen(false)} className="min-h-11 px-3 text-sm underline">Done</button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label className="text-xs text-ink/60">
               Supplier
               <select
@@ -340,7 +404,7 @@ export default function ProductBrowser({
                 className={`${field} mt-1 w-full`}
               >
                 <option value="featured">
-                  {matches ? "Nearest suppliers" : "Featured"}
+                  {matches && !placeMatches ? "Nearest suppliers" : "Featured"}
                 </option>
                 <option value="price_up">Price: low to high</option>
                 <option value="price_down">Price: high to low</option>
@@ -388,49 +452,8 @@ export default function ProductBrowser({
                 className={`${field} mt-1 w-full`}
               />
             </label>
-            <div className="sm:col-span-2">
-              <p className="mb-2 text-xs text-ink/60">
-                Adjust unit price range
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <input
-                  aria-label="Minimum unit price slider"
-                  type="range"
-                  min="0"
-                  max={maxPrice}
-                  step="1"
-                  value={min || 0}
-                  onChange={(e) =>
-                    setMin(
-                      String(
-                        Math.min(
-                          Number(e.target.value),
-                          Number(max || maxPrice),
-                        ),
-                      ),
-                    )
-                  }
-                  className="w-full accent-clay"
-                />
-                <input
-                  aria-label="Maximum unit price slider"
-                  type="range"
-                  min="0"
-                  max={maxPrice}
-                  step="1"
-                  value={max || maxPrice}
-                  onChange={(e) =>
-                    setMax(
-                      String(
-                        Math.max(Number(e.target.value), Number(min || 0)),
-                      ),
-                    )
-                  }
-                  className="w-full accent-clay"
-                />
-              </div>
-            </div>
           </div>
+          </section>
         </ResponsivePanel>
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
           {query && (
@@ -498,80 +521,48 @@ export default function ProductBrowser({
             </button>
           )}
         </div>
-        <details ref={dates} className="my-4 border-y border-sand py-3">
-          <summary className="min-h-11 cursor-pointer text-sm">
-            <span>{datesLabel}</span>
-            <span className="ml-2 text-xs text-ink/60">Edit dates</span>
-          </summary>
-          <div className="mt-3">
-            <DeliveryDates
-              compact
-              weddingDate={weddingDate}
-              deliverySameDay={deliverySameDay}
-              deliveryDate={deliveryDate}
-              returnDate={returnDate}
-              onChange={onDates}
-              id="catalogue"
-            />
-          </div>
-        </details>
+        <div className="my-4 flex flex-wrap items-center justify-between gap-2 border-y border-sand py-3 text-sm">
+          <p>{hireDatesLabel}</p>
+          <Link href="/design?tab=wedding" className="inline-flex min-h-11 items-center underline underline-offset-4">Edit in Wedding plan</Link>
+        </div>
         <p role="status" className="-mt-2 mb-4 text-xs text-ink/60">
             {availability.error ||
               (availability.loading
-                ? "Checking delivery-to-wedding availability…"
+                ? "Checking availability for your hire dates…"
                 : availability.items
-                  ? "Availability checked from delivery through your wedding day."
+                  ? "Availability checked for your hire dates. Supplier confirmation required."
                   : "Choose your dates to check availability.")}
         </p>
       </div>
-      <div
-        className={
-          byVendor ? "grid gap-5 md:grid-cols-[180px_minmax(0,1fr)]" : ""
-        }
-      >
-        {byVendor && (
-          <aside
-            aria-label="Suppliers"
-            className="flex gap-2 overflow-x-auto md:block md:space-y-2"
-          >
-            <button
-              type="button"
-              onClick={() => setSupplier("")}
-              className="block rounded-lg border border-sand p-3 text-left text-sm"
-            >
-              All suppliers
-            </button>
-            {suppliers.map((s) => (
-              <button
-                type="button"
-                key={s.id}
-                onClick={() => setSupplier(s.id)}
-                aria-pressed={supplier === s.id}
-                className={`block shrink-0 rounded-lg border p-3 text-left text-sm ${supplier === s.id ? "border-clay bg-blush" : "border-sand"}`}
-              >
-                {s.logo && (
-                  <img
-                    src={s.logo}
-                    alt=""
-                    className="mb-2 h-8 w-8 rounded-full object-cover"
-                  />
-                )}
-                {s.name}
-                <span className="mt-1 block text-xs text-ink/50">
-                  {s.count} pieces
-                </span>
-                <span className="mt-1 block text-xs text-ink/50">
-                  {[...s.categories]
-                    .map(
-                      (c) => CATEGORY_META.find((v) => v.category === c)?.label,
-                    )
-                    .filter(Boolean)
-                    .join(", ")}
-                </span>
+      <ResponsivePanel id="catalogue-suppliers-panel" open={byVendor} onClose={() => setByVendor(false)} title="Catalogue suppliers">
+        <section aria-label="Catalogue suppliers" className="mb-5 rounded-xl border border-sand p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="font-serif text-xl">Suppliers · {suppliers.length}</h3>
+            <button type="button" onClick={() => setByVendor(false)} className="min-h-11 px-3 text-sm underline">Done</button>
+          </div>
+          <button type="button" onClick={() => setSupplier("")} aria-pressed={!supplier} className={`mb-3 min-h-11 rounded-full border px-4 text-sm ${!supplier ? "border-ink bg-ink text-cream" : "border-sand"}`}>All suppliers</button>
+          <input type="search" value={supplierSearch} aria-label="Find a supplier" placeholder="Search by supplier, category or area" onChange={e => { setSupplierSearch(e.target.value); setSupplierLimit(8); }} className={field + " mb-3 block w-full"} />
+          {!matchingSuppliers.length && <p className="text-sm text-ink/60">No matching suppliers. Try another name or area.</p>}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {matchingSuppliers.slice(0, supplierLimit).map((s) => (
+              <div key={s.id} className="min-w-0">
+              <button type="button" onClick={() => { setSupplier(s.id); setByVendor(false); }} aria-pressed={supplier === s.id}
+                className={`flex min-h-11 min-w-0 items-center gap-3 rounded-lg border p-3 text-left text-sm ${supplier === s.id ? "border-clay bg-blush" : "border-sand"}`}>
+                {s.logo && <img src={s.logo} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />}
+                <span className="min-w-0 break-words"><span className="block font-medium">{s.name}</span><span className="block text-xs text-ink/60">{s.area || "Service area not supplied"} · {s.count} {s.count === 1 ? "piece" : "pieces"}</span></span>
               </button>
+              {matches && !placeMatches && !savedOnly && <p className="px-3 pt-2 text-xs text-ink/65">
+                {matches[s.id]?.delivery === "within_area" ? `${matches[s.id].miles} miles from your search location` :
+                  matches[s.id]?.delivery === "nationwide" ? "Nationwide delivery" : "Confirm delivery coverage"}
+              </p>}
+              {s.profileId && <Link className="inline-flex min-h-11 items-center px-3 text-xs underline" href={`/suppliers/${s.profileId}`}>View supplier profile</Link>}
+              </div>
             ))}
-          </aside>
-        )}
+          </div>
+          {matchingSuppliers.length > supplierLimit && <button type="button" className="min-h-11 underline" onClick={() => setSupplierLimit(n => n + 8)}>Show more suppliers</button>}
+        </section>
+      </ResponsivePanel>
+      <div className="min-w-0">
         <div>
           <p role="status" className="mb-4 text-xs text-ink/50">
             {catalogueLoading
@@ -585,64 +576,58 @@ export default function ProductBrowser({
               {savedOnly && !savesLoaded
                 ? "Loading your saved pieces…"
                 : savedOnly && !savedItemIds.length
-                  ? "Save pieces you love using the heart on any product. They’ll appear here, ready to add to your basket."
+                  ? "Use Browse, then Catalogue products. Tap a product’s heart to save it here."
                   : view === "look"
                     ? "Add pieces or generate a look to see them here."
                     : "No pieces match your filters."}
             </p>
           )}
+          <details className="mb-4 text-sm text-ink/60">
+            <summary className="inline-flex min-h-11 cursor-pointer items-center underline underline-offset-4">About catalogue images</summary>
+            <p className="max-w-prose pb-3">Images may be supplier photographs, reference images or illustrations. Open a product’s image information for its source. AI previews are illustrative; confirm appearance with the supplier.</p>
+          </details>
           <div
-            className={`grid gap-5 sm:grid-cols-2 ${byVendor ? "" : "xl:grid-cols-3"}`}
+            key={category + view}
+            className="view-fade grid grid-cols-1 gap-4 min-[390px]:grid-cols-2 sm:gap-5 xl:grid-cols-3"
           >
             {items.map((item) => {
-              const line = basket.find((b) => b.itemId === item.id);
               return (
                 <article
                   id={`item-${item.id}`}
                   key={item.id}
-                  className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-sand"
+                  className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-sand transition-colors duration-200 hover:border-clay/60 focus-within:border-clay"
                 >
                   <button
                     type="button"
                     onClick={() => setDetailId(item.id)}
                     aria-label={`View ${item.name} details`}
-                    className="flex aspect-[16/10] w-full items-center justify-center bg-cream"
+                    className="relative flex aspect-[16/10] w-full flex-none items-center justify-center overflow-hidden bg-cream"
                   >
                     {item.image ? (
                       <img
                         src={item.image}
                         alt={item.name}
                         loading="lazy"
-                        className="h-full w-full object-cover"
+                        className={`absolute inset-0 h-full w-full transition-transform duration-500 motion-reduce:transition-none group-hover:scale-[1.025] ${item.demoOnly ? "object-contain p-3 sm:p-5" : "object-contain sm:object-cover"}`}
                       />
                     ) : (
                       <span className="text-4xl">{item.icon}</span>
                     )}
                   </button>
-                  <div className="flex flex-1 flex-col p-4">
-                    <p className="mb-2 text-xs text-ink/60">
-                      {imageDisclosure(item)}
-                    </p>
-                    <h3 className="font-serif text-xl">
+                  <div className="flex flex-1 flex-col p-2.5 sm:p-4">
+                    <h3 className="font-serif text-base leading-snug sm:text-xl">
                       <button
                         type="button"
                         onClick={() => setDetailId(item.id)}
-                        className="text-left underline decoration-sand underline-offset-4"
+                        className="line-clamp-2 text-left underline decoration-sand underline-offset-4 sm:line-clamp-none"
                       >
                         {item.name}
                       </button>
                     </h3>
-                    <button
-                      type="button"
-                      onClick={() => setDetailId(item.id)}
-                      className="mt-2 min-h-11 text-left text-xs underline"
-                    >
-                      View details and terms
-                    </button>
-                    {item.supplierId ? (
+                    {supplierProfileId(item) ? (
                       <Link
-                        href={`/suppliers/${item.supplierId}`}
-                        className="mt-1 text-xs text-clay underline"
+                        href={`/suppliers/${supplierProfileId(item)}`}
+                        className="mt-1 inline-flex min-h-11 items-center text-xs text-clay underline"
                       >
                         {item.supplier}
                       </Link>
@@ -651,56 +636,33 @@ export default function ProductBrowser({
                         {item.supplier}
                       </p>
                     )}
-                    {matches && (
-                      <p className="mt-2 text-xs text-ink/60">
-                        {(() => {
-                          const m = matches[item.supplierId || ""];
-                          return !m
-                            ? "Location and delivery need confirming"
-                            : `${m.miles} miles away · ${m.delivery === "nationwide" ? "Nationwide delivery" : m.delivery === "within_area" ? "Within stated delivery area" : m.delivery === "outside_area" ? "Outside stated delivery area" : "Delivery coverage needs confirming"}`;
-                        })()}
-                      </p>
+                    {!savedOnly && typeof placeMatches?.[item.supplierId || ""] === "string" && (
+                      <p className="mt-1 text-xs text-ink/60">{placeMatches[item.supplierId || ""]}</p>
                     )}
                     <p className="mt-3 text-lg">
-                      {formatGBP(item.unitPrice)}{" "}
-                      <span className="text-xs text-ink/50">{item.unit}</span>
-                    </p>
-                    <p className="mt-1 text-xs text-ink/60">
-                      {reviewDisclosure(item)}
+                      {item.priceOnRequest
+                        ? "Price on request"
+                        : item.demoOnly
+                          ? `One-day estimate ${formatGBP(oneDayDemoTotal(item) ?? 0)}`
+                          : <>{formatGBP(item.unitPrice)}{" "}<span className="text-xs text-ink/50">{item.unit}</span></>}
                     </p>
                     <div className="mt-3">
-                      <AvailabilityBadge
-                        availability={availability.items?.[item.id]}
-                        madeToOrder={item.stock === "made_to_order"}
-                      />
+                      {item.requestOnly || item.demoOnly ? (
+                        <span className="inline-flex rounded-full bg-clay/10 px-3 py-1 text-xs font-medium text-clay">Availability on request</span>
+                      ) : (
+                        availability.items?.[item.id] || item.stock === "made_to_order" ? <AvailabilityBadge
+                          availability={availability.items?.[item.id]}
+                          madeToOrder={item.stock === "made_to_order"}
+                        /> : <span className="text-xs text-ink/60">Dates not checked</span>
+                      )}
                     </div>
-                    {item.leadTimeDays > 0 && (
-                      <p className="mt-2 text-xs text-ink/60">
-                        {item.leadTimeDays} days’ notice required
-                      </p>
-                    )}
-                    {item.note && (
-                      <p className="mt-2 text-xs text-ink/60">{item.note}</p>
-                    )}
-                    <div className="mt-auto">
-                      <ProductPurchase
-                        item={item}
-                        line={line}
-                        availability={availability.items?.[item.id]}
-                        onAdd={onAdd}
-                        onRemove={onRemove}
-                        onQty={onQty}
-                        onChangeDates={showDates}
-                        onAlternatives={() => alternatives(item)}
-                      />
-                      <BoardPicker
-                        boards={boards}
-                        boardsBusy={
-                          boardsBusy || catalogueLoading || !!catalogueError
-                        }
-                        onAddToBoard={onAddToBoard}
-                        target={{ kind: "product", ref: item.id }}
-                      />
+                    <div className="mt-auto pt-4">
+                      <button type="button" onClick={() => setDetailId(item.id)} className="min-h-11 w-full rounded-lg bg-ink px-3 py-2 text-sm text-cream transition-colors hover:bg-ink/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">
+                        View product
+                      </button>
+                      <div className="mt-2">
+                        <ProductPreviewSelection item={item} selectedVisualiserIds={selectedVisualiserIds} onVisualise={onVisualise} disabled={catalogueLoading || !!catalogueError} studioHref={browseHref} />
+                      </div>
                       <button
                         type="button"
                         onClick={() => onToggleSave(item.id)}
@@ -712,13 +674,10 @@ export default function ProductBrowser({
                         }
                         aria-pressed={savedItemIds.includes(item.id)}
                         aria-label={`${savedItemIds.includes(item.id) ? "Unsave" : "Save"} ${item.name}`}
-                        className={`mt-3 w-full rounded-full border px-4 py-2 text-sm disabled:opacity-50 ${savedItemIds.includes(item.id) ? "border-clay bg-blush text-ink" : "border-sand text-ink/60"}`}
+                        className={`absolute right-1.5 top-1.5 flex h-11 w-11 items-center justify-center rounded-full border bg-white text-lg disabled:opacity-50 ${savedItemIds.includes(item.id) ? "border-clay bg-blush text-ink" : "border-sand text-ink/60"}`}
                       >
-                        {savingItems.has(item.id)
-                          ? "Saving…"
-                          : savedItemIds.includes(item.id)
-                            ? "♥ Saved"
-                            : "♡ Save item"}
+                        <span aria-hidden="true">{savingItems.has(item.id) ? "…" : savedItemIds.includes(item.id) ? "♥" : "♡"}</span>
+
                       </button>
                     </div>
                   </div>
@@ -728,22 +687,6 @@ export default function ProductBrowser({
           </div>
         </div>
       </div>
-      {detail && (
-        <ProductDetails
-          item={detail}
-          line={basket.find((line) => line.itemId === detail.id)}
-          availability={availability.items?.[detail.id]}
-          onAdd={onAdd}
-          onRemove={onRemove}
-          onQty={onQty}
-          onClose={() => setDetailId(null)}
-          onChangeDates={showDates}
-          onAlternatives={() => alternatives(detail)}
-          boards={boards}
-          boardsBusy={boardsBusy || catalogueLoading || !!catalogueError}
-          onAddToBoard={onAddToBoard}
-        />
-      )}
     </div>
   );
 }

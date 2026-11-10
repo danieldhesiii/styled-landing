@@ -15,6 +15,7 @@ export async function runRenderJob(opts: {
   images: Buffer[];
   prompt: string;
   size: string;
+  quality?: "high";
 }) {
   const { admin, renderId, userId } = opts;
 
@@ -28,7 +29,7 @@ export async function runRenderJob(opts: {
       });
 
   try {
-    const result = await editImage({ images: opts.images, prompt: opts.prompt, size: opts.size });
+    const result = await editImage({ images: opts.images, prompt: opts.prompt, size: opts.size, quality: opts.quality });
 
     // Confirm the model really returned an image before storing it.
     await sharp(result.image).metadata();

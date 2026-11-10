@@ -1,4 +1,6 @@
 "use client";
+import {venuePolicy} from "@/lib/venue-suppliers";
+import VenueSupplierJourney from "./VenueSupplierJourney";
 import { dateRangeLabel } from "@/lib/booking-dates";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -17,7 +19,7 @@ type Request = {
   message: string | null;
   response: string | null;
   alternative_dates: string[];
-  venue_listings: { name: string; slug: string } | null;
+  venue_listings: { name: string; slug: string; details?:import("@/lib/venue-details").VenueDetails } | null;
 };
 export default function MyVenueRequests({
   embedded = false,
@@ -26,6 +28,7 @@ export default function MyVenueRequests({
   embedded?: boolean;
   onBrowse?: () => void;
 }) {
+  const [conversation, setConversation] = useState<string|null>(null);
   const [requests, setRequests] = useState<Request[] | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(""),
@@ -143,7 +146,7 @@ export default function MyVenueRequests({
         <article key={r.id} className="mt-8 border-b border-sand pb-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-widest text-clay">
+              <p className="text-sm uppercase tracking-widest text-clay">
                 {r.request_kind === "viewing" ? "Viewing" : "Venue booking"} ·{" "}
                 {r.id.slice(0, 8).toUpperCase()}
               </p>
@@ -212,9 +215,10 @@ export default function MyVenueRequests({
             )}
           </div>
           {r.status === "viewing_confirmed" && <p className="mt-4 text-sm">Your viewing is confirmed. No wedding date is reserved.</p>}
-          <VenueMessageThread requestId={r.id} status={r.status} nextActor={r.next_actor} />
+          <VenueMessageThread requestId={r.id} status={r.status} nextActor={r.next_actor} expanded={conversation===r.id} onExpandedChange={open=>setConversation(open?r.id:null)} />
+          {r.status==="booked"&&r.venue_listings&&<VenueSupplierJourney name={r.venue_listings.name} slug={r.venue_listings.slug} policy={venuePolicy(r.venue_listings.details)} onContact={()=>{setConversation(r.id);document.getElementById(`venue-conversation-${r.id}`)?.scrollIntoView({behavior:"smooth",block:"start"});}}/>}
           {r.status === "booked" && (
-            <p className="mt-4 text-xs text-ink/60">
+            <p className="mt-4 text-sm text-ink/60">
               Your venue has confirmed the booking. Agree contracts, payment and
               any changes with the venue and Styled. No online payment has been
               taken.

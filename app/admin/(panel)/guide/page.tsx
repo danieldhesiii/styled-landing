@@ -1,163 +1,89 @@
 import Link from "next/link";
 
-// Staff handbook: how Styled works end to end and how to run each admin screen.
-// This is the single source of truth for the team — keep it updated as features
-// change (it lives in the repo, so edits ship with the code that changed).
-
 export const metadata = { title: "Guide · Styled staff" };
-
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
-  return (
-    <section id={id} className="scroll-mt-24 border-t border-sand pt-8">
-      <h2 className="font-serif text-2xl text-ink">{title}</h2>
-      <div className="mt-3 space-y-3 text-sm leading-relaxed text-ink/70">{children}</div>
-    </section>
-  );
+  return <details id={id} className="scroll-mt-24 border-t border-sand py-3">
+    <summary className="min-h-11 cursor-pointer py-3 font-serif text-2xl text-ink">{title}</summary>
+    <div className="space-y-3 pb-4 text-sm leading-relaxed text-ink/70">{children}</div>
+  </details>;
 }
-
-function Step({ n, children }: { n: string; children: React.ReactNode }) {
-  return (
-    <li className="flex gap-3">
-      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-[11px] font-medium text-cream">{n}</span>
-      <span>{children}</span>
-    </li>
-  );
-}
-
 const CONTENTS = [
-  ["big-picture", "The big picture"],
-  ["orders", "Orders"],
-  ["support", "Support inbox"],
-  ["customers", "Customers"],
-  ["vendors", "Vendors: applications"],
-  ["suppliers", "Suppliers: onboarding & catalogue"],
-  ["portal", "Supplier portal (self-serve)"],
-  ["availability", "Availability"],
-  ["shop-rules", "What the shop shows (and why)"],
+  ["big-picture", "Overview"], ["orders", "Orders"], ["pilot-setup", "Pilot and service checks"],
+  ["support", "Customer questions"], ["customers", "Customers"], ["vendors", "Applications"],
+  ["suppliers", "Suppliers and products"], ["portal", "Supplier access"],
+  ["availability", "Availability"], ["shop-rules", "Catalogue rules"],
 ];
-
 export default function GuidePage() {
-  return (
-    <div className="max-w-3xl">
-      <h1 className="font-serif text-4xl text-ink">How Styled works</h1>
-      <p className="mt-2 text-sm text-ink/50">
-        A quick handbook for the team. Each section matches a tab in the staff area.
-      </p>
-
-      {/* Contents */}
-      <nav aria-label="Contents" className="mt-6 rounded-2xl border border-sand bg-white p-5">
-        <p className="text-xs uppercase tracking-wider text-ink/40">On this page</p>
-        <ol className="mt-3 grid gap-1.5 text-sm sm:grid-cols-2">
-          {CONTENTS.map(([id, label]) => (
-            <li key={id}>
-              <a href={`#${id}`} className="text-clay hover:underline">{label}</a>
-            </li>
-          ))}
-        </ol>
-      </nav>
-
-      <div className="mt-8 space-y-8">
-        <Section id="big-picture" title="The big picture">
-          <p>Styled is a wedding visualiser and marketplace. Couples design their wedding against a photo of their venue, then order the real products in the picture. Two sides meet in this admin:</p>
-          <ul className="list-disc space-y-1 pl-5">
-            <li><strong>Couples</strong> upload a venue, pick pieces from the catalogue, generate a styled preview and place an order, which starts as a <em>request</em>, not a payment. They can tweak the preview with small changes or re-generate it as a new style, with each version kept for comparison.</li>
-            <li><strong>Suppliers</strong> apply to join, you review and onboard them, and their products become the catalogue couples shop from.</li>
-          </ul>
-          <p>Your job in the middle: bring good suppliers on, keep their catalogue and availability honest, and move each order from request to confirmed to delivered.</p>
-        </Section>
-
-        <Section id="support" title="Support inbox">
-          <p>Open <Link href="/admin/support" className="text-clay underline">Support</Link> to review questions from customers, suppliers and venues. Expand a request, write the latest reply and save its status. The reply appears in their Help &amp; support area under Your requests. No email is sent automatically, so use the account email separately when needed.</p>
-          <p>Support messages do not change bookings. Handle any requested cancellation or amendment through the existing order workflow after checking the details. Check this inbox regularly while email notifications are not configured.</p>
-        </Section>
-        <Section id="orders" title="Orders">
-          <p>The <Link href="/admin" className="text-clay hover:underline">Orders</Link> tab is the main queue. An order is a couple&apos;s request to book a basket of products for their wedding date.</p>
-          <p className="font-medium text-ink">Status meanings</p>
-          <ul className="list-disc space-y-1 pl-5">
-            <li><strong>Requested</strong>: just placed; no supplier has confirmed yet.</li>
-            <li><strong>Confirmed</strong>: you&apos;ve confirmed the suppliers can fulfil it for the date.</li>
-            <li><strong>Deposit paid</strong>: the couple has secured it with their 25% deposit.</li>
-            <li><strong>Declined / Cancelled</strong>: not going ahead (a supplier can&apos;t do it, or the couple pulled out).</li>
-          </ul>
-          <p>Open an order to confirm or decline each supplier line, leave internal staff notes, and write a message the couple sees on their order-tracking page. No money is taken when the order is placed: the deposit secures the date once suppliers are confirmed.</p>
-          <p>When you mark an order <strong>confirmed, declined or cancelled</strong>, the couple is <strong>emailed automatically</strong> with your message and a link to their order page. (Declining requires a short message saying why: that&apos;s what they receive.) Emails send only with a mail provider configured; otherwise they&apos;re logged.</p>
-        </Section>
-
-        <Section id="customers" title="Customers">
-          <p>The <Link href="/admin/accounts" className="text-clay hover:underline">Customers</Link> tab lists couples who created an account, with how active each is (saved looks, renders, orders). Anonymous guests and staff accounts are left out. It&apos;s read-only: a pulse on who&apos;s using the product.</p>
-        </Section>
-
-        <Section id="vendors" title="Vendors: applications">
-          <p>Suppliers apply through the public <Link href="/vendors" className="text-clay hover:underline">&ldquo;List your business&rdquo;</Link> form. Their applications land in the <Link href="/admin/vendors" className="text-clay hover:underline">Vendors</Link> tab. Work each one through the pipeline:</p>
-          <ol className="space-y-2">
-            <Step n="1"><strong>New</strong>: just came in. Read it, then mark it <strong>Reviewing</strong> while you check them out (website, area, fit).</Step>
-            <Step n="2"><strong>Reviewing</strong>: doing your due diligence. Contact them if needed; their email and website are one click away.</Step>
-            <Step n="3"><strong>Accept</strong> or <strong>Decline</strong>: your decision. Declining keeps the record but closes it (they can re-apply later).</Step>
-            <Step n="4">On an accepted application, hit <strong>&ldquo;Set up as supplier →&rdquo;</strong>. That opens the Suppliers create form, prefilled with their details, so you can turn them into a live listing.</Step>
-          </ol>
-          <p className="text-ink/50">There is deliberately no way to become a supplier without you accepting them here.</p>
-        </Section>
-
-        <Section id="suppliers" title="Suppliers: onboarding & catalogue">
-          <p>The <Link href="/admin/suppliers" className="text-clay hover:underline">Suppliers</Link> tab is where a supplier becomes a real, shoppable listing. This is the only place to add catalogue products: no code needed.</p>
-          <p className="font-medium text-ink">Create a supplier</p>
-          <ul className="list-disc space-y-1 pl-5">
-            <li><strong>Name &amp; area</strong>: shown to couples alongside each product.</li>
-            <li><strong>Logo</strong>: a URL to their logo (optional; an initial is shown if blank).</li>
-            <li><strong>Commission %</strong>: Styled&apos;s cut on their products. Leave blank to use the platform default (12%). This is internal and never shown to couples. It&apos;s applied to <em>new</em> orders.</li>
-          </ul>
-          <p className="font-medium text-ink">Add products</p>
-          <p>Open a supplier and add each piece. Key fields:</p>
-          <ul className="list-disc space-y-1 pl-5">
-            <li><strong>Category</strong>: which part of the shop it appears in.</li>
-            <li><strong>Price &amp; unit</strong>: e.g. £45 &ldquo;per table&rdquo;.</li>
-            <li><strong>Quantity worked out</strong>: fixed, per guest, per table, or one per venue. This sets the suggested quantity from the couple&apos;s guest count.</li>
-            <li><strong>Units per day (capacity)</strong>: how many they can supply on any one date. Leave blank for made-to-order (not stock-limited). This feeds availability.</li>
-            <li><strong>Shown in the render</strong>: if it has a render slot, it can appear in the generated preview; otherwise it&apos;s shop-only (e.g. attire, cake).</li>
-            <li><strong>Styles</strong>: which look(s) it suits, so the visualiser picks it for matching designs.</li>
-          </ul>
-          <p className="font-medium text-ink">Switches</p>
-          <ul className="list-disc space-y-1 pl-5">
-            <li>A supplier&apos;s <strong>Active</strong> toggle hides or shows <em>all</em> their products at once.</li>
-            <li>Each product has its own <strong>Live / Hidden</strong> toggle.</li>
-          </ul>
-          <p className="font-medium text-ink">Public profile</p>
-          <p>Every active supplier gets a public page at <strong>/suppliers/&lt;id&gt;</strong>, listed in the <Link href="/suppliers" className="text-clay hover:underline">Meet our suppliers</Link> directory. It shows their logo, area and every live piece: handy to share when onboarding them (&ldquo;here&apos;s your page on Styled&rdquo;). Switching a supplier or product off removes it from there too. Commission is never shown.</p>
-        </Section>
-
-        <Section id="portal" title="Supplier portal (self-serve)">
-          <p>Suppliers can sign in at <strong>/portal</strong> to do their own bit, instead of you relaying everything. There&apos;s no public sign-up: you give them a login.</p>
-          <p className="font-medium text-ink">Giving a supplier access</p>
-          <p>Open the supplier in <Link href="/admin/suppliers" className="text-clay hover:underline">Suppliers</Link> and use <strong>Portal logins → Create login</strong> with their email. A brand-new account shows a one-time password to pass on securely (they change it after signing in); an existing Styled account is simply linked. One login belongs to one supplier.</p>
-          <p className="font-medium text-ink">What they can do</p>
-          <ul className="list-disc space-y-1 pl-5">
-            <li><strong>Orders</strong>: see orders that include their pieces (items, quantity, delivery date, venue, but never other suppliers&apos; lines, the couple&apos;s price, or commission) and <strong>confirm or decline</strong> each line themselves, while the order is still being reviewed.</li>
-            <li><strong>Products</strong>: set their prices, set units-per-day capacity, and show/hide each of their products.</li>
-            <li><strong>Availability</strong>: <strong>block dates</strong> they&apos;re booked elsewhere or away, so couples can&apos;t request them then, or <strong>sync a calendar</strong> (Google/Booqable/Current RMS iCal link) so their busy days block automatically. (Per-<em>product</em> limits on a date are still a staff job in Admin → Availability.)</li>
-          </ul>
-          <p>Their confirmations show up on the order here, logged as done by the supplier. You still make the final call on the whole order: a supplier confirming their lines doesn&apos;t confirm the order itself.</p>
-          <p className="font-medium text-ink">Order notifications</p>
-          <p>When a couple places an order, each supplier on it is <strong>emailed automatically</strong> with the items to confirm and a link to the portal (sent to their contact email and any portal logins). If a supplier has no email on file yet, nobody is emailed: relay it to them from the order until you&apos;ve added one. Emails send only in production with a mail provider configured; otherwise they&apos;re logged.</p>
-        </Section>
-
-        <Section id="availability" title="Availability">
-          <p>The <Link href="/admin/availability" className="text-clay hover:underline">Availability</Link> tab manages what can be booked on which dates. Set a product&apos;s day-to-day capacity, block specific dates for a product or a whole supplier (holidays, maintenance), and see what&apos;s already reserved by live orders. The checkout and order engine use exactly this, so the shop can never over-book a supplier for a date.</p>
-        </Section>
-
-        <Section id="shop-rules" title="What the shop shows (and why)">
-          <p>A product appears to couples only when <strong>both</strong> the product and its supplier are <strong>active</strong>. Beyond that:</p>
-          <ul className="list-disc space-y-1 pl-5">
-            <li><strong>Stock label</strong> comes from capacity: blank capacity shows as &ldquo;made to order&rdquo;; a number means it&apos;s stock-limited per day.</li>
-            <li><strong>Availability on a date</strong> = capacity (or a day override) minus what live orders have already reserved, after any blocks.</li>
-            <li><strong>Commission</strong> is added per line from the supplier&apos;s rate (or the default): it&apos;s Styled&apos;s margin, recorded on the order, never shown to the couple.</li>
-            <li>Prices are snapshotted onto an order when it&apos;s placed, so later catalogue edits never change an existing order.</li>
-          </ul>
-        </Section>
-      </div>
-
-      <p className="mt-10 border-t border-sand pt-6 text-xs text-ink/40">
-        Keep this current: when a workflow changes, update this page in the same change so the team always has the real picture.
-      </p>
-    </div>
-  );
+  return <div className="max-w-3xl">
+    <h1 className="font-serif text-4xl text-ink">Staff guide</h1>
+    <p className="mt-3 text-sm text-ink/65">Choose a task for the steps and rules.</p>
+    <nav aria-label="Staff tools" className="mt-5 flex flex-wrap gap-x-6 text-sm">
+      <Link href="/admin/requests" className="inline-flex min-h-11 items-center underline">Request tracker</Link>
+      <Link href="/admin/pilot" className="inline-flex min-h-11 items-center underline">Try the fictional booking flow</Link>
+    </nav>
+    <nav aria-label="Contents" className="my-5 grid gap-2 text-sm sm:grid-cols-2">
+      {CONTENTS.map(([id,label]) => <a key={id} href={`#${id}`} className="inline-flex min-h-11 items-center text-clay underline">{label}</a>)}
+    </nav>
+    <Section id="big-picture" title="Overview">
+      <p>Couples plan events, select products and request supplier confirmation. Staff review suppliers, keep the catalogue current and manage requests through quotes, acceptance and agreed booking arrangements.</p>
+      <p>Availability alone does not confirm a booking. Styled does not collect payment in this workflow.</p>
+    </Section>
+    <Section id="orders" title="Orders">
+      <p>Open an item in <Link href="/admin" className="underline">Orders</Link>. Record supplier responses, then use Quote, booking and returns to issue the full quote, check customer acceptance and record agreed offline arrangements.</p>
+      <ul className="list-disc space-y-2 pl-5">
+        <li><strong>Requested:</strong> awaiting review.</li>
+        <li><strong>Confirmed:</strong> supplier checks, quote acceptance and offline arrangements are recorded.</li>
+        <li><strong>Deposit paid:</strong> a legacy status; check the agreed payment record. Styled does not collect it here.</li>
+        <li><strong>Declined / cancelled:</strong> the request is not proceeding.</li>
+      </ul>
+      <p>Customer messages appear on the request page. Internal notes are staff-only. Review the agreed terms before cancellation or refund decisions.</p>
+      <p>Manage queued notifications in Service checks. Provider acceptance is not inbox delivery; uncertain sends need investigation before resending.</p>
+    </Section>
+    <Section id="support" title="Customer questions">
+      <p>Open <Link href="/admin/support" className="underline">Customer questions</Link>, expand a request, write a reply and save its status. Replies appear in the requester’s Your requests area; saving a reply does not automatically email it.</p>
+      <p>Staff notification state appears beside the saved request. A failed email does not remove the request. Support messages do not change bookings; handle amendments in order management.</p>
+    </Section>
+    <Section id="pilot-setup" title="Pilot and service checks">
+      <p>Use <Link href="/admin/operations" className="underline">Service checks</Link> for private supplier intake, commercial decisions, connections, notification queues and technical reports.</p>
+      <p>Record evidence after completing each check. Intake notes do not publish listings, grant access or contact suppliers. The fictional pilot resets on refresh.</p>
+      <p>The test-email action sends to your verified staff account only. Check the actual inbox before recording success. Supplier terms, payment responsibilities and launch checks need separate agreement.</p>
+    </Section>
+    <Section id="customers" title="Customers">
+      <p><Link href="/admin/accounts" className="underline">Customers</Link> is a read-only view of signed-up couples, saved looks, renders and requests. Anonymous guests and staff accounts are excluded.</p>
+    </Section>
+    <Section id="vendors" title="Applications">
+      <ol className="list-decimal space-y-2 pl-5">
+        <li>Open <Link href="/admin/vendors" className="underline">Applications</Link> and mark a new submission Reviewing.</li>
+        <li>Check the business, area and suitability; contact the applicant if needed.</li>
+        <li>Accept or decline. Declining keeps the record.</li>
+        <li>For accepted applicants, choose Set up as supplier to open the prefilled profile form.</li>
+      </ol>
+      <p>Application acceptance does not publish products; the submitted range needs approval.</p>
+    </Section>
+    <Section id="suppliers" title="Suppliers and products">
+      <p>In <Link href="/admin/suppliers" className="underline">Suppliers</Link>, add the business name, area and optional logo. Add draft products with their price, unit, category, quantity rule, capacity and lead time.</p>
+      <p>Commission is staff-only and applies to new requests. Leave it blank for the platform default of 12%.</p>
+      <p>Suppliers submit prices, photos, terms and permissions from Business setup. Open Range approval and private preview to approve or request changes. Publication and optional AI-reference permissions are separate.</p>
+      <p>Material business or product edits require fresh review and may hide listings. Stock-capacity changes remain operational. Supplier and product switches can hide listings; publication still requires approval.</p>
+      <p>Approved active suppliers appear in the <Link href="/suppliers" className="underline">public supplier directory</Link>. Their commission is never public.</p>
+    </Section>
+    <Section id="portal" title="Supplier access">
+      <p>Open a supplier and choose Portal logins → Send private invitation. Use an email address approved by that supplier. Email configuration is required.</p>
+      <p>New account holders choose their own password. Staff never receive passwords or login tokens. One login belongs to one supplier.</p>
+      <p>Suppliers use /portal to manage their products, availability and request lines. They cannot view other suppliers’ lines or internal commission. Confirming availability does not confirm the whole booking.</p>
+      <p>Automatic notices depend on the configured provider and sending controls. Review delivery state in Service checks; relay requests manually when sending is unavailable.</p>
+    </Section>
+    <Section id="availability" title="Availability">
+      <p>Use <Link href="/admin/availability" className="underline">Products &amp; availability</Link> to search products, set units per day, block product or supplier dates and inspect recorded stock holds.</p>
+      <p>Blank capacity means made to order. Date overrides and existing holds affect availability. Suppliers still check their own bookings, shared stock and crew before confirmation.</p>
+    </Section>
+    <Section id="shop-rules" title="Catalogue rules">
+      <ul className="list-disc space-y-2 pl-5">
+        <li>Public products require both the supplier and product to be active, with publication approval.</li>
+        <li>Availability uses capacity and date overrides minus recorded stock holds.</li>
+        <li>Existing requests retain their recorded prices when catalogue prices change.</li>
+        <li>The full quote confirms service fees and separate refundable security; the catalogue shows an item estimate.</li>
+      </ul>
+    </Section>
+  </div>;
 }

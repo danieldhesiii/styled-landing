@@ -50,14 +50,14 @@ export default function VenuePartnerForm() {
       </label>
       {path === "existing" ? (
         <p className="mt-5 text-sm">
-          Avoid a duplicate application.{" "}
+          Already listed?{" "}
           <a
             className="underline"
             href="mailto:support@styleduk.com?subject=Existing%20venue%20listing%20access"
           >
             Contact support@styleduk.com
           </a>{" "}
-          with your venue name and work email so Styled can verify access.
+          with your venue name and work email to check access.
         </p>
       ) : (
         <form onSubmit={submit} className="mt-10 grid gap-5 sm:grid-cols-2">
@@ -107,7 +107,7 @@ export default function VenuePartnerForm() {
             disabled={busy}
             className="rounded-full bg-ink px-6 py-3 text-cream disabled:opacity-50"
           >
-            {busy ? "Sending…" : "Apply to partner with Styled"}
+            {busy ? "Sending…" : "Send venue application"}
           </button>
         </form>
       )}

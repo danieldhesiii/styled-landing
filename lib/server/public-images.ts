@@ -7,6 +7,11 @@ import { env } from "@/lib/server/env";
 // Only bundled pictures and our own public asset bucket can become model input.
 // Display URLs never grant the server permission to fetch arbitrary hosts.
 export async function readPublicImage(image: string): Promise<Buffer> {
+  if(image.startsWith("/api/supplier-images/")){
+    const {publishedSupplierImage}=await import("./published-supplier-image");
+    const bytes=await publishedSupplierImage(image.slice("/api/supplier-images/".length),true);
+    if(!bytes)throw Error("Supplier image is not currently published.");return bytes;
+  }
   if (image.startsWith("/img/")) {
     const root = path.resolve(process.cwd(), "public/img");
     const file = path.resolve(

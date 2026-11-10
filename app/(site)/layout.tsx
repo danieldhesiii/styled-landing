@@ -10,7 +10,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
     <>
       <SkipLink />
       <SiteHeader />
-      <main id="main-content" className="mx-auto max-w-6xl px-5">{children}</main>
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full min-w-0 max-w-6xl px-5">{children}</main>
       <SiteFooter />
     </>
   );

@@ -1,43 +1,46 @@
-import Link from "next/link";
+import InformationPage from "../_components/InformationPage";
+
 export const metadata = {
-  title: "Privacy policy · Styled UK",
-  description: "Styled UK's privacy policy for Styled Wedding Planner, account information, private boards, photos and the optional Pinterest connection.",
+  title: "Privacy policy · Styled",
+  description: "How Styled uses account, event, request and image information, browser storage and optional Pinterest connections, and how to exercise your privacy rights.",
   alternates: { canonical: "/privacy" },
 };
+
 export default function PrivacyPage() {
-  return <article className="mx-auto max-w-3xl space-y-8 py-12 text-ink/80">
-    <h1 className="font-serif text-4xl text-ink">Privacy policy</h1>
-    <p className="text-sm text-ink/60">Styled UK · Last updated 2 November 2026</p>
-    <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Who we are and what this policy covers</h2>
-      <p>Styled UK operates Styled Wedding Planner, the wedding-planning application also called Styled. Our company website is <a href="https://styleduk.com" className="underline">styleduk.com</a>. This policy also covers our development application at <a href="https://styledukprodprogress.vercel.app" className="underline">styledukprodprogress.vercel.app</a>, where we test new features before release.</p>
-      <p>This policy explains the information we collect, how it is used and shared, how connections to other services work, and how to ask for access, correction or deletion. For privacy questions, contact <a href="mailto:support@styleduk.com" className="underline">support@styleduk.com</a>. You can read this policy without creating an account or connecting Pinterest.</p>
+  return <InformationPage title="Privacy policy" intro="How your information is used when you plan with Styled, send a request or use a business workspace. You can read this page without an account."
+    links={[{ href: "#information", label: "Information we use" }, { href: "#providers", label: "Sharing" }, { href: "#cookies", label: "Cookies & storage" }, { href: "#rights", label: "Your rights" }]}>
+    <section id="contact"><h2>Contact for privacy questions</h2>
+      <p>This notice covers Styled Wedding Planner and this development application. Contact the Styled team at <a href="mailto:support@styleduk.com" className="underline">support@styleduk.com</a> about your information, including access, correction or deletion requests.</p>
     </section>
-    <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Account and planning information</h2>
-      <p>Account access uses your email address and authentication credentials through Supabase Auth. Session cookies keep you signed in. Your wedding details, basket, saved looks, boards, uploaded photos and generated images may be stored with your account so you can return to them.</p>
-      <p>Requests can include your names, email, venue, wedding or delivery dates, selected items and messages. Styled uses these details to check availability, manage the request and contact you. Relevant request details are made available to the supplier or venue team handling the request.</p>
+    <section id="information"><h2>Information we use and why</h2>
+      <p>Account information includes your email, sign-in details and account identifier. Event plans, dates, guest counts, budgets, venue choices, baskets, saved items and saved looks let you plan and return to your work. Some drafts and venue shortlists are kept in your browser.</p>
+      <p>Product requests and venue enquiries can include names, contact details, event and hire dates, venue or delivery details, selected items and messages. These are used to check availability, prepare quotes and manage your request. Without the required details, we may be unable to process it.</p>
+      <p>Photos, reference images and styling instructions are used to create previews. When you use the description helper, your description is sent for AI processing. Avoid unnecessary personal or sensitive information in images and prompts.</p>
+      <p>Support messages, topics, references, account email and staff replies are saved so you and authorised staff can follow the question. Business profiles, listing media and contact details are used to manage listings and business access.</p>
+      <p>Technical information includes service errors, request identifiers and a hashed network address used for abuse prevention and usage limits. Hosting providers also receive connection information when you visit.</p>
     </section>
-    <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Photos, generated images and service providers</h2>
-      <p>When you generate a look, selected images and styling instructions are sent to the image-generation service configured for Styled. Supabase provides account, database and file-storage functions, and Vercel hosts the application. Our configured email service processes information needed to deliver account and service messages. These providers process information needed for the functions you request; contact support for the current provider details.</p>
-      <p>Upload only photos you have permission to use. Avoid including faces, names, addresses or other sensitive information in photos and prompts where they are not needed. Contact support if you need details of the current providers or their processing arrangements.</p>
-      <p>Venue listing media can have publicly accessible file URLs even while the listing is unpublished. An unpublished listing does not make its uploaded files private. Do not upload confidential material as listing media.</p>
+    <section id="providers"><h2>Who receives information</h2>
+      <p>Authorised Styled staff and the supplier or venue team handling your request can access relevant request details. Public business listing information is visible to visitors. Venue listing media can have public file URLs even before a listing is published; do not upload confidential material there.</p>
+      <p>Supabase provides authentication, database and file storage; Vercel hosts the application. AI images and descriptions are processed through the configured AI service, which defaults to OpenAI. Service emails use the configured email provider; the application supports Resend and Brevo. Not every saved request sends an email.</p>
+      <p>Public pages load fonts from Google Fonts, which receives connection information such as your IP address. Third-party services may process information outside the UK. Contact support for the providers, processing locations and transfer arrangements relevant to your information.</p>
     </section>
-    <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Support messages</h2><p>If you contact support through the website, your message, chosen topic, optional request or listing reference and verified account email are saved in your account’s support requests. Authorised Styled staff can review the request and respond in the support area. Only you and authorised staff can access it. Email is available as a separate contact option. An unsent draft stays in memory while the page remains open.</p></section>
-    <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Optional Pinterest connection</h2>
-      <p>Connecting Pinterest is optional. Direct importing is enabled only when the necessary Pinterest permissions and service configuration are in place. A Pinterest link or preview alone does not connect your account, copy its images or send them to the visualiser.</p>
-      <p>When you choose Connect Pinterest, Pinterest handles sign-in and asks you to authorise read-only access to your boards and Pins. Styled does not ask for or collect your Pinterest password. Access to secret boards is requested only if you choose that additional option. Styled cannot publish, edit or delete your Pins or boards.</p>
-      <p>To let you choose images, Styled reads board identifiers and names, Pin identifiers, image titles, image addresses and source Pin links from Pinterest using your authorised access. Board lists are loaded when requested rather than saved as a copy of your Pinterest account.</p>
-      <p>Only images you select and confirm permission to use are copied into private Styled photo storage, with their titles and source Pin links, for your inspiration board. They are not automatically published as supplier listings. When you separately choose Generate, selected inspiration is sent to the configured image-generation provider alongside your venue photograph and instructions to create a wedding-styling preview. Importing alone does not generate a look. Styled does not use Pinterest data to train or fine-tune models.</p>
-      <p>The access token is encrypted in an HttpOnly cookie on this browser for up to one hour, or less if Pinterest's token expires sooner. Styled does not retain a refresh token or store the access token in its database. Disconnect clears this browser's connection. You can also revoke Styled access in Pinterest settings.</p>
-      <p>Disconnecting or removing a board link does not delete already imported photo files or generated looks. Contact support to request deletion of those saved copies and associated source references. Tell us the relevant board or photo and account email, without sending passwords, access tokens or sign-in links.</p>
+    <section id="pinterest"><h2>Optional Pinterest features</h2>
+      <p>Where enabled, connecting Pinterest is optional and read-only. Pinterest handles authorisation; Styled does not collect your Pinterest password or publish, edit or delete your boards or Pins. Styled reads board names and identifiers, Pin identifiers, image titles and addresses, and source links when you request them.</p>
+      <p>The connection token is encrypted in a browser cookie for up to one hour, or less if it expires sooner. The sign-in security cookie lasts up to ten minutes. The token is not stored in Styled’s database. Disconnect clears this browser’s connection; you can also revoke access in Pinterest settings.</p>
+      <p>Viewing Pinterest content does not itself copy it into Styled storage or send it to the AI service. Image copying and AI reuse have a separate permission control. Upload only images you have permission to use. Opening a Pinterest preview loads content from Pinterest, which handles that visit under its own privacy policy.</p>
     </section>
-    <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Browser storage and access</h2>
-      <p>The service uses cookies and browser storage for account sessions and workspace behaviour. Clearing browser data can sign you out and can remove local drafts or guest access. Save important work to your account and keep your recovery email secure.</p>
-      <p>Business users should keep listing and contact information appropriate for publication. A private customer board is different from media uploaded for a public business listing.</p>
+    <section id="cookies"><h2>Cookies and browser storage</h2>
+      <p>Session cookies keep you signed in. Browser storage remembers design drafts and venue shortlists; it remains until it is replaced or cleared. Pinterest cookies support the optional connection described above. Clearing browser data can sign you out and remove local drafts, but does not delete information already saved to your account.</p>
+      <p>External fonts and any Pinterest content you choose to open make third-party connections. You can control cookies and storage in your browser settings; blocking session cookies may prevent account features from working.</p>
     </section>
-    <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Questions, corrections and deletion requests</h2>
-      <p>Contact support to ask what information is held about you, request a correction or deletion, or ask about retention and service providers. Include your account email and the relevant request or listing reference, without sending passwords or sign-in links. Identity and any information that needs to remain for an existing request will need to be checked.</p>
-      <p>This page does not specify a fixed retention period or promise immediate removal from provider backups. Ask support about your particular information before relying on a deletion or confidentiality assumption.</p>
+    <section id="retention"><h2>Saved information and deletion</h2>
+      <p>Account plans, uploads, requests and support history are stored so you can return to them. Closing a page, signing out or disconnecting Pinterest does not delete saved records. An unsent support draft stays in memory while the page remains open.</p>
+      <p>Contact support to request deletion or ask how long particular records are held. A deletion request needs an identity check and review of linked request records and any legal reasons to retain information. Removal from provider backups may take longer than removal from the active service.</p>
     </section>
-    <p className="text-sm"><Link href="/service-info#support" className="underline">Support and service information</Link> · <Link href="/terms" className="underline">Service terms</Link></p>
-  </article>;
+    <section id="rights"><h2>Your privacy rights</h2>
+      <p>Depending on the processing, UK data protection law gives you rights to access and correct your information, request deletion or restriction, object to processing and receive portable information. Where processing relies on consent, you can withdraw it without affecting earlier lawful use.</p>
+      <p>Email support with your account email and the information concerned. Do not send passwords or sign-in links. The usual legal response period is one month; identity checks or a permitted extension may affect that period.</p>
+      <p>You can raise a privacy concern with us and complain to the <a href="https://ico.org.uk/make-a-complaint/" className="underline">Information Commissioner’s Office (ICO)</a>.</p>
+    </section>
+  </InformationPage>;
 }

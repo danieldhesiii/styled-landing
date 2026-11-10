@@ -13,6 +13,7 @@ interface ProductRow {
   unit: string;
   capacity: number | null;
   active: boolean;
+  supplierActive?: boolean;
   supplierId: string;
   supplier: string;
   area: string;
@@ -37,6 +38,7 @@ export default function AvailabilityPage() {
   const [products, setProducts] = useState<ProductRow[] | null>(null);
   const [filter, setFilter] = useState("");
   const [category, setCategory] = useState("all");
+  const [supplierFilter, setSupplierFilter] = useState("all"), [publication, setPublication] = useState("all"), [sort, setSort] = useState("name");
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<ProductDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -87,9 +89,11 @@ export default function AvailabilityPage() {
     return (products ?? []).filter(
       (p) =>
         (category === "all" || p.category === category) &&
+        (supplierFilter === "all" || p.supplierId === supplierFilter) &&
+        (publication === "all" || (publication === "published" ? p.active && p.supplierActive : !p.active || !p.supplierActive)) &&
         (!q || p.name.toLowerCase().includes(q) || p.supplier.toLowerCase().includes(q))
-    );
-  }, [products, filter, category]);
+    ).sort((a, b) => sort === "supplier" ? a.supplier.localeCompare(b.supplier) || a.name.localeCompare(b.name) : a.name.localeCompare(b.name));
+  }, [products, filter, category, supplierFilter, publication, sort]);
 
   async function act(call: () => ReturnType<typeof adminApi>, done: string, after?: (data: Record<string, unknown>) => void) {
     setBusy(true);
@@ -160,7 +164,7 @@ export default function AvailabilityPage() {
     <div>
       <h1 className="font-serif text-4xl text-ink">Availability</h1>
       <p className="mt-1 max-w-2xl text-sm text-ink/50">
-        How much of each product a supplier can provide on any one day, plus days they&apos;re away. Couples see this as soon as they pick a wedding date, and orders can&apos;t be placed beyond it.
+        Manage product capacity and blocked dates.
       </p>
 
       {error && (
@@ -189,6 +193,11 @@ export default function AvailabilityPage() {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="grid gap-3 border-b border-sand p-4 text-sm">
+            <label>Supplier<select className="mt-1 min-h-11 w-full rounded-xl border border-sand bg-white px-3" value={supplierFilter} onChange={e => setSupplierFilter(e.target.value)}><option value="all">All suppliers</option>{Array.from(new Map((products || []).map(p => [p.supplierId, p.supplier])).entries()).sort((a,b) => a[1].localeCompare(b[1])).map(([id,name]) => <option key={id} value={id}>{name}</option>)}</select></label>
+            <label>Publication<select className="mt-1 min-h-11 w-full rounded-xl border border-sand bg-white px-3" value={publication} onChange={e => setPublication(e.target.value)}><option value="all">All products</option><option value="published">Published</option><option value="private">Private / draft</option></select></label>
+            <label>Sort<select className="mt-1 min-h-11 w-full rounded-xl border border-sand bg-white px-3" value={sort} onChange={e => setSort(e.target.value)}><option value="name">Product name</option><option value="supplier">Supplier name</option></select></label>
           </div>
           {products === null ? (
             <p className="p-4 text-sm text-ink/40">Loading…</p>
@@ -234,6 +243,7 @@ export default function AvailabilityPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h2 className="font-serif text-2xl text-ink">{detail.product.name}</h2>
+                    <Link href={`/admin/suppliers/${detail.product.supplierId}`} className="inline-flex min-h-11 items-center text-sm underline">Edit product and review its range →</Link>
                     <p className="text-sm text-ink/50">
                       {detail.product.supplier} · {detail.product.area}
                     </p>
@@ -274,7 +284,7 @@ export default function AvailabilityPage() {
                 )}
 
                 <h3 className="mt-6 text-sm font-medium text-ink">Capacity per day</h3>
-                <p className="text-xs text-ink/45">How many units of this the supplier can provide on a single day.</p>
+                <p className="text-xs text-ink/45">Units available per day.</p>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
                   <input
                     type="number"
@@ -383,7 +393,7 @@ export default function AvailabilityPage() {
               {/* bookings */}
               <div className="rounded-3xl border border-sand bg-white p-6 shadow-sm">
                 <h3 className="font-serif text-xl text-ink">Booked</h3>
-                <p className="text-xs text-ink/45">Upcoming orders holding this product. Declined items and cancelled or declined orders don&apos;t count.</p>
+                <p className="text-xs text-ink/45">Upcoming requests holding stock. Declined items and cancelled or declined requests are excluded.</p>
                 {detail.bookings.length === 0 ? (
                   <p className="mt-3 text-sm text-ink/45">Nothing booked yet.</p>
                 ) : (

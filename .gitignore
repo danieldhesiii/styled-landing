@@ -16,3 +16,7 @@ supabase/.branches/
 
 # nested sister projects (separate repos, should not be committed here)
 styled-landing/
+
+# Private database exports must never enter Git.
+*.dump
+*.dump.enc

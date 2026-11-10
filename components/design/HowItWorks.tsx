@@ -15,6 +15,10 @@ export default function HowItWorks({
     content = useRef<HTMLDivElement>(null),
     tabs = useRef<(HTMLButtonElement | null)[]>([]),
     id = useId();
+  useEffect(() => {
+    setTopic(initialTopic);
+    content.current?.scrollTo({ top: 0 });
+  }, [initialTopic]);
   const topics = helpTopicsFor(initialTopic);
   const guide = HELP_GUIDES[topic];
   useEffect(() => {
@@ -64,19 +68,7 @@ export default function HowItWorks({
         e.preventDefault();
         close();
       }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          const bounds = e.currentTarget.getBoundingClientRect();
-          if (
-            e.clientX < bounds.left ||
-            e.clientX > bounds.right ||
-            e.clientY < bounds.top ||
-            e.clientY > bounds.bottom
-          )
-            close();
-        }
-      }}
-      className="fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-full max-w-2xl flex-col border-l border-sand bg-cream p-0 text-ink shadow-2xl open:flex backdrop:bg-ink/40 backdrop:backdrop-blur-sm"
+      className="fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-[calc(100%_-_1.5rem)] max-w-2xl flex-col border-l border-sand bg-cream p-0 text-ink shadow-2xl open:flex backdrop:bg-ink/40 backdrop:backdrop-blur-sm"
     >
       <header className="shrink-0 border-b border-sand px-5 py-5 sm:px-7">
         <div className="flex items-start justify-between gap-4">
@@ -119,7 +111,7 @@ export default function HowItWorks({
         <div
           role="tablist"
           aria-label="How it works topics"
-          className="mt-5 hidden grid-cols-5 gap-2 sm:grid"
+          className="mt-5 hidden grid-cols-3 gap-2 sm:grid"
         >
           {topics.map((key, index) => (
             <button
@@ -150,9 +142,6 @@ export default function HowItWorks({
         tabIndex={0}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-clay sm:px-7"
       >
-        <p className="mb-4 text-xs text-ink/60">
-          Changing help topics leaves your page and plan unchanged.
-        </p>
         <h3 className="font-serif text-3xl">{guide.title}</h3>
         <p className="mt-3 text-sm leading-relaxed text-ink/60">
           {guide.intro}
@@ -175,9 +164,7 @@ export default function HowItWorks({
             </li>
           ))}
         </ol>
-        <p className="mt-8 rounded-xl border border-sand bg-white p-4 text-sm leading-relaxed text-ink/60">
-          {guide.note}
-        </p>
+        <details className="mt-6 border-t border-sand pt-2 text-sm text-ink/70"><summary className="min-h-11 cursor-pointer py-3">More details</summary><p className="pb-3 leading-relaxed">{guide.note}</p></details>
       </div>
       <footer className="shrink-0 border-t border-sand px-5 py-4 sm:px-7">
         <SupportButton label="Need help? Contact Styled" className="mb-3 inline-flex min-h-11 items-center text-sm text-ink/70 underline underline-offset-4" />

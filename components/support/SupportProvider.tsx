@@ -68,7 +68,7 @@ export default function SupportProvider({ children }: { children: ReactNode }) {
           e.preventDefault();
           setOpen(false);
         }}
-        className="fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-full max-w-xl flex-col border-l border-sand bg-cream p-0 text-ink open:flex backdrop:bg-ink/40 backdrop:backdrop-blur-sm"
+        className="fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-[calc(100%_-_1.5rem)] max-w-xl flex-col border-l border-sand bg-cream p-0 text-ink open:flex backdrop:bg-ink/40 backdrop:backdrop-blur-sm"
       >
         <header className="flex shrink-0 items-start justify-between gap-4 border-b border-sand px-5 py-5 sm:px-7">
           <div>

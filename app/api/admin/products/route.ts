@@ -47,7 +47,7 @@ export async function POST(req: Request) {
   const swatch = str(body.swatch);
   const image = str(body.image);
   const note = str(body.note);
-  const active = body.active === undefined ? true : body.active === true;
+  const active = body.active === true;
 
   if (!supplierId) return fail(422, "Which supplier is this for?");
   if (name.length < 2 || name.length > 160) return fail(422, "Please enter the product name.");

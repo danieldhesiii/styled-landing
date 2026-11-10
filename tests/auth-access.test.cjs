@@ -12,6 +12,7 @@ function load(relative, mocks = {}) {
   const loaded = new Module(file, module);
   loaded.paths = module.paths;
   loaded.require = (id) => {
+    if (id === '@/lib/server/development-request-catalogue') return { developmentRequestCatalogue: () => [], requestSnapshot: () => { throw Error('No development requests in this fixture'); } };
     if (Object.hasOwn(mocks, id)) return mocks[id];
     if (id.startsWith("@/")) return load(`${id.slice(2)}.ts`, mocks);
     return require(id);
@@ -205,7 +206,7 @@ test("successful code exchange never follows an external next URL", async () => 
 });
 
 function supplierRoute({
-  user = { id: "current-user", is_anonymous: false },
+  user = { id: "current-user", is_anonymous: false, email: "verified@example.com", email_confirmed_at: "2026-01-01T00:00:00Z" },
   authError = null,
   membership = { supplier_id: "linked-supplier" },
   membershipError = null,
@@ -256,7 +257,7 @@ test("supplier checks use only authenticated identity and existing linked suppli
   assert.equal(res.headers.get("cache-control"), "no-store");
 });
 test("missing or anonymous sessions do not query supplier records", async () => {
-  for (const user of [null, { id: "guest", is_anonymous: true }]) {
+  for (const user of [null, { id: "guest", is_anonymous: true }, { id: "unconfirmed", is_anonymous: false, email: "pending@example.com", email_confirmed_at: null }]) {
     const route = supplierRoute({ user });
     assert.equal((await route.get()).status, 401);
     assert.deepEqual(route.queries, []);
@@ -314,4 +315,24 @@ test("email service limits are distinct from bad credentials and do not promise 
     authError({ code: "email_not_confirmed" }),
     /Confirm your email/,
   );
+});
+
+test('order creation rejects guest and unverified sessions before parsing or saving requests', async () => {
+  for (const user of [
+    {id:'guest',is_anonymous:true},
+    {id:'unverified',is_anonymous:false,email:'owner@example.invalid',email_confirmed_at:null},
+    {id:'missing-email',is_anonymous:false,email_confirmed_at:'2026-01-01T00:00:00Z'},
+  ]) {
+    const route=load('app/api/orders/route.ts',{
+      'next/server':{NextResponse},
+      '@/lib/server/session':{requireUser:async()=>({ok:true,user,supabase:{}})},
+      '@/lib/supabase/admin':{createAdminClient:()=>{throw Error('No database writes allowed');}},
+      '@/lib/server/booking-notifications':{},'@/lib/server/venue-catalogue':{},
+      '@/lib/server/env':{},'@/lib/server/limits':{},'@/lib/server/quote':{},
+      '@/lib/server/orders':{},'@/lib/booking-dates':{},'@/lib/wedding':{},'@/lib/server/availability':{},
+    });
+    const result=await route.POST(new Request('https://styled.test/api/orders',{method:'POST',body:'malformed'}));
+    assert.equal(result.status,401);
+    assert.match((await result.json()).error,/confirm your email/);
+  }
 });

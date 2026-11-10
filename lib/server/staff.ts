@@ -22,7 +22,7 @@ export async function requireStaff(req: Request): Promise<StaffAuth> {
   if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
     const origin = req.headers.get("origin");
     const host = req.headers.get("host");
-    if (origin && host && new URL(origin).host !== host) return deny(403, "Cross-site request refused.");
+    try { if (origin && new URL(origin).host !== (host || new URL(req.url).host)) return deny(403, "Cross-site request refused."); } catch { return deny(403, "Invalid origin."); }
     if (!(req.headers.get("content-type") ?? "").includes("application/json")) {
       return deny(415, "Send JSON.");
     }
@@ -31,7 +31,7 @@ export async function requireStaff(req: Request): Promise<StaffAuth> {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
   const user = data.user;
-  if (error || !user || user.is_anonymous) return deny(401, "Please sign in.");
+  if (error || !user || user.is_anonymous || !user.email || !user.email_confirmed_at) return deny(401, "Sign in with a verified email address.");
 
   const admin = createAdminClient();
   const { data: row } = await admin.from("staff").select("user_id").eq("user_id", user.id).maybeSingle();

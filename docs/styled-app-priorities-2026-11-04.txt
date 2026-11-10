@@ -1,0 +1,166 @@
+STYLED APP DEVELOPMENT PRIORITIES
+Updated 4 November 2026
+Scope: development only. Do not release these changes to styleduk.com without a separate explicit release instruction.
+
+PRODUCT DIRECTION
+
+Build the pilot around supplier-approved listings and manual, no-payment requests.
+Suppliers check their own stock records. Styled records each response, prepares a
+complete quote, and asks the customer to accept the current quote before any
+booking/payment arrangements are recorded. A request, availability reply, saved
+look or basket is not a booking. Improve existing customer, supplier and staff
+workflows; do not create another request centre or require access to supplier
+systems.
+
+CURRENT POSITION FROM THE 2 NOVEMBER DEVELOPMENT AUDIT
+
+- Development repo: danieldhesiii/styledukprodprogress, branch main.
+- Development site: https://styledukprodprogress.vercel.app
+- Live site: https://styleduk.com. It is a separate project and is out of scope.
+- Existing foundations include request/order management, versioned saved quotes,
+  customer quote acceptance, offline booking records, supplier date stock limits,
+  staff follow-up tracking, private listing review, supplier/venue visualiser
+  scope, support inbox, and queued email handling.
+- Payments, automatic damage recovery, external stock-system integrations,
+  recurrence expansion for calendar imports, and Pinterest image reuse are not
+  ready. Pinterest import/reuse stays disabled until permission is resolved.
+- Supplier business terms, public images, prices, stock, fees and operating
+  policies require direct confirmation and approval; do not invent them.
+
+PRIORITISED WORK
+
+P0 - PROVE THE CONTROLLED NO-PAYMENT PILOT
+
+1. Complete the development Resend callback setup. On 4 November, the Resend
+   dashboard was checked: an enabled endpoint exists at
+   https://styledukprodprogress.vercel.app/api/webhooks/resend and listens for
+   seven delivery events. No events have arrived yet. The development Vercel
+   environment-variable list contains RESEND_API_KEY but not
+   RESEND_WEBHOOK_SECRET. The variable form is prepared for the Production
+   environment of the development project; the user must enter the Resend
+   signing secret directly into Vercel, save, and redeploy. Then verify a genuine
+   signed delivery event. Do not paste secrets into chat or commit them. Review
+   historical queued jobs and recipients before enabling automatic booking
+   email. Keep sending disabled until approved test recipients and inbox
+   expectations are confirmed.
+2. Rehearse a real but no-payment request with permissioned customer, supplier
+   and venue participants. Test full item dates, buffers, availability,
+   alternatives, all known fees, quote revision/expiry, acceptance, offline
+   arrangements, cancellation, return evidence and a disputed damage claim.
+   No real charge, refund or automatic penalty.
+3. Verify delivery outcomes separately: app queued, provider accepted, provider
+   delivered/bounced, and actual inbox arrival are distinct states. An uncertain
+   send must not be blindly retried.
+4. Run the same rehearsal at mobile width and confirm customers, suppliers and
+   staff can identify their next action. Use fictional examples only where a
+   real participant or approved material is unavailable.
+
+P1 - FINISH REAL-BOOKING REQUIREMENTS AFTER RULES ARE AGREED
+
+5. Make package contents, shared stock pools, supplier-specific minimums and
+   variants enforceable on the server. Another supplier's spend cannot satisfy
+   a supplier's minimum. Keep unknown package rules as a manual approval step.
+6. Complete full quote presentation: item hire, delivery, setup, collection,
+   extra hire days and VAT treatment. Show unknown costs as “to be quoted”, not
+   zero. Record supplier installation versus approved third-party installation.
+7. Keep supplier and venue restrictions enforced in product selection,
+   visualiser generation/refinement, alternatives and saved-look reopening.
+   Display real supplier identity and permissioned photos alongside clearly
+   illustrative generated images.
+8. Make manual checking first-class. Do not require integration with Simon's
+   private system or Sarah Mae's Apps Script stock tool. Capture supplier
+   response recipient, check result and next action; unknown availability is
+   never guaranteed.
+9. Before payment work, agree the contracting party, commission basis, VAT,
+   invoices, deposits, balance, payouts, cancellation/refunds, late/damage
+   responsibility, dispute evidence and stock-hold duration. Build payments only
+   around those decisions.
+
+P2 - OPERATIONAL AND RELEASE ASSURANCE
+
+10. Add/finish staff attention signals for new requests, overdue replies,
+    uncertain delivery reports and failed notifications. Staff should see the
+    count and next action without treating a reminder threshold as a supplier
+    promise. Keep sensitive customer details out of emails.
+11. Enable staff MFA and recovery protections, review leaked-password
+    protection, activate the prepared development CI workflow with authorised
+    GitHub workflow access, and complete an encrypted database plus Storage
+    backup/restore rehearsal.
+12. Support recurring calendar events only with bounded, tested handling for
+    timezones, exclusions, moved/cancelled instances and concurrent sync. Until
+    then, retain the current safe refusal of recurring feeds.
+13. Complete independent developer review, live-schema/migration review,
+    production configuration checks and rollback rehearsal before any public
+    release. Public release requires a separate explicit owner instruction.
+
+DEPENDENCIES THAT MUST COME FROM THE BUSINESS/PARTNERS
+
+- Named supplier-approved starter ranges and authorised contacts.
+- Permission for private review, public listing, photography and separate AI
+  reference use.
+- Accurate quantities, shared-stock relationships, preparation/return buffers,
+  package contents, minimum orders, prices/VAT, delivery/setup/collection fees,
+  service areas and terms.
+- The venue's supplier-routing policy and any local/sustainability constraints.
+- Written commercial and customer-support responsibilities before money moves.
+
+DO NOT START YET
+
+- Do not enable payments, saved-card holds, automated damage charges or payouts
+  before the business/legal/payment responsibilities are agreed.
+- Do not publish supplier data or reuse public web/social photos without
+  specific permission.
+- Do not enable Pinterest image download/external AI use until the approval
+  conditions for that use are confirmed.
+- Do not deploy to styleduk.com as part of routine development.
+
+MODEL GUIDANCE FOR EFFICIENT CHATGPT USAGE
+
+Use the fastest/lowest-cost model available for a narrowly scoped task with
+clear acceptance criteria: updating this roadmap, copy edits, simple isolated UI
+changes, writing small deterministic tests, classifying supplier research, or
+summarising meeting evidence.
+
+Use a balanced workhorse model (GPT-6.1 Sol, where available) for routine feature
+implementation across a few files, debugging, test-driven changes and reviewing
+the interaction between existing workflows. It is the recommended default for
+Styled development work where both quality and usage efficiency matter.
+
+Use a fast visual/computer-use model (GPT-6.1 Terra, where available) for
+screen-driven browser testing, interpreting screenshots and small UI fixes
+after the product behavior is understood.
+
+Reserve the highest-capability model (GPT-6 Astra, where available) for
+ambiguous architecture choices, security/privacy boundaries, payment and
+contracting flows, complex migrations, incident analysis and final independent
+review. Avoid using it for routine copy changes or simple component edits.
+
+Reduce usage regardless of model: keep one change focused, provide the relevant
+files rather than the whole repository, ask for a concise plan and explicit
+acceptance checks, run targeted tests first, and use the full test/build suite
+once at the end. Model names/availability can vary by ChatGPT plan; check the
+model picker. Official guidance: https://developers.openai.com/api/docs/guides/model-selection
+
+CURRENT DEVELOPMENT CHANGE
+
+The staff “Stock checks needing review” panel now loads its attention count when
+Service checks opens, instead of showing a count only after someone expands the
+panel. This makes outstanding requests more visible while keeping the full list
+collapsed until needed. It is a read-only development UI change and does not
+send email or alter bookings. The check-in-progress and 100+ states are shown
+without exposing request details in the collapsed heading.
+
+Verification on 4 November: `npm run check` passed (307 tests, TypeScript and
+production build). The build retains the previously documented libheif dynamic
+require warning. The Vercel CLI could not verify current environment-variable
+names because its metadata fetch failed in the restricted network environment;
+the Resend callback setup therefore remains a documented check, not a newly
+verified live configuration.
+
+SOURCE DOCUMENTS
+
+- Styled_App_Action_Plan_2026-10-30.txt (Wedding Marktpl App / Styled Pilot Onboarding)
+- supplier-onboarding-next-steps-2026-11-02.txt (Wedding Marktpl App / Styled Pilot Onboarding)
+- docs/supplier-onboarding-audit-2026-11-02.md
+- docs/development-functional-readiness-2026-11-02.md
+- docs/pilot-runbook.md

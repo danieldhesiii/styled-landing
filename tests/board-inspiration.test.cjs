@@ -36,6 +36,14 @@ const {
 } = load("lib/board-inspiration.ts");
 const { loadSelectedPhotoBuffers } = load("lib/server/selected-photos.ts");
 const { buildRenderPrompt } = load("lib/server/render-prompt.ts");
+test('product photo map binds only successfully loaded references and includes physical product details',()=>{
+ const options={style:null,brief:'',guestCount:80,items:[{name:'Empire 90',dimensions:'90 cm drop, 45 cm diameter',material:'Crystal'}],photoCount:2,itemImageCount:1,itemImageNames:['Empire 90']};
+ const prompt=buildRenderPrompt(options);
+ assert.match(prompt,/Image 3: Empire 90\./);
+ assert.match(prompt,/90 cm drop, 45 cm diameter/);
+ assert.match(prompt,/Do not merge different chandelier designs/);
+ assert.doesNotMatch(buildRenderPrompt({...options,itemImageNames:['Empire 90','Missing photo']}),/PRODUCT PHOTO MAP/);
+});
 const uuid = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 test("board preparation copies only supported inspiration and bounds references", () => {
   const pins = [
@@ -163,3 +171,4 @@ test("widget document uses only the official Pinterest script and a canonical sa
   assert.match(pinterestPreviewDocument("https://www.pinterest.com/pin/123/"), /data-pin-do="embedPin"/);
   assert.equal(pinterestPreviewDocument("https://pin.it/abc"), null);
 });
+test('new looks and edits automatically use physical product dimensions without manual height controls',()=>{const {buildRefinePrompt,physicalScaleInstruction}=load('lib/server/render-prompt.ts');const product={name:'Named chair',dimensions:'90 cm high, 45 cm wide'};for(const prompt of [buildRenderPrompt({style:null,brief:'',guestCount:80,items:[product]}),buildRefinePrompt({brief:'Use the named chair',items:[product]})]){assert.match(prompt,/90 cm high, 45 cm wide/);assert.match(prompt,/preserve the relative size/);assert.match(prompt,/Choose plausible placement automatically/);assert.match(prompt,/not proof of true scale/);}assert.match(physicalScaleInstruction(),/Do not invent measured room dimensions/);});

@@ -9,9 +9,7 @@ export default function PortalImportPage() {
     <div>
       <h1 className="font-serif text-4xl text-ink">Import your stock list</h1>
       <p className="mt-2 max-w-2xl text-sm text-ink/55">
-        Keep one spreadsheet of what you hire out and how many you have. Upload
-        it here whenever it changes, and your prices and stock here are updated
-        to match. You can also edit a single product from the Products page.
+        Upload a CSV to update products, prices and quantities. Review changes before saving.
       </p>
       <ol className="mt-6 grid gap-3 text-sm sm:grid-cols-3">
         <li className="rounded-xl border border-sand p-4">
@@ -24,7 +22,7 @@ export default function PortalImportPage() {
         </li>
         <li className="rounded-xl border border-sand p-4">
           <span className="block text-xs text-clay">03</span> Apply the checked
-          rows, then add photos in Products.
+          rows, then add photos in Products and submit your range for review.
         </li>
       </ol>
       <div className="mt-6">

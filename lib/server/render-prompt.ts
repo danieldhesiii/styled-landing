@@ -80,6 +80,11 @@ function referenceNote(photoCount: number): string | null {
   return `You are given ${photoCount} photos of the same venue from different angles. The FIRST image is the view to restyle: keep its exact camera angle and framing, and output only that view. The other images are reference only. Use them to understand the room's true size, layout and architecture, and keep the styling consistent with the real space, but do not copy their camera angles.`;
 }
 
+/** Product-to-product scale is automatic; an unmeasured room is never a survey. */
+export function physicalScaleInstruction():string {
+  return "PHYSICAL SIZE AND REALISM. Use the catalogue dimensions as real-world dimensions for every product. At the same depth, preserve the relative size of catalogue pieces instead of independently shrinking them to fit a pleasing composition. Use venue perspective, floor and ceiling planes, and any recognisable features as contextual guides; use an object's known dimensions as an anchor when supplied. Respect depth: a distant object can look smaller, but a large statement piece must not become a miniature at the same position. Keep fixture body height, diameter and any suspension distinct. Choose plausible placement automatically, with realistic contact, shadows, reflections and lighting. Do not enlarge the room, raise the ceiling or alter product proportions to make an item fit. Do not invent measured room dimensions or claim camera calibration. Without a measured scene, the result remains an approximate visualisation, not proof of true scale or installation suitability.";
+}
+
 export function buildRenderPrompt(opts: {
   style: StylePreset | null;
   brief: string;
@@ -88,6 +93,7 @@ export function buildRenderPrompt(opts: {
   setting?: RenderSetting;
   photoCount?: number;
   itemImageCount?: number;
+  itemImageNames?: string[];
   // Decor categories with nothing the couple could order: shown plain, not invented.
   leftPlain?: string[];
 }): string {
@@ -99,6 +105,7 @@ export function buildRenderPrompt(opts: {
     setting = "reception",
     photoCount = 1,
     itemImageCount = 0,
+    itemImageNames = [],
     leftPlain = [],
   } = opts;
   const parts: string[] = [];
@@ -116,9 +123,13 @@ export function buildRenderPrompt(opts: {
     parts.push(
       `Images ${photoCount + 1} to ${photoCount + itemImageCount} are reference photograph${itemImageCount > 1 ? "s" : ""} of specific pieces the couple has chosen. Study them carefully and reproduce each item's exact colour, material, shape and finish when you place it in the room.`,
     );
+    if(itemImageNames.length===itemImageCount){
+      parts.push('PRODUCT PHOTO MAP. Each image is a reference for this specific product, not for the surrounding venue or decor:\n'+itemImageNames.map((name,index)=>`Image ${photoCount+index+1}: ${cleanBrief(name)}.`).join('\n')+'\nKeep each product’s silhouette, frame finish, crystal arrangement and proportions distinct. Do not merge different chandelier designs or copy unrelated decor from reference photos. Product photos guide appearance; they do not establish rigging safety or venue suitability.');
+    }
   }
 
   parts.push(setting === "party" ? KEEP_EVENING : KEEP_DAYLIGHT);
+  parts.push(physicalScaleInstruction());
   // The couple can either start from one of our preset looks or skip them and
   // describe their own decoration. When there's no preset, their description
   // below is the whole design direction — so only add style wording if a preset
@@ -137,9 +148,10 @@ export function buildRenderPrompt(opts: {
   // The complete inventory. Everything in the picture that the couple could buy
   // must be one of these pieces: these are in stock for their date.
   if (items.length > 0) {
+    parts.push("PRODUCT PRIORITY. Catalogue identity, product photographs, verified dimensions and explicit keep/omit instructions take priority over general style suggestions. Do not replace a chosen product with a style-matched alternative or change its design to fit the mood.");
     const list = items
       .slice(0, MAX_ITEMS)
-      .map((i) => `- ${i.name}`)
+      .map((i) => `- ${cleanBrief(i.name)} [catalogue ID: ${i.id}; supplier: ${cleanBrief(i.supplier)}]${i.dimensions?`; dimensions: ${cleanBrief(i.dimensions)}`:''}${i.material?`; material: ${cleanBrief(i.material)}`:''}`)
       .join("\n");
     parts.push(
       `COMPLETE INVENTORY. These are the ONLY decorative pieces that exist for this wedding. Every element of styling in the picture (backdrop, florals, centrepieces, furniture, linen and tableware, lighting and signage) must be one of these pieces, placed where it would naturally go. Do not add any other decorative object, flower arrangement, furniture, lighting, signage, linen or prop, even if it would look nice:\n${list}`,
@@ -173,16 +185,18 @@ export function buildRefinePrompt(opts: {
   const parts: string[] = [
     "This is a styled wedding venue render. Edit it according to the couple's request below.",
     "Keep everything else exactly the same: the room's architecture, camera angle, perspective, lighting, and every piece of styling that the request does not mention. Photorealistic wedding venue photography. No people, no text, no watermarks.",
+    "Catalogue identity, product photographs and verified dimensions take priority over general style suggestions. Preserve the identity of each named product.",
     "Do not introduce any new decorative object that is not already in the picture or named in the list below. Adjust position, arrangement, colour or amount of what's already there instead.",
   ];
   if (items.length > 0) {
     parts.push(
       `These are the only pieces available. If they are not already visible, you may include them where they would naturally go:\n${items
         .slice(0, MAX_ITEMS)
-        .map((i) => `- ${i.name}`)
+        .map((i) => `- ${cleanBrief(i.name)} [catalogue ID: ${i.id}; supplier: ${cleanBrief(i.supplier)}]${i.dimensions?`; dimensions: ${cleanBrief(i.dimensions)}`:""}`)
         .join("\n")}`,
     );
   }
+  parts.push(physicalScaleInstruction());
   parts.push(`The couple's request: "${brief || "make a subtle improvement"}"`);
   return parts.join("\n\n");
 }

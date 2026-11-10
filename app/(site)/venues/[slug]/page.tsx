@@ -1,4 +1,7 @@
 import Link from "next/link";
+import DemoVenueBooking from "@/components/venues/DemoVenueBooking";
+import VenueSupplierJourney from "@/components/venues/VenueSupplierJourney";
+import {VENUE_MODES, venuePolicy} from "@/lib/venue-suppliers";
 import VenueMediaPlaceholder from "@/components/venues/VenueMediaPlaceholder";
 import { notFound } from "next/navigation";
 import { loadPublicVenue } from "@/lib/server/venues";
@@ -79,11 +82,12 @@ export default async function VenuePage({
           role="note"
           className="mt-6 rounded-xl border border-clay/30 bg-blush/30 p-5 text-sm leading-relaxed"
         >
-          <strong>Demo venue · Not available to book.</strong> This fictional
-          listing shows how venue pages will work. Images, location and
-          capacities are illustrative. The video and 3D walkthrough spaces below
-          are intentionally blank.
+          <strong>Demo venue · Practice only.</strong> Try a booking request and
+          the venue team’s response below. No real booking, email or payment is
+          created. Prices and images are examples; video and 3D tour spaces are
+          intentionally blank.
           <div className="mt-3 flex flex-wrap gap-5">
+            <a className="underline" href="#enquire">Try a booking request ↓</a>
             <a className="underline" href="#walkthrough">
               See 3D walkthrough space ↓
             </a>
@@ -93,7 +97,7 @@ export default async function VenuePage({
           </div>
         </div>
       )}
-      <p className="mt-7 text-xs uppercase tracking-widest text-clay">
+      <p className="mt-7 text-sm uppercase tracking-widest text-clay">
         {d?.venue_type
           ? VENUE_TYPES[d.venue_type as keyof typeof VENUE_TYPES]
           : "Wedding venue"}{" "}
@@ -127,8 +131,8 @@ export default async function VenuePage({
           ["gallery", "Photos"],
           ["walkthrough", "3D walkthrough"],
           ["video", "Video"],
-          ["packages", "Styling"],
-          ["enquire", "Requests"],
+          [!venue.is_demo && venuePolicy(venue.details).mode==="styled"?"packages":"suppliers", venue.is_demo?"Supplier arrangement":venuePolicy(venue.details).mode==="styled"?"Styling":"Suppliers & booking"],
+          ["enquire", venue.is_demo ? "Try booking" : "Requests"],
         ].map(([id, l]) => (
           <a key={id} href={`#${id}`} className="shrink-0 py-2 hover:text-clay">
             {l}
@@ -164,7 +168,7 @@ export default async function VenuePage({
                 .filter(([, v]) => v !== null && v !== undefined && v !== "")
                 .map(([k, v]) => (
                   <div key={String(k)}>
-                    <dt className="text-xs text-ink/60">{k}</dt>
+                    <dt className="text-sm text-ink/60">{k}</dt>
                     <dd className="mt-2 text-sm capitalize">{v}</dd>
                   </div>
                 ))}
@@ -192,7 +196,7 @@ export default async function VenuePage({
           <section className="mt-10">
             <h2 className="font-serif text-3xl">Venue hire & inclusions</h2>
             <p className="mt-4 text-xl">
-              {venue.is_demo ? "Hire information will appear here" : hire}
+              {venue.is_demo ? `Example hire ${hire.toLowerCase()}` : hire}
             </p>
             <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-ink/70">
               {d?.pricing_notes ||
@@ -216,15 +220,15 @@ export default async function VenuePage({
             ))}
         </div>
         <aside className="rounded-2xl border border-sand bg-white p-6 lg:sticky lg:top-24">
-          <p className="text-xs uppercase tracking-widest text-clay">
+          <p className="text-sm uppercase tracking-widest text-clay">
             Your day at {venue.name}
           </p>
           <p className="mt-4 font-serif text-3xl">
-            {venue.is_demo ? "Listing preview" : hire}
+            {venue.is_demo ? `Example hire ${hire.toLowerCase()}` : hire}
           </p>
-          <p className="mt-1 text-xs text-ink/60">
+          <p className="mt-1 text-sm text-ink/60">
             {venue.is_demo
-              ? "Fictional venue · No dates or prices offered"
+              ? "Fictional venue · Illustrative pricing only"
               : "Venue hire, subject to inclusions and your date"}
           </p>
           {!venue.is_demo && (
@@ -235,9 +239,8 @@ export default async function VenuePage({
               >
                 Request a booking or viewing
               </a>
-              <p className="mt-4 text-xs leading-relaxed text-ink/60">
-                The venue reviews every request. Your date is reserved only
-                after confirmation; no payment is taken here.
+              <p className="mt-4 text-sm leading-relaxed text-ink/60">
+                Date subject to venue confirmation. No payment is taken.
               </p>
               <Link
                 href={`/design?venue=${encodeURIComponent(venue.slug)}&tab=wedding`}
@@ -245,20 +248,18 @@ export default async function VenuePage({
               >
                 Save this venue to your wedding plan →
               </Link>
-              <Link
+              {venuePolicy(venue.details).mode!=="venue_only" && <Link
                 href={`/design?venue=${encodeURIComponent(venue.slug)}&tab=catalogue`}
                 className="mt-5 block text-sm underline"
               >
                 Browse styling for this venue →
-              </Link>
+              </Link>}
             </>
           )}
           {venue.is_demo && (
             <div className="mt-5 space-y-4 text-sm">
-              <p className="text-ink/60">
-                Explore the blank media sections below. Booking requests will be
-                available on published venue listings.
-              </p>
+              <a href="#enquire" className="block rounded-full bg-ink px-5 py-3 text-center text-cream">Try a booking request</a>
+              <p className="text-ink/60">Practice only. Nothing is sent or reserved.</p>
               <a href="#walkthrough" className="block underline">
                 3D walkthrough space ↓
               </a>
@@ -291,7 +292,7 @@ export default async function VenuePage({
         viewingHref={`/venues/${venue.slug}?request=viewing${initialGuests ? `&guests=${initialGuests}` : ""}#enquire`}
       />
       <section id="video" className="mt-10 scroll-mt-24">
-        <p className="text-xs uppercase tracking-widest text-clay">
+        <p className="text-sm uppercase tracking-widest text-clay">
           See the atmosphere
         </p>
         <h2 className="mt-2 font-serif text-3xl">Venue video</h2>
@@ -311,7 +312,8 @@ export default async function VenuePage({
           <VenueMediaPlaceholder kind="video" />
         )}
       </section>
-      <section id="packages" className="mt-12 scroll-mt-24">
+      {!venue.is_demo&&<VenueSupplierJourney name={venue.name} slug={venue.slug} policy={venuePolicy(venue.details)}/>}
+      {!venue.is_demo && venuePolicy(venue.details).mode==="styled" && <section id="packages" className="mt-12 scroll-mt-24">
         <h2 className="font-serif text-3xl">Make the space your own</h2>
         <p className="mt-3 text-sm text-ink/60">
           Styling packages are separate from venue hire unless explicitly
@@ -350,39 +352,24 @@ export default async function VenuePage({
           </Link>
         )}
       </section>
+      }
+      {venue.is_demo && <section id="suppliers" className="mt-12 scroll-mt-24 border-t border-sand pt-8"><h2 className="font-serif text-3xl">{VENUE_MODES[venuePolicy(venue.details).mode]}</h2><p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink/65">{venuePolicy(venue.details).mode==="venue_only"?"This venue keeps couples with its own local recommended suppliers. No Styled catalogue recommendations are offered.":venuePolicy(venue.details).mode==="venue_partners"?"This venue uses a selected range from its approved suppliers on Styled. The demo shows the route without linking real supplier accounts.":"This venue welcomes the wider Styled catalogue. Venue hire and product requests are separate."} Try the booking below to see the next step.</p></section>}
       <section
         id="enquire"
         className="mt-14 scroll-mt-24 border-t border-sand pt-10"
       >
         {venue.is_demo ? (
-          <>
-            <h2 className="font-serif text-3xl">
-              Booking requests will appear here
-            </h2>
-            <p className="mt-4 text-sm text-ink/60">
-              This is a demonstration only. Published venues will let you
-              request a date or arrange a viewing here, with manual confirmation
-              from the venue team.
-            </p>
-            <Link
-              href="/venues"
-              className="mt-5 inline-block text-sm underline"
-            >
-              Back to venue search →
-            </Link>
-          </>
+          <DemoVenueBooking venue={venue} />
         ) : (
           <>
             <h2 className="font-serif text-4xl">Let’s talk about your plans</h2>
             <p className="mb-8 mt-4 max-w-2xl text-sm leading-relaxed text-ink/60">
-              Request your wedding date or arrange a viewing. The venue will
-              check your plans and can suggest alternatives. Track the response
-              in My bookings.
+              Ask about dates or a viewing. Read replies in My bookings.
             </p>
             <VenueEnquiryForm
               slug={venue.slug}
               venueId={venue.id}
-              packages={packages}
+              packages={venuePolicy(venue.details).mode==="styled"?packages:[]}
               accountEmail={email}
               initialKind={initialKind}
               initialDate={initialKind === "booking" ? initialDate : ""}

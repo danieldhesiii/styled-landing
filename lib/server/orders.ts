@@ -143,8 +143,9 @@ interface LineRow {
   supplier_name: string;
   unit: string | null;
   quantity: number;
-  unit_price_pence: number;
-  line_total_pence: number;
+  unit_price_pence: number | null;
+  line_total_pence: number | null;
+  request_snapshot?: { catalogueId: string; requestOnly: boolean; priceOnRequest: boolean } | null;
   supplier_status: string;
   needed_date: string | null;
   return_date?: string | null;
@@ -158,11 +159,14 @@ export function orderView(o: OrderRow, lines: LineRow[]) {
   const bySupplier = new Map<string, { totalPence: number; neededDate: string | null }>();
   for (const l of lines) {
     const g = bySupplier.get(l.supplier_name) ?? { totalPence: 0, neededDate: l.needed_date ?? o.wedding_date };
-    g.totalPence += l.line_total_pence;
+    g.totalPence += l.line_total_pence ?? 0;
     bySupplier.set(l.supplier_name, g);
   }
 
   return {
+    hasUnpricedLines: lines.some(l => l.line_total_pence === null || l.request_snapshot?.priceOnRequest),
+    requestOnly: lines.some(l => !!l.request_snapshot),
+    knownSubtotalPence: o.subtotal_pence,
     id: o.id,
     reference: o.reference ?? orderReference(o.id),
     status: o.status,
@@ -180,9 +184,11 @@ export function orderView(o: OrderRow, lines: LineRow[]) {
     subtotalPence: o.subtotal_pence,
     depositPence: o.deposit_pence,
     balancePence: o.subtotal_pence - o.deposit_pence,
-    bySupplier: [...bySupplier].map(([supplier, g]) => ({ supplier, totalPence: g.totalPence, neededDate: g.neededDate })),
+    bySupplier: [...bySupplier].map(([supplier, g]) => ({ supplier, totalPence: g.totalPence, neededDate: g.neededDate, hasUnpricedLines: lines.some(l=>l.supplier_name===supplier&&l.line_total_pence===null) })),
     lines: lines.map((l) => ({
-      productId: l.product_id,
+      productId: l.product_id || l.request_snapshot?.catalogueId || null,
+      requestOnly: !!l.request_snapshot,
+      priceOnRequest: l.line_total_pence === null || !!l.request_snapshot?.priceOnRequest,
       name: l.product_name,
       supplier: l.supplier_name,
       unit: l.unit,
@@ -199,13 +205,14 @@ export function orderView(o: OrderRow, lines: LineRow[]) {
 export const ORDER_VIEW_COLUMNS =
   "id, reference, couple_message, updated_at, status, created_at, couple_name, email, phone, wedding_date, venue_label, style_id, guest_count, subtotal_pence, deposit_pence, notes";
 export const LINE_VIEW_COLUMNS =
-  "product_id, product_name, supplier_name, unit, quantity, unit_price_pence, line_total_pence, supplier_status, needed_date, return_date";
+  "product_id, product_name, supplier_name, unit, quantity, unit_price_pence, line_total_pence, supplier_status, needed_date, return_date, request_snapshot";
 
 // Load an order and its lines as the signed-in guest (row level security makes
 // other people's orders invisible).
 export async function loadOrderView(supabase: SupabaseClient, id: string) {
   const { data: order } = await supabase.from("orders").select(ORDER_VIEW_COLUMNS).eq("id", id).maybeSingle();
   if (!order) return null;
-  const { data: lines } = await supabase.from("order_lines").select(LINE_VIEW_COLUMNS).eq("order_id", id).order("created_at");
+  const { data: lines, error: lineError } = await supabase.from("order_lines").select(LINE_VIEW_COLUMNS).eq("order_id", id).order("created_at");
+  if(lineError)throw Error("Could not load the requested order items.");
   return orderView(order as OrderRow, (lines ?? []) as LineRow[]);
 }

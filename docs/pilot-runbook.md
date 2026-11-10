@@ -1,127 +1,61 @@
-# Pilot runbook — running the first real orders
+# Development rehearsal and supplier pilot
 
-A concrete checklist to take Styled from "built" to "a real couple booked a real
-vendor." Pairs with [vendor-model.md](./vendor-model.md) (the why) — this is the how.
+Updated 1 November 2026. Everyday work stays at https://styledukprodprogress.vercel.app with Wedding Planner Dev (`qkyeitvwscrxbiwamxan`). This is not permission to release to styleduk.com or collect money.
 
-The software is ready to run a pilot today. The work below is **configuration and
-outreach**, not building.
+## Start here
 
----
+1. Staff sign in at `/admin/login` with their own approved account. The existing selected staff email is support@styleduk.com. Never share its password with suppliers.
+2. Open Service checks to review connections, private supplier intakes, outstanding requests and notifications.
+3. Use the staff-only Pilot workflow template for fictional practice. It is deliberately separate from real saved requests; template edits reset on refresh.
+4. For database-backed verification, use the rollback SQL fixtures in `supabase/tests`. Fixtures must not email real recipients or create retained accounts. Automated passing checks are not supplier approvals.
 
-## What a pilot proves
+## Email setup
 
-1. **Demand**: couples upload a venue, generate a render they love, and try to order.
-2. **Supply**: a real vendor confirms a booking with near-zero effort.
-3. **Loop**: an order goes design → order → confirm → deposit → fulfil, end to end.
+Resend domain verification and two development deliveries were verified on 1 November: the app's own-staff email check and Supabase password recovery to support@styleduk.com. Requesting recovery did not change the password. This proves those two paths only, not every notification or actual inbox placement.
 
-Keep it tiny: **2–3 real vendors, a handful of couples.** You're looking for signal,
-not scale.
+The Vercel API key and Supabase SMTP are separate settings. The development Vercel project's Production environment is still the development website. Keep its site URL and Auth callbacks on the development host.
 
----
+Automatic booking messages remain off until the intended recipients and old queue have been reviewed. Resend callbacks must use the Resend endpoint and signing secret, not the historical Brevo callback. Read `resend-development-setup-2026-10-31.md` for configuration and the remaining registration step. Provider acceptance, delivery and an actual person reading an email are different outcomes.
 
-## Pre-flight — turn these on (one-time, in Vercel env)
+## When supplier material arrives
 
-| Env var | Why | Without it |
-|---|---|---|
-| `OPENAI_API_KEY` | Real AI renders (the hook) | Couples see an illustrative placeholder, not their venue |
-| `RESEND_API_KEY` | Send supplier/couple emails | Emails are just logged — nobody's actually notified |
-| `NOTIFY_FROM_EMAIL` | The "from" address | — (must be a **domain you've verified in Resend**, or emails only reach your own inbox) |
-| `NEXT_PUBLIC_SITE_URL` | Correct links in emails + OG shares | Links/OG may point at the wrong host |
+1. Confirm the named business contact, approved starting range, prices/VAT, package contents, minimums, dimensions and actual images.
+2. Record public-image and optional AI-reference permission separately. A product image does not imply permission to send it to an AI provider.
+3. Create or link the correct supplier profile. Invite only a recipient approved by that business. Recipients set their own credentials.
+4. Save products privately or preview a CSV import before applying it. CSV imports are not an integration with a supplier's stock system. Missing rows are not deleted.
+5. Add images to the private range review. Submit the range, request changes if necessary and approve only actual permissioned material.
+6. Hide fictional suppliers/products before allowing real customer requests. Approval of a demo is not approval of public listings.
 
-Also create a staff login for yourself if you haven't: `npm run staff:add -- you@email.com`.
+Do not use any historical default commission, deposit percentage, invented capacity or inferred fee as an agreed supplier term.
 
-**Check renders first.** Before anything else, open `/design`, upload a real venue
-photo, and generate. If the output isn't convincing, that's the thing to fix — it's
-the whole pitch. Everything else is plumbing that already works.
+## Real no-payment rehearsal
 
----
+Use a participating supplier and venue, approved recipients and an agreed test purpose:
 
-## Step 1 — Replace the demo catalogue with real vendors
+- Customer sets an event, venue, guests and separate item hire periods.
+- Customer submits a request. No charge or confirmed booking occurs.
+- Supplier checks their own system, full hire dates, buffers, shared equipment/crew and venue access.
+- Supplier records availability, any alternatives, item prices, delivery/setup/collection fees, refundable security, VAT treatment and terms. Enter 0 only for a genuinely included service; unknown fees stay blank.
+- Staff issue a complete, expiring quote after all checks pass.
+- Customer accepts the current quote. Changed dates/details invalidate prior checks and require a new review.
+- Staff record the agreed contracting, payment, cancellation, deposit, damage and commission responsibilities before recording an agreed offline booking.
+- Exercise fulfilment, return inspection, a dispute and cancellation review without charging or refunding anything.
+- Inspect notification outcomes independently. Never resend an uncertain send merely because it lacks a delivery report.
 
-> ⚠️ The 12 suppliers / 36 products currently live are **fictional seed data**
-> (Bloomwell Florals, County Furniture Hire, etc.). Before a real pilot, **switch the
-> demo suppliers off** so couples only ever see real, bookable vendors.
+For venues test own-network, approved-partner and Styled catalogue routes separately. External booking links are handoffs, not synchronised reservations. Video/3D placeholders are not generated tours.
 
-For each seed supplier you're not using: **Admin → Suppliers → open it → untick
-"Active."** That hides all their products in one move (nothing is deleted — you can
-turn them back on for demos).
+## Stock and expired requests
 
-Then add your real vendors:
-- **If they applied** via `/vendors`: **Admin → Vendors → Accept → "Set up as supplier →"** (prefilled).
-- **Otherwise**: **Admin → Suppliers → Add supplier.**
-- Fill in **real** name, area, logo, and **commission %** (or leave blank for the 12% default).
-- Open the supplier and **Add product** for each real piece: category, price, unit,
-  quantity rule, **units-per-day capacity** (blank = made to order), lead time, styles.
+An unconfirmed request can reserve capacity under the existing availability rules. Staff must review old open requests and expired quotes in Service checks, renew only after checking with the supplier or close through order management when appropriate. An expired quote cannot be accepted, but expiry does not currently automatically cancel the request or release stock. Agree a reservation duration/renewal policy before automating that change; do not assume a silent hold guarantee.
 
-Do this *for* the vendor from their website/Instagram — show them a finished page, not a form.
+## Before public release
 
----
+- Approved real range, descriptions, photos, service rules and venue policy.
+- Role isolation and real supplier/customer/venue walkthroughs.
+- Auth, notification failures, signed callbacks, support and mobile checks.
+- Independent encrypted database and media backup with an actual isolated restore.
+- Approved commercial terms and responsibility for support, cancellations and disputes.
+- Developer review, live-schema migration plan, production configuration and rollback plan.
+- Explicit owner instruction to release to styleduk.com.
 
-## Step 2 — Give each vendor a portal login
-
-**Admin → Suppliers → [supplier] → Portal logins → Create login** with their email.
-A new account shows a **one-time password** — pass it on securely; they sign in at
-`/portal/login` and can confirm their own orders and manage their products.
-
-(You can skip this at first and relay orders to them yourself — the self-serve portal
-is a convenience, not a requirement.)
-
----
-
-## Step 3 — Run a test order end to end (as a couple)
-
-1. Open `/design` in a normal browser (a fresh guest), **add a wedding date**, pick real
-   products, and place an order through "Reserve this design."
-2. **Supplier notification** — the vendor gets an email (and sees it in `/portal`) with
-   the items to confirm. *(If no email arrives, check `RESEND_API_KEY` + a verified
-   sender; the order itself still works.)*
-3. **Vendor confirms** their lines in `/portal` (or you set them in Admin → the order).
-4. **You confirm the whole order** — Admin → Orders → open it → Confirm (needs every
-   supplier line confirmed). The couple gets a **confirmation email** with your message.
-5. **Deposit** — take the 25% deposit **manually** for now (invoice / bank transfer).
-   There's no automated card payment yet; wire Stripe once the loop is proven.
-6. **Coordinate delivery** with the vendor as you would normally.
-
-That's the whole model, working, with only the deposit done by hand.
-
----
-
-## Step 4 — What to watch (did it work?)
-
-- **Demand**: of couples who open `/design`, how many generate a render? Add to basket?
-  Reach "Reserve"? That funnel is the product-market-fit signal.
-- **Render love**: do they react to the render? (Ask them.)
-- **Vendor effort**: how fast/easily did the vendor confirm? Any friction?
-- **Order integrity**: did availability, totals, and the deposit figure look right?
-
----
-
-## Known gaps during the pilot (and the workaround)
-
-| Gap | Workaround for the pilot |
-|---|---|
-| No automated payments | Invoice the deposit manually |
-| Emails need a verified Resend domain | Verify your domain, or relay to vendors/couples by hand |
-| No vendor payouts/statements yet | Reconcile and pay vendors manually (low volume) |
-| Demo suppliers are fictional | Switch them **off** (Step 1) so only real vendors show |
-| Delivery/returns are offline | Vendors deliver their own items, as they already do |
-
-None of these block a pilot — they're the backlog that makes it *scale* (see
-vendor-model.md §8).
-
----
-
-## If something looks wrong
-
-- **Renders are placeholders** → `OPENAI_API_KEY` isn't set in Vercel.
-- **No emails** → `RESEND_API_KEY`/sender not set, or the domain isn't verified in Resend.
-- **A real vendor's items aren't showing** → the supplier or the product is switched off,
-  or the product has no capacity *and* you expected a stock limit.
-- **A couple can't order a date** → capacity is used up or the date is blocked
-  (Admin → Availability).
-
----
-
-*Bottom line: to prove the concept you don't need to build more — you need real
-renders confirmed, a couple of real vendors on, and one real order walked through the
-loop above.*
+Payment collection, automatic damage recovery, external stock synchronisation and automatic Pinterest/Google Photos account imports are not promised by this rehearsal. Use the existing clearly labelled manual workflows until their separate implementations and agreements are complete.

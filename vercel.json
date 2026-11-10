@@ -1,5 +1,16 @@
 {
   "crons": [
-    { "path": "/api/cron/sync-ical", "schedule": "0 6 * * *" }
+    {
+      "path": "/api/cron/sync-ical",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/booking-notifications",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/support-notifications",
+      "schedule": "0 10 * * *"
+    }
   ]
 }

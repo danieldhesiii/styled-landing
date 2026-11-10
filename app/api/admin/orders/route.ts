@@ -26,7 +26,7 @@ export async function GET(req: Request) {
   let query = admin
     .from("orders")
     .select(
-      "id, reference, status, created_at, couple_name, email, wedding_date, venue_label, guest_count, subtotal_pence, deposit_pence, order_lines(supplier_status, supplier_name)"
+      "id, reference, status, created_at, couple_name, email, wedding_date, venue_label, guest_count, subtotal_pence, deposit_pence, order_lines(supplier_status, supplier_name, request_snapshot, line_total_pence)"
     )
     .order("created_at", { ascending: status === "requested" })
     .limit(limit);
@@ -49,7 +49,7 @@ export async function GET(req: Request) {
   counts.all = Object.values(counts).reduce((a, b) => a + b, 0);
 
   const orders = (data ?? []).map((o) => {
-    const lines = (o.order_lines ?? []) as { supplier_status: string; supplier_name: string }[];
+    const lines = (o.order_lines ?? []) as { supplier_status: string; supplier_name: string; request_snapshot?:unknown; line_total_pence?:number|null }[];
     return {
       id: o.id,
       reference: o.reference,
@@ -61,6 +61,8 @@ export async function GET(req: Request) {
       venueLabel: o.venue_label,
       guestCount: o.guest_count,
       subtotalPence: o.subtotal_pence,
+      hasUnpricedLines: lines.some(l=>l.line_total_pence===null),
+      requestOnly: lines.some(l=>!!l.request_snapshot),
       depositPence: o.deposit_pence,
       lines: {
         total: lines.length,

@@ -34,6 +34,11 @@ export function studioDestination(
   const url = new URL(current);
   url.searchParams.set("tab", tab);
   url.searchParams.delete("render");
+  // An explicit browse action opens results; product handoff URLs remain direct links.
+  if (tab === "catalogue") {
+    url.searchParams.delete("product");
+    url.searchParams.delete("preview");
+  }
   if (tab === "orders") url.searchParams.set("bookings", bookings);
   else url.searchParams.delete("bookings");
   url.hash = "";

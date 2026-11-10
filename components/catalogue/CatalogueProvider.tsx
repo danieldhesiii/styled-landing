@@ -7,6 +7,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
 } from "react";
 import type { CatalogueItem, Category } from "@/lib/types";
 
@@ -15,7 +16,10 @@ import type { CatalogueItem, Category } from "@/lib/types";
 // availability now come from the database. Non-shopping sections stay available
 // during loading or failure; purchase controls check the loading/error state.
 
+export type VenueScope={slug:string;name:string;policy:import("@/lib/venue-suppliers").VenueSupplierPolicy};
 interface CatalogueContextValue {
+  setVenueScope:(slug:string)=>void;
+  scope:VenueScope|null;
   items: CatalogueItem[];
   getItem: (id: string) => CatalogueItem | undefined;
   itemsForCategory: (category: Category) => CatalogueItem[];
@@ -38,27 +42,37 @@ export default function CatalogueProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const [venueSlug,setVenueSlug]=useState("");
+  const [scope,setScope]=useState<VenueScope|null>(null);
+  const sequence=useRef(0);
+  const currentSlug=useRef("");
+  const setVenueScope=useCallback((slug:string)=>{if(currentSlug.current===slug)return;currentSlug.current=slug;sequence.current++;setItems(null);setScope(null);setLoading(true);setVenueSlug(slug);},[]);
   const [items, setItems] = useState<CatalogueItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    const request=++sequence.current;
     setLoading(true);
     try {
-      const res = await fetch("/api/catalogue", { cache: "no-store" });
+      const res = await fetch(`/api/catalogue${venueSlug?`?venue=${encodeURIComponent(venueSlug)}`:""}`, { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data?.ok)
         throw new Error(data?.error ?? "Couldn't load the catalogue.");
-      setItems(data.items as CatalogueItem[]);
+      if(request!==sequence.current)return;
+      setScope(data.scope||null);
+      setItems([...(data.items as CatalogueItem[]), ...((data.demoItems ?? []) as CatalogueItem[])]);
       setError(null);
     } catch (err) {
+      if(request!==sequence.current)return;
+      setItems(null);setScope(null);
       setError(
         err instanceof Error ? err.message : "Couldn't load the catalogue.",
       );
     } finally {
-      setLoading(false);
+      if(request===sequence.current)setLoading(false);
     }
-  }, []);
+  }, [venueSlug]);
 
   useEffect(() => {
     load();
@@ -68,6 +82,7 @@ export default function CatalogueProvider({
     const available = items || [];
     const byId = new Map(available.map((item) => [item.id, item]));
     return {
+      scope,setVenueScope,
       items: available,
       getItem: (id) => byId.get(id),
       itemsForCategory: (category) =>
@@ -76,7 +91,7 @@ export default function CatalogueProvider({
       loading,
       error,
     };
-  }, [items, load, loading, error]);
+  }, [items, load, loading, error,scope,setVenueScope]);
 
   return (
     <CatalogueContext.Provider value={value}>

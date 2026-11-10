@@ -1,21 +1,25 @@
 "use client";
 import Link from "next/link";
+import VenueReviewCard from "./VenueReviewCard";
+import VenueSupplierFields from "./VenueSupplierFields";
 import VenueDetailsFields from "./VenueDetailsFields";
 import VenueRequestCard, { type VenueRequest } from "./VenueRequestCard";
 import VenueTour from "./VenueTour";
 import { venueEmbed } from "@/lib/venue-input";
 import VenuePhotoUpload from "./VenuePhotoUpload";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, useRef, type FormEvent } from "react";
 import type { VenueListing, VenuePackage } from "@/lib/venues";
 import { STYLES } from "@/lib/styles";
 type AdminVenue = VenueListing & {
   active: boolean;
   updated_at?: string;
   review_status?: string;
+  review_updated_at?:string;
 };
 const input =
   "mt-1 block w-full rounded-lg border border-sand bg-white p-3 text-sm";
 export default function AdminVenues({ initialId }: { initialId?: string }) {
+  const [filter,setFilter]=useState("review"),[search,setSearch]=useState(""),[creating,setCreating]=useState(false);
   const [venues, setVenues] = useState<AdminVenue[]>([]),
     [selected, setSelected] = useState(initialId || ""),
     [venue, setVenue] = useState<AdminVenue | null>(null),
@@ -26,21 +30,25 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
     [busy, setBusy] = useState(false),
     [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState<{
-      payload: AdminVenue;
+      payload: AdminVenue & {review_feedback?:unknown};
       status: string;
       updated_at: string;
     } | null>(null),
-    [members, setMembers] = useState<{ user_id: string }[]>([]),
+    [members, setMembers] = useState<{ user_id: string;email?:string }[]>([]),
     [blocks, setBlocks] = useState<{ day: string; note: string | null }[]>([]);
+  const loadSequence=useRef(0);
   const load = useCallback(async () => {
+    const sequence=++loadSequence.current;
     try {
       const list = await fetch("/api/admin/venues").then((r) => r.json());
+      if(sequence!==loadSequence.current)return;
       if (list.error) throw Error(list.error);
       setVenues(list.venues);
       if (selected) {
         const d = await fetch(`/api/admin/venues?id=${selected}`).then((r) =>
           r.json(),
         );
+        if(sequence!==loadSequence.current)return;
         if (d.error) throw Error(d.error);
         setVenue(d.venue);
         setPackages(d.packages);
@@ -58,6 +66,7 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
       }
       setLoaded(true);
     } catch (e) {
+      if(sequence!==loadSequence.current)return;
       setError(String(e));
     }
   }, [selected]);
@@ -76,7 +85,8 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
       });
       const d = await r.json();
       if (!r.ok) throw Error(d.error || "Could not save.");
-      setNotice("Saved.");
+      setNotice(body.action==="requestChanges"?"Feedback saved. The venue team can see the changes requested.":body.action==="approveDraft"?"Venue listing approved and published.":"Saved.");
+      if(body.action==="saveVenue")setCreating(false);
       if (body.action === "saveVenue" && d.id !== selected) setSelected(d.id);
       else await load();
       return true;
@@ -112,9 +122,9 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
   }
   return (
     <div>
-      <h1 className="font-serif text-4xl">Venues</h1>
+      <h1 className="font-serif text-4xl">Venue review inbox</h1>
       <p className="mt-2 text-sm text-ink/60">
-        Publish spaces, manage styling packages and respond to date enquiries.
+        Review new listings and changes here. Booking and viewing enquiries stay with each venue.
       </p>
       {error && (
         <p role="alert" className="my-4 rounded-lg border border-clay p-4">
@@ -126,33 +136,15 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
           {notice}
         </p>
       )}
-      <label className="my-6 block max-w-md text-sm">
-        Choose a venue
-        <select
-          value={selected}
-          onChange={(e) => {
-            setLoaded(false);
-            setSelected(e.target.value);
-          }}
-          className={input}
-        >
-          <option value="">Create a new venue</option>
-          {venues.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.name}
-              {v.review_status === "submitted"
-                ? " (review requested)"
-                : v.active
-                  ? ""
-                  : " (draft)"}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="mt-7 flex flex-wrap items-center gap-3">{[["review",`Awaiting review (${venues.filter(v=>v.review_status==="submitted").length})`],["changes","Changes requested"],["all","All venues"]].map(([id,label])=><button key={id} type="button" aria-pressed={filter===id} onClick={()=>setFilter(id)} className={`min-h-11 rounded-full px-4 py-3 text-sm ${filter===id?"bg-ink text-cream":"border border-sand"}`}>{label}</button>)}<button type="button" onClick={()=>{setCreating(true);setSelected("");}} className="ml-auto min-h-11 text-sm underline">+ Create a venue</button></div>
+      <label className="mt-5 block text-sm"><span className="sr-only">Find a venue</span><input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search venue names or locations" className="min-h-11 w-full rounded-xl border border-sand bg-white px-4"/></label>
+      {loaded&&<div className="my-6 divide-y divide-sand">{venues.filter(v=>(filter==="all"||filter==="review"&&v.review_status==="submitted"||filter==="changes"&&v.review_status==="changes_requested")&&`${v.name} ${v.location}`.toLowerCase().includes(search.toLowerCase())).map(v=><button key={v.id} type="button" onClick={()=>{setCreating(false);if(selected!==v.id)setLoaded(false);setSelected(v.id);}} className={`flex min-h-16 w-full flex-wrap items-center justify-between gap-3 py-4 text-left ${selected===v.id?"text-clay":""}`}><span><span className="block text-sm font-medium">{v.name}</span><span className="mt-1 block text-sm text-ink/60">{v.location} · {v.review_status==="submitted"?"Awaiting review":v.review_status==="changes_requested"?"Changes requested":v.active?"Published":"Draft"}</span></span><span className="text-sm underline">{v.review_status==="submitted"?"Review listing":"Manage venue"} →</span></button>)}{!venues.some(v=>(filter==="all"||filter==="review"&&v.review_status==="submitted"||filter==="changes"&&v.review_status==="changes_requested")&&`${v.name} ${v.location}`.toLowerCase().includes(search.toLowerCase()))&&<p className="rounded-xl bg-sand/25 p-5 text-sm text-ink/65">{search?"No venues match your search.":filter==="review"?"No listings awaiting review. New submissions will appear here.":"No venues in this view."}</p>}</div>}
       {!loaded ? (
         <p>Loading venues…</p>
-      ) : (
+      ) : selected||creating ? (
         <>
+          {selected&&draft&&<VenueReviewCard key={draft.updated_at} draft={draft} busy={busy} onApprove={()=>void action({action:"approveDraft",venueId:selected,updatedAt:draft.updated_at})} onChanges={message=>void action({action:"requestChanges",venueId:selected,updatedAt:draft.updated_at,message})}/>}
+          <details open={creating} className="mb-7 rounded-xl border border-sand p-5"><summary className="min-h-11 cursor-pointer py-3 font-medium">{creating?"New venue details":"Edit published listing"}</summary>
           <form
             key={`${selected}-${venue?.updated_at || "new"}`}
             onSubmit={saveVenue}
@@ -238,6 +230,7 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
               />
             </label>
             <VenueDetailsFields details={venue?.details} />
+            <VenueSupplierFields initial={venue?.details?.supplier_policy} staff isNew={!venue} />
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -261,67 +254,11 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
               </Link>
             )}
           </form>
+          </details>
           {selected && (
             <>
-              {draft && (
-                <section className="mt-8 rounded-xl bg-blush p-6">
-                  <h2 className="font-serif text-3xl">
-                    Venue team’s{" "}
-                    {draft.status === "submitted"
-                      ? "submitted listing"
-                      : "draft"}
-                  </h2>
-                  <p className="mt-3 text-sm">
-                    Review these proposed public details before publishing. The
-                    live page has not changed.
-                  </p>
-                  <dl className="mt-5 grid gap-4 sm:grid-cols-2">
-                    {Object.entries(draft.payload)
-                      .filter(([k]) => k !== "active")
-                      .map(([k, v]) => (
-                        <div key={k} className="min-w-0">
-                          <dt className="text-xs font-medium uppercase tracking-wide text-clay">
-                            {k.replace(/_/g, " ")}
-                          </dt>
-                          <dd className="mt-2 whitespace-pre-wrap break-words text-sm">
-                            {v !== null && typeof v === "object"
-                              ? JSON.stringify(v, null, 2)
-                              : String(v ?? "Not supplied")}
-                          </dd>
-                        </div>
-                      ))}
-                  </dl>
-                  {draft.payload.hero_image && (
-                    <img
-                      src={draft.payload.hero_image}
-                      alt="Proposed main venue photograph"
-                      className="mt-5 aspect-video w-full max-w-md rounded-xl object-cover"
-                    />
-                  )}
-                  <VenueTour
-                    management
-                    name={draft.payload.name}
-                    url={venueEmbed(draft.payload.matterport_url, "tour")}
-                  />
-                  {draft.status === "submitted" && (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() =>
-                        void action({
-                          action: "approveDraft",
-                          venueId: selected,
-                        })
-                      }
-                      className="mt-6 rounded-full bg-ink px-5 py-3 text-sm text-cream"
-                    >
-                      Approve & publish submitted listing
-                    </button>
-                  )}
-                </section>
-              )}
-              <section className="mt-8 rounded-xl border border-sand p-6">
-                <h2 className="font-serif text-2xl">Venue team access</h2>
+              <details className="mt-5 rounded-xl border border-sand p-5">
+                <summary className="min-h-11 cursor-pointer py-3 font-serif text-2xl">Venue team access</summary>
                 <p className="mt-2 text-sm text-ink/60">
                   Link an existing verified Styled account. The team can manage
                   only this venue through /venue-portal.
@@ -330,9 +267,9 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
                   {members.map((m) => (
                     <li
                       key={m.user_id}
-                      className="flex flex-wrap items-center justify-between gap-3 text-xs"
+                      className="flex flex-wrap items-center justify-between gap-3 text-sm"
                     >
-                      <span className="break-all">{m.user_id}</span>
+                      <span className="break-all">{m.email||`Account ${m.user_id.slice(0,8)}`}</span>
                       <button
                         type="button"
                         disabled={busy}
@@ -366,10 +303,11 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
                   className="mt-5 flex flex-wrap gap-3"
                 >
                   <input
-                    name="userId"
+                    name="email"
+                    type="email"
                     required
-                    placeholder="Existing account user ID"
-                    aria-label="Existing account user ID"
+                    placeholder="Existing team member’s email"
+                    aria-label="Existing team member’s email"
                     className="min-w-0 flex-1 rounded-lg border border-sand p-3 text-sm"
                   />
                   <button
@@ -379,9 +317,9 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
                     Add team member
                   </button>
                 </form>
-              </section>
-              <section className="mt-8 rounded-xl border border-sand p-6">
-                <h2 className="font-serif text-2xl">Unavailable dates</h2>
+              </details>
+              <details className="mt-5 rounded-xl border border-sand p-5">
+                <summary className="min-h-11 cursor-pointer py-3 font-serif text-2xl">Calendar and blocked dates</summary>
                 <p className="mt-2 text-sm text-ink/60">
                   Block dates booked outside Styled. Confirmed Styled bookings
                   are blocked automatically.
@@ -448,13 +386,15 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
                     </button>
                   </div>
                 ))}
-              </section>
+              </details>
+              <details className="mt-5 rounded-xl border border-sand p-5"><summary className="min-h-11 cursor-pointer py-3 font-serif text-2xl">Venue photographs</summary>
               <VenuePhotoUpload
                 venueId={selected}
                 onUploaded={() => void load()}
               />
-              <section className="mt-12">
-                <h2 className="font-serif text-3xl">Styling packages</h2>
+              </details>
+              <details className="mt-5 rounded-xl border border-sand p-5">
+                <summary className="min-h-11 cursor-pointer py-3 font-serif text-2xl">Styling packages</summary>
                 <p className="mt-2 text-sm text-ink/60">
                   Prices are stored in pence: £1,000 = 100000.
                 </p>
@@ -590,9 +530,9 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
                     Add package
                   </button>
                 </form>
-              </section>
-              <section className="mt-12">
-                <h2 className="font-serif text-3xl">Enquiries</h2>
+              </details>
+              <details className="mt-5 rounded-xl border border-sand p-5">
+                <summary className="min-h-11 cursor-pointer py-3 font-serif text-2xl">Booking and viewing enquiries ({enquiries.length})</summary>
                 {!enquiries.length && (
                   <p className="mt-4 text-sm text-ink/60">
                     No enquiries for this venue yet.
@@ -613,11 +553,11 @@ export default function AdminVenues({ initialId }: { initialId?: string }) {
                     }
                   />
                 ))}
-              </section>
+              </details>
             </>
           )}
         </>
-      )}
+      ) : null}
     </div>
   );
 }

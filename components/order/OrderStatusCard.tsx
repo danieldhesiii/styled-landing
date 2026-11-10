@@ -1,3 +1,6 @@
+"use client";
+import { useEffect, useState } from "react";
+import BookingOperations from "@/components/booking/BookingOperations";
 import { dateRangeLabel } from "@/lib/booking-dates";
 import { formatGBP } from "@/lib/quote";
 
@@ -9,13 +12,17 @@ export interface OrderViewLine {
   supplier: string;
   unit: string | null;
   quantity: number;
-  lineTotalPence: number;
+  lineTotalPence: number | null;
+  requestOnly?: boolean;
+  priceOnRequest?: boolean;
   supplierStatus: "pending" | "confirmed" | "declined";
   neededDate: string | null;
   returnDate?: string | null;
 }
 
 export interface OrderView {
+  hasUnpricedLines?: boolean;
+  requestOnly?: boolean;
   id: string;
   reference: string;
   status: "requested" | "confirmed" | "declined" | "cancelled" | "deposit_paid";
@@ -36,17 +43,17 @@ const BANNER: Record<
 > = {
   requested: {
     title: "Awaiting manual confirmation",
-    body: "Styled is checking products, delivery and wedding dates with each supplier. This is a request, not a confirmed booking. If the dates do not work, we will discuss alternatives with you.",
+    body: "Styled is checking with suppliers. Nothing is booked yet.",
     tone: "border-clay/30 bg-clay/10",
   },
   confirmed: {
     title: "Confirmed",
-    body: "Supplier availability has been confirmed. Check the final quote and agree payment and delivery or collection arrangements before proceeding.",
+    body: "Availability confirmed. Check the final quote and agreed payment and delivery arrangements.",
     tone: "border-sage/40 bg-sage/15",
   },
   declined: {
     title: "We couldn't take this order",
-    body: "We're sorry. Your stylist has explained why below.",
+    body: "See the message from Styled below for the reason and next steps.",
     tone: "border-red-200 bg-red-50",
   },
   cancelled: {
@@ -56,7 +63,7 @@ const BANNER: Record<
   },
   deposit_paid: {
     title: "Deposit received",
-    body: "This request is marked as deposit received. Refer to your agreed quote and payment confirmation for amounts, dates and delivery or collection arrangements.",
+    body: "Deposit marked as received. Check your agreed quote and payment confirmation.",
     tone: "border-sage/40 bg-sage/15",
   },
 };
@@ -76,12 +83,24 @@ const LINE_BADGE: Record<
   OrderViewLine["supplierStatus"],
   { label: string; cls: string }
 > = {
-  confirmed: { label: "Confirmed", cls: "bg-sage/15 text-sage" },
+  confirmed: { label: "Availability agreed", cls: "bg-sage/15 text-sage" },
   pending: { label: "Waiting for supplier", cls: "bg-ink/5 text-ink/50" },
   declined: { label: "Not available", cls: "bg-red-100 text-red-700" },
 };
 
-export default function OrderStatusCard({ order }: { order: OrderView }) {
+export default function OrderStatusCard({ order: initialOrder }: { order: OrderView }) {
+  const [order, setOrder] = useState(initialOrder);
+  const [refreshError, setRefreshError] = useState("");
+  useEffect(() => { setOrder(initialOrder); }, [initialOrder]);
+  async function refreshSummary() {
+    try {
+      const response = await fetch(`/api/orders/${initialOrder.id}`, { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok || !result.order) throw Error("Could not refresh the summary.");
+      setOrder(result.order);
+      setRefreshError("");
+    } catch { setRefreshError("Your change was saved. Refresh updates to reload the request summary."); }
+  }
   const banner = BANNER[order.status];
   const groups = new Map<string, OrderViewLine[]>();
   for (const l of order.lines)
@@ -110,8 +129,8 @@ export default function OrderStatusCard({ order }: { order: OrderView }) {
         <p className="mt-1 text-sm text-ink/65">{banner.body}</p>
         {order.coupleMessage && (
           <p className="mt-3 border-l-2 border-clay/50 pl-3 text-sm text-ink">
-            <span className="block text-[11px] uppercase tracking-wide text-ink/40">
-              Message from your stylist
+            <span className="block text-sm uppercase tracking-wide text-ink/40">
+              Message from Styled
             </span>
             {order.coupleMessage}
           </p>
@@ -121,7 +140,7 @@ export default function OrderStatusCard({ order }: { order: OrderView }) {
       <div className="space-y-5 px-6 py-5">
         {[...groups].map(([supplier, lines]) => {
           const declined = lines.some((l) => l.supplierStatus === "declined");
-          const allIn = lines.every((l) => l.supplierStatus === "confirmed");
+          const allIn = lines.every((l) => !l.requestOnly && l.supplierStatus === "confirmed");
           const badge = declined
             ? LINE_BADGE.declined
             : allIn
@@ -132,7 +151,7 @@ export default function OrderStatusCard({ order }: { order: OrderView }) {
               <div className="flex items-center justify-between gap-2">
                 <h3 className="font-medium text-ink">{supplier}</h3>
                 <span
-                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${badge.cls}`}
+                  className={`rounded-full px-2.5 py-0.5 text-sm font-medium ${badge.cls}`}
                 >
                   {badge.label}
                 </span>
@@ -141,23 +160,23 @@ export default function OrderStatusCard({ order }: { order: OrderView }) {
                 {lines.map((l, i) => (
                   <li
                     key={i}
-                    className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                    className="flex flex-col items-start justify-between gap-2 px-3 py-3 text-sm sm:flex-row sm:items-center sm:gap-3"
                   >
                     <span className="text-ink/80">
                       {l.name}
                       <span className="text-ink/40"> × {l.quantity}</span>
                       <span className="mt-1 block text-xs text-clay">Requested hire: {dateRangeLabel(l.neededDate, l.returnDate ?? order.weddingDate)}</span>
                     </span>
-                    <span className="flex items-center gap-2">
-                      {l.supplierStatus !== "pending" && (
+                    <span className="flex w-full items-center justify-between gap-2 sm:w-auto">
+                      {lines.length > 1 && l.supplierStatus !== "pending" && (
                         <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${LINE_BADGE[l.supplierStatus].cls}`}
+                          className={`rounded-full px-2 py-0.5 text-sm font-medium ${LINE_BADGE[l.supplierStatus].cls}`}
                         >
                           {LINE_BADGE[l.supplierStatus].label}
                         </span>
                       )}
-                      <span className="tabular-nums text-ink">
-                        {formatGBP(l.lineTotalPence / 100)}
+                      <span className="ml-auto tabular-nums text-ink">
+                        {l.priceOnRequest || l.lineTotalPence === null ? "Price on request" : formatGBP(l.lineTotalPence / 100)}
                       </span>
                     </span>
                   </li>
@@ -168,17 +187,16 @@ export default function OrderStatusCard({ order }: { order: OrderView }) {
         })}
       </div>
 
+      <div className="px-6 pb-4"><BookingOperations orderId={order.id} role="customer" onSaved={()=>void refreshSummary()}/>{refreshError&&<p role="status" className="mt-3 text-xs text-clay">{refreshError}</p>}</div>
       <div className="border-t border-sand bg-cream/50 px-6 py-4 text-sm">
         <div className="flex justify-between">
           <span className="text-ink/60">Estimated item total</span>
           <span className="font-serif text-lg text-ink">
-            {formatGBP(order.subtotalPence / 100)}
+            {order.hasUnpricedLines ? order.subtotalPence > 0 ? `${formatGBP(order.subtotalPence / 100)} + quote pending` : "Awaiting quote" : formatGBP(order.subtotalPence / 100)}
           </span>
         </div>
         <p className="mt-3 text-xs leading-relaxed text-ink/70">
-          Catalogue estimate only; this is not a payment receipt or an amount due.
-          Final prices, delivery or collection costs, any deposit and payment dates
-          must be agreed separately. Submitting a request does not take payment.
+          Estimate only, not an amount due or payment receipt. Check the full quote for fees, deposits and payment dates.
         </p>
         <a href="/service-info#support" className="mt-2 inline-block text-xs text-ink underline">Ask about your quote or request</a>
       </div>

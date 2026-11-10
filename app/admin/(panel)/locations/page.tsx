@@ -80,10 +80,7 @@ export default function LocationsPage() {
     <div className="max-w-3xl">
       <h1 className="font-serif text-4xl">Locations & delivery</h1>
       <p className="mt-4 text-sm leading-relaxed text-ink/60">
-        Add only details confirmed with the business. Supplier base postcodes
-        stay private; couples see rounded distances and stated delivery
-        coverage. A delivery radius does not confirm fees, access or a delivery
-        slot.
+        Use business-confirmed details. Base postcodes stay private. Delivery coverage does not confirm fees or a slot.
       </p>
       <form
         className="mt-8 space-y-5 rounded-2xl border border-sand bg-white p-6"

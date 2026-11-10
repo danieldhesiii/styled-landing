@@ -66,3 +66,120 @@ select:not([multiple]):not([size]) {
 @media (forced-colors: active) {
   select:not([multiple]):not([size]) { appearance: auto; background-image: none; }
 }
+
+/* Keep phone forms readable without Safari zooming in on every field. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+  select, textarea {
+    font-size: 16px;
+    max-width: 100%;
+    min-width: 0;
+  }
+}
+
+/* Restrained motion: controls respond without moving the layout. */
+:root { --styled-ease: cubic-bezier(.22, 1, .36, 1); }
+button, a, input, select, textarea, summary {
+  transition-property: color, background-color, border-color, box-shadow, opacity;
+  transition-duration: 220ms;
+  transition-timing-function: var(--styled-ease);
+}
+button:disabled { cursor: not-allowed; }
+img { max-width: 100%; }
+h1, h2, h3 { text-wrap: balance; }
+p { text-wrap: pretty; }
+@keyframes studioReveal {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes panelReveal {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .studio-page-enter { animation: studioReveal 420ms var(--styled-ease) both; }
+  .studio-panel:not([hidden]) { animation: panelReveal 300ms var(--styled-ease) both; }
+  dialog[open] { animation: panelReveal 250ms var(--styled-ease) both; }
+  dialog::backdrop { transition: opacity 220ms ease; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* The catalogue uses a quieter gallery layout so product photography leads. */
+.catalogue-gallery { background: #fcfaf6; color: #312a25; }
+.catalogue-gallery > div:first-of-type { border-bottom: 1px solid #d9cfc1; padding-bottom: 1.25rem; }
+.catalogue-gallery h2 { font-size: clamp(2rem, 4vw, 3.65rem); line-height: 1.08; letter-spacing: -.035em; }
+.catalogue-gallery [aria-label="Catalogue view"] { background: #f1ebe2; border-color: #d9cfc1; }
+.catalogue-gallery [aria-label="Catalogue view"] [aria-pressed="true"] { background: #45352f; color: white; border-color: #45352f; }
+.catalogue-gallery article[id^="item-"] { background: #fffefa; border-color: #e2d9cd; border-radius: .35rem; }
+.catalogue-gallery article[id^="item-"] h3 button { text-decoration: none; }
+.catalogue-gallery article[id^="item-"] h3 button:hover { text-decoration: underline; text-underline-offset: .2em; }
+.catalogue-gallery article[id^="item-"] > button:first-child { background: #f4efe7; border-bottom: 1px solid #e8dfd2; }
+
+@keyframes viewFade {
+  from { opacity: .55; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  main, .view-fade { animation: viewFade 200ms ease-out; }
+}
+
+.category-index { container-type: inline-size; }
+.category-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .35rem; }
+.category-options button { min-height: 44px; padding: .4rem .65rem; border: 1px solid #ded5ca; border-radius: .3rem; background: #fffdf9; color: #483e36; font-size: .875rem; text-align: left; line-height: 1.2; }
+.category-options button:hover { background: #f2ece3; }
+.category-options button[aria-pressed="true"] { background: #45352f; border-color: #45352f; color: white; }
+.category-options [data-secondary] { display: none; }
+@container (min-width: 38rem) {
+  .category-options { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .category-options [data-secondary] { display: block; }
+  .category-expand { display: none; }
+}
+@container (min-width: 58rem) {
+  .category-options { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+
+/* Styled motion palette: quiet reveals, tactile controls and gliding drawers. */
+:root {
+  --styled-motion-fast: 160ms;
+  --styled-motion-panel: 360ms;
+}
+@keyframes styledDrawer {
+  from { opacity: .5; transform: translateX(24px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes styledSheet {
+  from { opacity: .5; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes styledBackdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  button, a, summary {
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-timing-function: var(--styled-ease);
+  }
+  button:not(:disabled):active { transform: translateY(1px); }
+  dialog[open] { animation: styledSheet var(--styled-motion-panel) var(--styled-ease) both; }
+  dialog[open][class*="inset-y-0"] { animation-name: styledDrawer; }
+  dialog[open]::backdrop { animation: styledBackdrop 280ms ease-out both; }
+  details[open] > :not(summary) { animation: panelReveal 240ms var(--styled-ease) both; }
+  [aria-label="Browse options"], #mobile-menu:not([hidden]) {
+    animation: panelReveal 260ms var(--styled-ease) both;
+  }
+  .catalogue-gallery article[id^="item-"] img {
+    transition: transform 650ms var(--styled-ease);
+  }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .catalogue-gallery article[id^="item-"] > button:first-child { overflow: hidden; }
+  .catalogue-gallery article[id^="item-"] > button:first-child:hover img { transform: scale(1.025); }
+}

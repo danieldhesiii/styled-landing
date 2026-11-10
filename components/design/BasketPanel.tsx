@@ -1,11 +1,12 @@
 "use client";
 
+import {supplierMinimumShortfalls} from "@/lib/supplier-minimum";
 import ItemHireDates from "@/components/wedding/ItemHireDates";
 import { hireDateError, itemHireDates, type HireDates } from "@/lib/booking-dates";
 import HelpButton from "@/components/help/HelpButton";
 import { useMemo, useState } from "react";
 import type { BasketLine } from "@/lib/types";
-import { buildQuote, formatGBP, DEPOSIT_RATE } from "@/lib/quote";
+import { buildQuote, formatGBP } from "@/lib/quote";
 import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 import { useBasketAvailability } from "@/components/availability/useAvailability";
 import { availabilityLabel } from "@/lib/availability";
@@ -48,6 +49,7 @@ export default function BasketPanel({
   } = useCatalogue();
   const [refreshKey, setRefreshKey] = useState(0);
   // Instant preview while editing; checkout asks the server for the exact quote.
+  const minimums=supplierMinimumShortfalls(basket,getItem);
   const quote = useMemo(() => buildQuote(basket, getItem), [basket, getItem]);
   // Does everything in the basket fit on the wedding date, at these quantities?
   const availability = useBasketAvailability(
@@ -70,8 +72,8 @@ export default function BasketPanel({
       line.quantity > 10000,
   );
   const stockBlocked =
-    !availability.allAvailable ||
     basket.some((line) => {
+      if (getItem(line.itemId)?.requestOnly) return false;
       const a = availability.lines[line.itemId];
       return (
         !a || a.status === "unavailable" || line.quantity > quantityLimit(a)
@@ -98,28 +100,25 @@ export default function BasketPanel({
       <div className="border-b border-sand px-5 py-4">
         <div className="flex items-baseline justify-between">
           <h2 className="font-serif text-xl text-ink">Your basket</h2>
-          <span className="text-xs text-ink/40">
+          <span className="text-sm text-ink/40">
             {guestCount} guests · {tables} tables
           </span>
         </div>
-        <p className="mt-2 text-xs leading-relaxed text-ink/60">
-          Review your pieces before requesting confirmation.
-        </p>
         <div className="mt-2">
           <HelpButton
             topic="basket"
-            label="How the basket works"
-            className="text-xs text-ink/60 underline"
+            label="Basket help"
+            className="text-sm text-ink/60 underline"
           />
         </div>
         {hasBudget && (
           <div className="mt-3">
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between text-sm">
               <span className="text-ink/50">Budget {formatGBP(budget)}</span>
               <span className={overBudget ? "text-clay" : "text-sage"}>
                 {overBudget
                   ? `${formatGBP(quote.subtotal - budget)} over`
-                  : `${formatGBP(budget - quote.subtotal)} to spare`}
+                  : quote.hasUnpricedItems ? "Budget pending supplier quote" : `${formatGBP(budget - quote.subtotal)} to spare`}
               </span>
             </div>
             <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-sand">
@@ -168,23 +167,24 @@ export default function BasketPanel({
                     <p className="text-sm font-medium text-ink">
                       {group.supplier}
                     </p>
-                    <p className="text-[11px] text-ink/40">{group.area}</p>
+                    <p className="text-sm text-ink/40">{group.area}</p>
                   </div>
                   <span className="font-serif text-sm text-ink">
-                    {formatGBP(group.total)}
+                    {group.hasUnpricedItems ? group.total > 0 ? `${formatGBP(group.total)} + quote pending` : "Price on request" : formatGBP(group.total)}
                   </span>
                 </div>
                 <div className="mt-2 space-y-2">
                   {group.lines.map((line) => (
                     <div key={line.item.id} className="overflow-hidden rounded-xl border border-sand bg-cream/50">
                       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-3 px-3 py-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium leading-snug text-ink">
+                        <div className="flex min-w-0 items-center gap-3">
+                          {line.item.image && <img src={line.item.image} alt="" className="h-14 w-14 shrink-0 rounded-lg bg-white object-contain" loading="lazy" />}
+                          <div className="min-w-0"><p className="text-sm font-medium leading-snug text-ink">
                             {line.item.name}
                           </p>
-                          <p className="text-[11px] text-ink/40">
-                            {formatGBP(line.item.unitPrice)} {line.item.unit}
-                          </p>
+                          <p className="text-sm text-ink/40">
+                            {line.item.priceOnRequest ? "Price on request" : line.item.requestOnly && line.item.demoPricing && line.lineTotal !== null ? `${formatGBP(line.lineTotal / line.quantity)} one-day package estimate` : `${formatGBP(line.item.unitPrice)} ${line.item.unit}`}
+                          </p></div>
                         </div>
                         <div className="col-start-1 row-start-2 flex items-center gap-1">
                           <button
@@ -201,7 +201,7 @@ export default function BasketPanel({
                           >
                             −
                           </button>
-                          <span className="w-7 text-center text-xs tabular-nums text-ink">
+                          <span className="w-7 text-center text-sm tabular-nums text-ink">
                             {line.quantity}
                           </span>
                           <button
@@ -222,7 +222,7 @@ export default function BasketPanel({
                           </button>
                         </div>
                         <span className="col-start-2 row-start-2 text-right text-sm font-medium text-ink tabular-nums">
-                          {formatGBP(line.lineTotal)}
+                          {line.lineTotal === null ? "Price on request" : formatGBP(line.lineTotal)}
                         </span>
                         <button
                           type="button"
@@ -246,7 +246,7 @@ export default function BasketPanel({
                         const { label } = availabilityLabel(a);
                         return (
                           <div
-                            className={`mt-2 pl-3 text-[11px] ${a.status === "unavailable" ? "text-red-700" : "text-clay"}`}
+                            className={`mt-2 pl-3 text-sm ${a.status === "unavailable" ? "text-red-700" : "text-clay"}`}
                           >
                             {label}
                             {a.status === "unavailable"
@@ -276,30 +276,26 @@ export default function BasketPanel({
         )}
       </div>
 
+      {minimums.length>0&&<div role="status" className="border-t border-sand bg-blush/20 px-5 py-4 text-sm">{minimums.map(m=><p key={m.supplierId} className="mt-1">Add {formatGBP(m.shortfallPence/100)} more in hire items with {m.supplier} (minimum {formatGBP(m.minimumPence/100)}).</p>)}</div>}
       {/* Totals + checkout */}
       <div className="border-t border-sand px-5 py-4">
         <div className="flex items-baseline justify-between">
-          <span className="text-sm text-ink/60">Estimated total</span>
+          <span className="text-sm text-ink/60">{quote.hasUnpricedItems ? "Known estimate" : "Estimated item subtotal"}</span>
           <span className="font-serif text-2xl text-ink">
-            {formatGBP(quote.subtotal)}
+            {quote.hasUnpricedItems && quote.subtotal === 0 ? "Price on request" : formatGBP(quote.subtotal)}
           </span>
         </div>
-        <div className="mt-1 flex items-baseline justify-between">
-          <span className="text-xs text-ink/40">
-            Illustrative deposit ({Math.round(DEPOSIT_RATE * 100)}%)
-          </span>
-          <span className="text-sm text-clay">{formatGBP(quote.deposit)}</span>
-        </div>
+        <p className="mt-2 text-sm text-ink/60">{quote.lines.some(l => l.item.requestOnly && !!l.item.demoPricing) ? `Packages include listed delivery, setup, collection and security deposit.${quote.hasUnpricedItems ? " Unpriced items need a separate quote." : " Other costs need confirmation."}` : quote.hasUnpricedItems ? "Unpriced items are excluded. Prices and additional costs need a supplier quote." : "Delivery, setup, collection and any security deposit need confirmation."}</p>
         {blocker && (
           <div
             id="basket-blocker"
             role="status"
-            className="mt-3 text-xs text-clay"
+            className="mt-3 text-sm text-clay"
           >
             {blocker}
           </div>
         )}
-        <div className="mt-2 flex flex-wrap gap-3 text-xs">
+        <div className="mt-2 flex flex-wrap gap-3 text-sm">
           {onChangeDates && (
             <button
               type="button"
@@ -331,16 +327,16 @@ export default function BasketPanel({
         <button
           type="button"
           onClick={() => {
-            if (!blocker) onCheckout();
+            if (!blocker&&!minimums.length) onCheckout();
           }}
           aria-describedby={blocker ? "basket-blocker" : undefined}
-          disabled={!!blocker}
+          disabled={!!blocker||minimums.length>0}
           className="mt-4 w-full rounded-full bg-ink px-5 py-3 text-sm text-cream transition-colors hover:bg-ink/90 disabled:cursor-not-allowed disabled:bg-ink/30"
         >
           Request supplier confirmation
         </button>
-        <p className="mt-2 text-center text-[11px] text-ink/40">
-          No payment or reservation until you agree the final quote.
+        <p className="mt-2 text-center text-sm text-ink/40">
+          A request does not reserve stock or take payment.
         </p>
       </div>
     </div>

@@ -3,24 +3,20 @@ export const metadata = { title: "For venues & suppliers · Styled" };
 export default function BusinessPage() {
   return (
     <section className="py-12 sm:py-16">
-      <p className="text-xs uppercase tracking-widest text-clay">
+      <p className="text-sm uppercase tracking-widest text-clay">
         For businesses
       </p>
       <h1 className="mt-4 max-w-3xl font-serif text-5xl sm:text-6xl">
-        Your business on Styled
+        Choose your business workspace
       </h1>
       <p className="mt-5 max-w-2xl leading-relaxed text-ink/60">
-        Choose the workspace for what your business offers. Venue listings and
-        supplier products have separate management tools, while customers plan
-        their wedding in their own space.
+        Choose a workspace to manage your venue or products.
       </p>
       <div className="mt-10 grid gap-10 sm:grid-cols-2">
         <section className="border-t border-sand pt-6">
-          <h2 className="font-serif text-3xl">Venues</h2>
+          <h2 className="font-serif text-3xl">Venue owners</h2>
           <p className="mt-4 text-sm leading-relaxed text-ink/60">
-            Publish your venue, add photography, video and walkthroughs, and
-            respond to viewing and booking requests. Create a private draft
-            before review.
+            Manage your listing, photos and enquiries. Submit your draft for review.
           </p>
           <div className="mt-6 flex flex-wrap gap-5 text-sm">
             <Link
@@ -30,16 +26,16 @@ export default function BusinessPage() {
               List your venue
             </Link>
             <Link href="/venue-portal" className="self-center underline">
-              Open venue workspace →
+              Venue login →
             </Link>
+
           </div>
+          <Link href="/venues/partner/preview" className="mt-4 inline-flex min-h-11 items-center text-sm text-ink/60 underline">Preview venue settings →</Link>
         </section>
         <section className="border-t border-sand pt-6">
-          <h2 className="font-serif text-3xl">Suppliers</h2>
+          <h2 className="font-serif text-3xl">Product suppliers</h2>
           <p className="mt-4 text-sm leading-relaxed text-ink/60">
-            Manage the products couples can hire or buy, stock availability and
-            fulfilment of supplier orders. Apply to join, or sign in to an
-            existing supplier account.
+            Manage products, availability and supplier requests.
           </p>
           <div className="mt-6 flex flex-wrap gap-5 text-sm">
             <Link
@@ -49,18 +45,19 @@ export default function BusinessPage() {
               Join as a supplier
             </Link>
             <Link href="/portal/login" className="self-center underline">
-              Open supplier workspace →
+              Supplier login →
             </Link>
+
           </div>
+          <Link href="/business/supplier-tour" className="mt-4 inline-flex min-h-11 items-center text-sm text-ink/60 underline">Preview workspace →</Link>
         </section>
       </div>
       <p className="mt-10 max-w-2xl text-sm leading-relaxed text-ink/60">
-        Offer both a venue and hire products? You can use both workspaces with
-        the same account once Styled links your supplier access. Contact{" "}
+        Need both workspaces? Ask{" "}
         <a href="mailto:support@styleduk.com" className="underline">
           support@styleduk.com
         </a>{" "}
-        for setup.
+        to link your access.
       </p>
       <Link
         href="/design?tab=wedding"

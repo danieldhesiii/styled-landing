@@ -4,6 +4,7 @@ const fs = require('node:fs'), path = require('node:path'), Module = require('no
 function load(file, stubs = {}) {
   const absolute = path.resolve(file), m = new Module(absolute, module); m.paths = module.paths;
   m.require = id => {
+    if (id === '@/lib/server/development-request-catalogue') return { developmentRequestCatalogue: () => [], requestSnapshot: () => { throw Error('No development requests in this fixture'); } };
     if (Object.hasOwn(stubs, id)) return stubs[id];
     if (id === 'next/server') return { NextResponse: { json: (v, o) => new Response(JSON.stringify(v), o) } };
     if (id.startsWith('@/')) return load(id.slice(2) + '.ts', stubs);
@@ -41,7 +42,7 @@ test('venue booking period includes event and setup/pack-down, while viewing rem
   const viewing=validateVenueEnquiry({...base,requestKind:'viewing',viewingTime:'14:00'},day(0));
   assert.equal(viewing.value.booking_start,null); assert.equal(viewing.value.booking_end,null);
 });
-function orderHarness() {
+function orderHarness(venueItems) {
   const calls=[];
   const admin={from:table=>{
     const q={}; for(const name of ['select','eq','gte','order','limit','insert'])q[name]=()=>q;
@@ -49,12 +50,14 @@ function orderHarness() {
   },rpc:async(name,args)=>{calls.push({name,args});return {data:'test-order'};}};
   const items = new Map(['chairs','flowers'].map(id=>[id,{id,name:id,supplier:'Same supplier',supplierId:'supplier',leadTimeDays:0}]));
   const stubs={
-    '@/lib/server/session':{requireUser:async()=>({ok:true,user:{id:'customer'},supabase:admin})},
+    '@/lib/server/venue-catalogue':{venueCatalogue:async(_slug,items)=>({items:venueItems===undefined?items:venueItems,scope:{name:"Venue",slug:"venue",policy:{mode:"styled"}}})},
+    '@/lib/server/session':{requireUser:async()=>({ok:true,user:{id:'customer',email:'customer@example.invalid',email_confirmed_at:'2026-01-01T00:00:00Z',is_anonymous:false},supabase:admin})},
     '@/lib/supabase/admin':{createAdminClient:()=>admin},
     '@/lib/server/limits':{clientIpHash:()=>null},
     '@/lib/server/env':{env:{maxOrdersPerDay:20,maxOrdersPerIpPerDay:50}},
     '@/lib/server/quote':{priceBasket:async()=>({ok:true,lines:[...items.keys()].map(itemId=>({itemId,quantity:1})),items,quote:{lines:[...items.values()].map(item=>({item,quantity:1,unitPricePence:100,lineTotalPence:100})),subtotalPence:200,commissionPence:20,depositPence:0}}),publicQuote:()=>({})},
     '@/lib/server/availability':{checkQuantities:async(_db,lines,end,_exclude,start)=>{calls.push({lines,start,end});return new Map(lines.map(l=>[l.itemId,{status:'available'}]));}},
+    '@/lib/server/booking-notifications':{dispatchBookingNotifications:async()=>({processed:0})},
     '@/lib/server/notify':{notifySuppliersOfOrder:async()=>{},notifyStaffOfOrder:async()=>false},
   };
   const real=load('lib/server/orders.ts',stubs);
@@ -74,4 +77,11 @@ test('order submission checks and stores each item’s own range even for the sa
 test('invalid item dates never write an order or get silently replaced by defaults',async()=>{
   const {calls,route}=orderHarness();const r=await route.POST(request({chairs:{start:day(92),end:day(91)}}));
   assert.equal(r.status,400);assert.equal(calls.some(c=>c.name==='create_order'),false);
+});
+
+test('venue-scoped order rejects products outside the venue supplier route before writing',async()=>{
+ const {calls,route}=orderHarness([]);
+ const original=await request({chairs:defaults,flowers:defaults}).json();
+ const r=await route.POST(new Request('https://styled.test/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...original,venueSlug:'venue'})}));
+ assert.equal(r.status,422);assert.equal(calls.some(c=>c.name==='create_order'),false);
 });

@@ -1,3 +1,5 @@
+import PageMotion from "@/components/ui/PageMotion";
+import OutsideDismiss from "@/components/ui/OutsideDismiss";
 import type { Metadata } from "next";
 import "./globals.css";
 import SupportProvider from "@/components/support/SupportProvider";
@@ -44,7 +46,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-sans antialiased"><SupportProvider>{children}</SupportProvider></body>
+      <body className="font-sans antialiased"><OutsideDismiss /><PageMotion /><SupportProvider>{children}</SupportProvider></body>
     </html>
   );
 }

@@ -7,6 +7,7 @@ import { classifyAvailability, isValidDay, todayUtc } from "@/lib/availability";
 import { hireDateError } from "@/lib/booking-dates";
 import { deliveryError } from "@/lib/wedding";
 import { suggestedQty } from "@/lib/quote";
+import { developmentRequestCatalogue } from "@/lib/server/development-request-catalogue";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,7 @@ export async function GET(req: Request) {
       if (a)
         items[item.id] = classifyAvailability(a, suggestedQty(item, guests));
     }
+    for (const item of developmentRequestCatalogue(req)) items[item.id] = { status: "request_only", availableUnits: null, requiredQty: suggestedQty(item, guests) };
     return NextResponse.json({ ok: true, date, guests, items });
   } catch (err) {
     console.error("[availability]", err);

@@ -1,11 +1,18 @@
+import { demoPreviewAllowed } from "@/lib/server/development-request-catalogue";
+import {choosePreviewProduct, namedProducts, ProductMatchError} from "@/lib/product-matching";
+import {loadProductReferences} from "@/lib/server/product-references";
+import {chandelierScaleInstruction} from "@/lib/chandelier-scale";
+import chandelierProducts from "@/lib/crescent-moon-preview.json";
+import {readJsonObject, JsonBodyError} from "@/lib/server/request-json";
+import {parseSupplierScope} from "@/lib/supplier-scope";
 import { NextResponse, after } from "next/server";
 import { randomUUID } from "node:crypto";
-import { readPublicImage } from "@/lib/server/public-images";
 import { requireUser } from "@/lib/server/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/server/env";
 import { deliveryError } from "@/lib/wedding";
 import { composeOrderableLook, usableDate } from "@/lib/server/look";
+import type { ServerCatalogueItem } from "@/lib/server/catalogue";
 import type { LookReport } from "@/lib/look";
 import { categoryMeta } from "@/lib/categories";
 import { STYLES, getStyle } from "@/lib/styles";
@@ -29,6 +36,8 @@ import {
   type BaseImages,
 } from "@/lib/server/render-source";
 import { checkRenderLimits, clientIpHash } from "@/lib/server/limits";
+import { crescentMoonDemoCatalogue } from "@/lib/crescent-moon-demo-catalogue";
+import { loadCrescentMoonReferences, chandelierIdentityInstruction, orderChandelierInputs } from "@/lib/server/crescent-moon-references";
 import { runRenderJob } from "@/lib/server/render-job";
 
 // The model call can run for a few minutes after we've replied.
@@ -52,6 +61,9 @@ export const maxDuration = 300;
 // catalogue; spend limits are enforced here.
 
 interface GenerateRequest {
+  demoReferenceId?: unknown;
+  chandelierScale?: unknown;
+  supplierId?: unknown;
   photoIds?: unknown;
   inspirationPhotoIds?: unknown;
   prompt?: unknown;
@@ -59,6 +71,7 @@ interface GenerateRequest {
   venueId?: unknown;
   images?: unknown;
   itemIds?: unknown;
+  selectionMode?: unknown;
   guestCount?: unknown;
   primaryIndex?: unknown;
   parentRenderId?: unknown;
@@ -80,11 +93,13 @@ export async function POST(req: Request) {
 
   let body: GenerateRequest = {};
   try {
-    body = await req.json();
-  } catch {
-    return fail(400, "Invalid request body.");
+    body = await readJsonObject(req);
+  } catch (error) {
+    return fail(error instanceof JsonBodyError ? error.status : 400, error instanceof JsonBodyError ? error.message : "Invalid request body.");
   }
 
+  let supplierId:string|null;
+  try{supplierId=parseSupplierScope(body.supplierId);}catch{return fail(400,"Choose a valid supplier.");}
   let photoIds: string[] | undefined, inspirationPhotoIds: string[];
   try {
     photoIds =
@@ -105,9 +120,22 @@ export async function POST(req: Request) {
     return fail(400, "Unknown style.");
   const style = descriptionLed ? null : getStyle(styleId);
 
+  if (body.itemIds !== undefined && (!Array.isArray(body.itemIds) || body.itemIds.some(id => typeof id !== "string" || !id.trim()))) {
+    return fail(400, "Choose valid catalogue products.");
+  }
+  if (body.selectionMode !== undefined && body.selectionMode !== "manual" && body.selectionMode !== "auto") return fail(400, "Choose a valid product selection mode.");
+  const selectionMode = body.selectionMode as "manual" | "auto" | undefined;
+  const manual = selectionMode === "manual";
+  const selectedIds = [...new Set((body.itemIds as string[] | undefined) || [])];
+  if (selectedIds.length > MAX_ITEMS) return fail(422, `Choose up to ${MAX_ITEMS} products for one preview.`);
+
+  // Explicit auto mode never inherits the caller's saved manual selection.
+  const itemIds = selectionMode === "auto" ? [] : selectedIds;
+  if (manual && !itemIds.length) return fail(422, "Choose products or select Choose for me.");
+
   const brief = cleanBrief(body.prompt);
-  // Description-led renders need a description to work from.
-  if (descriptionLed && !brief) {
+  // Product-led previews can start directly from selected catalogue pieces.
+  if (descriptionLed && !brief && !itemIds.length) {
     return fail(
       422,
       "Add a description of the look you want, or pick a style to start from.",
@@ -155,14 +183,22 @@ export async function POST(req: Request) {
     ? body.setting
     : DEFAULT_SCENE;
 
-  const itemIds = Array.isArray(body.itemIds)
-    ? body.itemIds
-        .filter((x): x is string => typeof x === "string")
-        .slice(0, MAX_ITEMS)
-    : [];
+  const previewCatalogue = crescentMoonDemoCatalogue();
+  const previewIds = itemIds.filter(id => previewCatalogue.some(item => item.id === id));
+  const allowPreview = demoPreviewAllowed(req) && !supplierId && !sampleVenueId.startsWith("listing:");
+  if (previewIds.length && !allowPreview) return fail(422, "That preview product is not available within this venue or supplier selection.");
+  if (previewIds.length > 1) return fail(422, "Use one reference lighting design per preview.");
+  if (manual && body.demoReferenceId !== undefined && body.demoReferenceId !== (previewIds[0] || null)) return fail(422, "Update your selected products to change the preview reference.");
+  if (manual) {
+    try {
+      const requested = namedProducts(brief, previewCatalogue);
+      if (requested.items.some(item => !previewIds.includes(item.id)) || previewIds.some(id => requested.excludedIds.includes(id))) return fail(422, "Your description conflicts with your selected products. Update your selection or use Choose for me.");
+    } catch (error) { return fail(422, error instanceof Error ? error.message : "Check the product names in your description."); }
+  }
 
   // No image key configured: keep the studio usable with the illustrative render.
   if (!env.openaiApiKeyIfSet) {
+    if(body.demoReferenceId || previewIds.length || (manual && itemIds.length)) return fail(503, "Image generation is not connected. A sample image cannot show your selected products. Please contact support.");
     console.warn(
       "[generate] OPENAI_API_KEY not set; returning placeholder render.",
     );
@@ -181,26 +217,55 @@ export async function POST(req: Request) {
   // category) so everything in the picture is real and shoppable.
   // Only pieces the couple could actually order: in stock, free on their date, and
   // enough of them for their guest count (see lib/look.ts). Anything they chose
-  // that isn't is swapped for the closest available piece or left out, and the
-  // report says which. A refinement keeps exactly what they already have.
-  let items;
+  // that is unavailable blocks generation so selections are never silently
+  // replaced. A refinement keeps exactly what they already have.
+  let namedProductIds:string[]=[];
+  let excludedProductIds:string[]=[];
+  let items: ServerCatalogueItem[];
   let look: LookReport;
   try {
     const composed = await composeOrderableLook({
+      supplierId,
+      venueSlug:sampleVenueId.startsWith("listing:")?sampleVenueId.slice(8):undefined,
       styleId: descriptionLed ? null : styleId,
-      chosenIds: itemIds,
+      chosenIds: itemIds.filter(id=>!crescentMoonDemoCatalogue().some(item=>item.id===id)),
+      brief,
       setting,
       weddingDate,
       deliveryDate,
       guestCount,
-      autoFill: !parentRenderId,
+      selectionMode,
+      autoFill: !manual && !parentRenderId,
       substitute: !parentRenderId,
     });
+    namedProductIds=composed.namedIds||[];
+    excludedProductIds=composed.excludedNamedIds||[];
     items = composed.items;
     look = composed.report;
+    if(supplierId&&!parentRenderId&&!items.length)return fail(422,"No eligible products from this supplier match the current venue, date and scene. Choose another supplier or adjust your request.");
   } catch (err) {
+    if(err instanceof ProductMatchError)return fail(422,err.message);
     console.error("[generate] couldn't load catalogue items:", err);
     return fail(500, "Couldn't start your render.");
+  }
+
+  const demoReferenceId = body.demoReferenceId;
+  let demoReference = typeof demoReferenceId === "string" && demoReferenceId
+    ? crescentMoonDemoCatalogue().find(item => item.id === demoReferenceId)
+    : undefined;
+  if (demoReferenceId && (!demoReference || !demoPreviewAllowed(req) || supplierId || sampleVenueId.startsWith("listing:"))) {
+    return fail(422, "Choose a demo reference for an unrestricted development look.");
+  }
+  if(demoReferenceId===undefined) {
+    try {
+      demoReference=choosePreviewProduct({catalogue:crescentMoonDemoCatalogue(),currentItems:items,brief:manual ? "" : brief,styleId:descriptionLed?null:styleId,chosenIds:[...itemIds,...namedProductIds],allow:demoPreviewAllowed(req)&&!supplierId&&!sampleVenueId.startsWith("listing:"),auto:!manual&&!parentRenderId});
+    } catch(error) {return fail(422,error instanceof Error?error.message:"Check the product names in your description.");}
+  }
+  if (demoReference) {
+    look.demoReference = { id: demoReference.id, name: demoReference.name, image: demoReference.image };
+    items = items.filter(item => item.category !== "lighting" || namedProductIds.includes(item.id) || itemIds.includes(item.id));
+    look.items = look.items.filter(item => item.category !== "lighting" || namedProductIds.includes(item.id) || itemIds.includes(item.id));
+    look.leftPlain = look.leftPlain.filter(category => category !== "lighting");
   }
 
   const admin = createAdminClient();
@@ -239,11 +304,68 @@ export async function POST(req: Request) {
         `You've refined this look ${env.maxRefinements} times, which is as far as it can go before quality drops. Start a new look from your venue photo.`,
       );
     }
+    // A refinement inherits its original supplier and venue scope. Never carry
+    // stale parent report items past current eligibility checks.
+    const inheritedScope=(parent.lookReport as LookReport|null)?.supplierId||null;
+    if(body.supplierId!==undefined&&supplierId!==inheritedScope)return fail(409,"Start a new look to change its supplier.");
+    const inheritedVenue=(parent.lookReport as LookReport|null)?.venueSlug||(parent.sampleVenueId?.startsWith("listing:")?parent.sampleVenueId.slice(8):null);
+    const requestedVenue=sampleVenueId.startsWith("listing:")?sampleVenueId.slice(8):null;
+    if(inheritedVenue!==requestedVenue)return fail(409,"Start a new look to change its venue supplier policy.");
+    if(parent.sampleVenueId&&sampleVenueId!==parent.sampleVenueId)return fail(409,"Start a new look to change its venue.");
+    const originalIds = (parent.lookReport as LookReport | null)?.items?.map(item => item.id) || [];
+    try {
+      if (manual) {
+        const updated = await composeOrderableLook({ supplierId: inheritedScope, venueSlug: inheritedVenue || undefined, styleId: parent.styleId, chosenIds: itemIds.filter(id => !previewIds.includes(id)), brief, setting, weddingDate, deliveryDate, guestCount, selectionMode, autoFill: false, substitute: false });
+        items = updated.items;
+        look = updated.report;
+        namedProductIds = updated.namedIds || [];
+      } else {
+        const parentLook = await composeOrderableLook({ supplierId: inheritedScope, venueSlug: inheritedVenue || undefined, styleId: parent.styleId, chosenIds: originalIds, setting, weddingDate, deliveryDate, guestCount, autoFill: false, substitute: false });
+        if (originalIds.some(id => !parentLook.items.some(item => item.id === id))) return fail(409, "Some pieces are no longer eligible. Start a new look to choose alternatives.");
+        const updated = (namedProductIds.length || excludedProductIds.length) ? await composeOrderableLook({ supplierId: inheritedScope, venueSlug: inheritedVenue || undefined, styleId: parent.styleId, chosenIds: originalIds, brief, setting, weddingDate, deliveryDate, guestCount, autoFill: false, substitute: false }) : parentLook;
+        items = updated.items; look = updated.report;
+        namedProductIds = updated.namedIds || namedProductIds;
+      }
+    } catch (error) { return fail(422, error instanceof ProductMatchError ? error.message : "Could not check the original look’s supplier and venue rules. Start a new look."); }
     base = parent.base;
-    prompt = buildRefinePrompt({ brief, items });
-    // The picture being edited was built from the parent's pieces, so that is still
-    // what's in it. Carry its report forward.
-    if (parent.lookReport) look = parent.lookReport as LookReport;
+    const inheritedDemoId = (parent.lookReport as LookReport | null)?.demoReference?.id;
+    const namedPreview=namedProducts(brief,crescentMoonDemoCatalogue());
+    const removedPreview=!!inheritedDemoId&&((!demoReference&&items.some(item=>namedProductIds.includes(item.id)&&item.category==="lighting"))||namedPreview.excludedIds.includes(inheritedDemoId)||/\b(?:no|without|avoid|remove) (?:any |the )?chandeliers?\b/i.test(brief));
+    const selectedDemoId = manual ? demoReference?.id : body.demoReferenceId === null || removedPreview ? undefined : demoReference?.id || (body.demoReferenceId === undefined ? inheritedDemoId : undefined);
+    const inheritedDemo = selectedDemoId ? crescentMoonDemoCatalogue().find(item => item.id === selectedDemoId) : undefined;
+    if (demoReference && (inheritedScope || inheritedVenue)) return fail(422, "Demo chandeliers cannot be used in a supplier-restricted look.");
+    if (inheritedDemo && demoPreviewAllowed(req) && !inheritedScope && !inheritedVenue) {
+      look.demoReference = { id: inheritedDemo.id, name: inheritedDemo.name, image: inheritedDemo.image };
+      items = items.filter(item => item.category !== "lighting" || namedProductIds.includes(item.id) || itemIds.includes(item.id));
+      look.items = look.items.filter(item => item.category !== "lighting" || namedProductIds.includes(item.id) || itemIds.includes(item.id));
+      look.leftPlain = look.leftPlain.filter(category => category !== "lighting");
+    }
+    prompt = buildRefinePrompt({ brief, items: look.demoReference && inheritedDemo ? [...items, inheritedDemo] : items });
+    if (look.demoReference && inheritedDemo) {
+      try {
+        const references = await loadCrescentMoonReferences(inheritedDemo.id);
+        (base as typeof base & { itemImages: Buffer[] }).itemImages = references.buffers;
+        prompt += "\n\n" + chandelierIdentityInstruction(inheritedDemo.id, 2);
+        const product=chandelierProducts.find(p=>`demo-crescent-moon-${p.slug}`===inheritedDemo.id);
+        if(product) prompt += "\n\n" + chandelierScaleInstruction(product,null);
+        prompt += "\n\nThe first image is the existing render to edit. Subsequent images are original reference views of the SAME " + inheritedDemo.name + ". Preserve its identity using these original photos; do not copy backgrounds or other chandeliers. Reference map: " + references.names.map((name,index)=>`Image ${index+2}: ${name}`).join("; ");
+      } catch { return fail(422, "The original chandelier reference photos could not be loaded."); }
+    }
+    if ((body.demoReferenceId === null || removedPreview || (manual && !selectedDemoId)) && inheritedDemoId) {
+      prompt += "\n\nRemove the previously selected demo chandelier from this image. Do not replace it with an invented chandelier. Keep the rest of the scene unchanged.";
+    }
+    try {
+      const existingRefs=(base as typeof base & {itemImages?:Buffer[]}).itemImages||[];
+      const references=await loadProductReferences(items,[...new Set([...namedProductIds, ...itemIds.filter(id => items.some(item => item.id === id))])],16-base.images.length-existingRefs.length);
+      (base as typeof base & {itemImages:Buffer[]}).itemImages=[...existingRefs,...references.buffers];
+      if(references.names.length)prompt+="\n\nORIGINAL PRODUCT PHOTO MAP. Reproduce each specific product, not a generic alternative. Only the FIRST image is the venue view to edit. "+references.names.map((name,index)=>`Image ${base.images.length+existingRefs.length+index+1}: ${name}`).join("; ");
+    }catch(error){return fail(422,error instanceof Error?error.message:"Product photos could not be loaded.");}
+    if (manual) {
+      const removed = ((parent.lookReport as LookReport | null)?.items || []).filter(item => !items.some(selected => selected.id === item.id));
+      if (removed.length) prompt += "\n\nRemove these products from the existing image: " + removed.map(item => `${item.name} [${item.id}]`).join(", ") + ". Keep only the selected inventory; do not replace removed products.";
+    }
+    if(excludedProductIds.length)prompt+="\n\nRemove these explicitly excluded products from the existing image: "+((parent.lookReport as LookReport|null)?.items||[]).filter(item=>excludedProductIds.includes(item.id)).map(item=>item.name).join(", ")+". Keep other products unchanged.";
+    if(namedProductIds.length)prompt+="\n\nExplicitly named catalogue products take priority: "+items.filter(item=>namedProductIds.includes(item.id)).map(item=>item.name).join(", ")+". Include these exact products using their original reference photos and dimensions. Replace competing versions of those products where necessary; do not alter their design to fit the mood. Keep the rest of the venue unchanged.";
     depth = parent.depth + 1;
     briefId = parent.briefId;
     parentId = parent.id;
@@ -271,40 +393,48 @@ export async function POST(req: Request) {
       console.error("[generate] couldn't load base image:", err);
       return fail(500, "Couldn't load your venue photo.");
     }
-    // Load product images to use as visual references (only items with images).
-    const itemImages: Buffer[] = [];
-    for (const item of items.slice(0, 6)) {
-      if (!item.image) continue;
-      try {
-        const buf = await readPublicImage(item.image);
-        itemImages.push(buf);
-      } catch {
-        // Missing image file — skip silently.
-      }
-    }
-
     let inspirationImages: Buffer[] = [];
     try {
-      inspirationImages = (
-        await loadSelectedPhotoBuffers(supabase, user.id, inspirationPhotoIds)
-      ).buffers;
+      inspirationImages = (await loadSelectedPhotoBuffers(supabase, user.id, inspirationPhotoIds)).buffers;
     } catch {
-      return fail(
-        400,
-        "One of your board inspiration photos is no longer available. Return to Boards and choose it again.",
-      );
+      return fail(400, "One of your board inspiration photos is no longer available. Return to Boards and choose it again.");
     }
+    // Reserve room for venue and private inspiration photos within the image API limit.
+    const itemImageBudget = Math.max(0, 16 - base.images.length - inspirationImages.length);
+    const itemImages: Buffer[] = [];
+    const itemImageNames: string[] = [];
+    if (demoReference) {
+      try {
+        const references = await loadCrescentMoonReferences(demoReference.id);
+        if (references.buffers.length > itemImageBudget) return fail(422, "Choose fewer venue or inspiration photos to include all chandelier reference views.");
+        itemImages.push(...references.buffers);
+        itemImageNames.push(...references.names);
+      } catch {
+        return fail(422, "The chandelier reference set could not be loaded. Please try again.");
+      }
+    }
+    try {
+      const references=await loadProductReferences(items,[...new Set([...namedProductIds, ...itemIds.filter(id => items.some(item => item.id === id))])],itemImageBudget-itemImages.length);
+      itemImages.push(...references.buffers);itemImageNames.push(...references.names);
+    }catch(error){return fail(422,error instanceof Error?error.message:"Product photos could not be loaded.");}
     prompt = buildRenderPrompt({
       style,
       brief,
       guestCount,
-      items,
+      items: demoReference ? [...items, demoReference] : items,
       setting,
-      photoCount: base.images.length,
+      photoCount: demoReference ? 1 : base.images.length,
       itemImageCount: itemImages.length,
+      itemImageNames,
       leftPlain: look.leftPlain.map((c) => categoryMeta(c).label),
     });
 
+    if (demoReference) {
+      const product=chandelierProducts.find(p=>`demo-crescent-moon-${p.slug}`===demoReference.id);
+      prompt += "\n\n" + chandelierIdentityInstruction(demoReference.id, 2);
+      if(product) prompt += "\n\n" + chandelierScaleInstruction(product,null);
+      if(base.images.length>1) prompt += `\n\nImages ${itemImages.length+2} to ${itemImages.length+base.images.length} are additional venue angles only. Preserve the FIRST image's viewpoint; never copy lighting fixtures from these extra room views.`;
+    }
     if (inspirationImages.length)
       prompt += "\n\n" + inspirationInstruction(inspirationImages.length);
     // Keep source venue ids first so saved looks still know their original room.
@@ -351,6 +481,7 @@ export async function POST(req: Request) {
   // ---- Record the render, then do the slow work after replying.
   const renderId = randomUUID();
   const size = sizeFor(base.width, base.height);
+  const referenceIds = [...new Set([...items.map(item => item.id), ...(look.demoReference ? [look.demoReference.id] : [])])];
   const { error: insertError } = await admin.from("renders").insert({
     id: renderId,
     owner_id: user.id,
@@ -362,7 +493,7 @@ export async function POST(req: Request) {
     style_id: renderStyleId,
     sample_venue_id: renderSampleVenueId,
     input_photo_ids: base.photoIds,
-    item_ids: items.map((i) => i.id),
+    item_ids: referenceIds,
     look_report: look,
     depth,
     client_ip_hash: ipHash,
@@ -386,19 +517,17 @@ export async function POST(req: Request) {
       admin,
       renderId,
       userId: user.id,
-      images: [
-        ...base.images,
-        ...itemImages,
-        ...((base as typeof base & { inspirationImages?: Buffer[] })
-          .inspirationImages || []),
-      ],
+      images: look.demoReference
+        ? orderChandelierInputs(base.images, itemImages, (base as typeof base & { inspirationImages?: Buffer[] }).inspirationImages || [])
+        : [...base.images, ...itemImages, ...((base as typeof base & { inspirationImages?: Buffer[] }).inspirationImages || [])],
+      quality: look.demoReference || namedProductIds.length ? "high" : undefined,
       prompt,
       size,
     }),
   );
 
   return NextResponse.json(
-    { ok: true, pending: false, status: "running", renderId, depth, look },
+    { ok: true, pending: false, status: "running", renderId, depth, itemIds: referenceIds, selectionMode, look },
     { status: 202 },
   );
 }

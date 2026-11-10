@@ -72,7 +72,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!auth.ok) return auth.response;
   const { id } = await params;
 
-  let body: { capacity?: unknown; active?: unknown };
+  let body: { capacity?: unknown; active?: unknown; name?: unknown; unitPrice?: unknown; note?: unknown; updatedAt?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -91,13 +91,34 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (typeof body.active !== "boolean") return fail(400, "active must be true or false.");
     patch.active = body.active;
   }
+  if (body.name !== undefined) {
+    if (typeof body.name !== "string" || body.name.trim().length < 2 || body.name.trim().length > 160)
+      return fail(422, "Enter a product name of 2 to 160 characters.");
+    patch.name = body.name.trim();
+  }
+  if (body.unitPrice !== undefined) {
+    if (typeof body.unitPrice !== "number" || !Number.isFinite(body.unitPrice) || body.unitPrice < 0 || body.unitPrice > 1000000)
+      return fail(422, "Enter a valid price in pounds.");
+    patch.unit_price_pence = Math.round(body.unitPrice * 100);
+  }
+  if (body.note !== undefined) {
+    if (typeof body.note !== "string" || body.note.length > 500 || body.note.includes("\0"))
+      return fail(422, "Keep the description under 500 characters.");
+    patch.note = body.note.trim() || null;
+  }
+  const editorial = body.name !== undefined || body.unitPrice !== undefined || body.note !== undefined;
+  if (editorial && (typeof body.updatedAt !== "string" || !Number.isFinite(Date.parse(body.updatedAt))))
+    return fail(422, "Refresh the product before editing.");
   if (Object.keys(patch).length === 0) return fail(400, "Nothing to change.");
 
-  const { data, error } = await auth.admin.from("products").update(patch).eq("id", id).select("id, capacity, active");
+  let query = auth.admin.from("products").update(patch).eq("id", id);
+  if (editorial) query = query.eq("updated_at", body.updatedAt as string);
+  const { data, error } = await query.select("id, capacity, active");
   if (error) {
+    if(error.code==="P0001")return fail(409,"Approve the submitted supplier range in its private review before publishing this product.");
     console.error("[admin/products PATCH]", error);
     return fail(500, "Couldn't update the product.");
   }
-  if (!data || data.length === 0) return fail(404, "Product not found.");
+  if (!data || data.length === 0) return fail(editorial ? 409 : 404, editorial ? "This product changed. Refresh before saving." : "Product not found.");
   return NextResponse.json({ ok: true, product: data[0] });
 }

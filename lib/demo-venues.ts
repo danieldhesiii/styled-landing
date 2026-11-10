@@ -1,7 +1,8 @@
 import type { VenueListing } from "./venues";
+import { EMPTY_VENUE_POLICY, type VenueSupplierMode } from "./venue-suppliers";
 import { EMPTY_VENUE_DETAILS } from "./venue-details";
 
-// Display fixtures only. Never inserted into published listings or date searches.
+// Code-only practice fixtures. Never inserted into real listings, enquiries or date searches.
 export const DEMO_VENUES: VenueListing[] = [
   {
     slug: "demo-oak-barn",
@@ -10,6 +11,8 @@ export const DEMO_VENUES: VenueListing[] = [
     image: "oak_barn.png",
     type: "barn",
     capacity: 120,
+    mode: "venue_only",
+    hire: 350000,
     description:
       "A fictional countryside barn with timber beams and space for a relaxed reception. This preview shows how photographs, facilities, a venue film and a 3D walkthrough will sit together on a venue listing.",
   },
@@ -20,6 +23,8 @@ export const DEMO_VENUES: VenueListing[] = [
     image: "manor_orangery.png",
     type: "country_house",
     capacity: 160,
+    mode: "venue_partners",
+    hire: 650000,
     description:
       "An illustrative light-filled orangery with a garden setting. Explore this sample listing to see where a venue team will add photographs, video and an interactive walkthrough.",
   },
@@ -30,6 +35,8 @@ export const DEMO_VENUES: VenueListing[] = [
     image: "county_hall.jpg",
     type: "city",
     capacity: 90,
+    mode: "styled",
+    hire: 250000,
     description:
       "A fictional city celebration space. This listing demonstrates the customer experience while real venue partners are being onboarded. Its imagery and capacities are illustrative.",
   },
@@ -53,8 +60,17 @@ export const DEMO_VENUES: VenueListing[] = [
   details: {
     ...EMPTY_VENUE_DETAILS,
     venue_type: v.type,
-    features: [],
+    features: ["exclusive_use", "accessible"],
+    hire_from_pence: v.hire,
+    supplier_policy: {...EMPTY_VENUE_POLICY, mode: v.mode as VenueSupplierMode,
+      bookingNotes: "Practice requests only. This fictional venue does not accept real bookings.",
+      localNotes: "Example preference: local suppliers within 25 miles where possible.",
+      suppliers: [
+        {name:"Meadow Florals (example)",category:"Flowers & styling",location:v.county,postcode:"",website:""},
+        {name:"Gather Hire (example)",category:"Furniture & tableware",location:v.county,postcode:"",website:""},
+      ],
+    },
     pricing_notes:
-      "Venue hire prices and inclusions will appear here when a real venue publishes its listing. This demonstration venue cannot be booked.",
+      "Illustrative hire price only, including use of the main event space. Catering, styling and accommodation are separate. No real quote or booking is offered.",
   },
 }));

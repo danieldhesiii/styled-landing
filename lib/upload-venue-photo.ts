@@ -41,7 +41,7 @@ let currentVenueId: string | undefined;
 // venue is started (a new upload that replaces the previous one).
 export async function uploadVenuePhoto(
   file: File,
-  opts: { append?: boolean } = {}
+  opts: { append?: boolean; isolated?: boolean } = {}
 ): Promise<UploadedVenuePhoto> {
   const ext = extensionFor(file);
   if (!ext) throw new Error("Please choose a JPEG, PNG, WebP or HEIC photo.");
@@ -68,12 +68,12 @@ export async function uploadVenuePhoto(
   const res = await fetch("/api/venues/photos", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path, venueId: opts.append ? currentVenueId : undefined }),
+    body: JSON.stringify({ path, venueId: opts.append && !opts.isolated ? currentVenueId : undefined }),
   });
   const data = await res.json().catch(() => null);
   if (!res.ok || !data?.photo?.url) {
     throw new Error(data?.error ?? "Couldn't process that photo. Please try again.");
   }
-  currentVenueId = data.photo.venueId;
+  if (!opts.isolated) currentVenueId = data.photo.venueId;
   return data.photo as UploadedVenuePhoto;
 }

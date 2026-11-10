@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function PortalAppLayout({ children }: { children: React.ReactNode }) {
   const { data } = await (await createClient()).auth.getUser();
   const user = data.user;
-  if (!user || user.is_anonymous) redirect("/portal/login");
+  if (!user || user.is_anonymous || !user.email || !user.email_confirmed_at) redirect("/portal/login");
 
   const admin = createAdminClient();
   const { data: link } = await admin.from("supplier_users").select("supplier_id").eq("user_id", user.id).maybeSingle();

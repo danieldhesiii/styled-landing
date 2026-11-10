@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
+import { dispatchVenueConversationNotifications } from "@/lib/server/venue-conversation-notifications";
 import { requireVenueAccount, venueUuid, londonToday } from "@/lib/server/venue-access";
 import { venueParticipant, validateAlternative } from "@/lib/venue-workflow";
 import { validVenueDay } from "@/lib/venue-details";
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
     .select("id,body,sender_kind,created_at").eq("request_id", auth.request.id)
     .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(100);
   if (error) return fail(503, "Could not load messages. Try again shortly.");
-  return NextResponse.json({ messages: (data || []).reverse(), nextActor: auth.request.next_actor }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ messages: (data || []).reverse(), nextActor: auth.request.next_actor, status: auth.request.status }, { headers: { "Cache-Control": "no-store" } });
 }
 export async function POST(req: Request) {
   // Authenticate and check origin before reading any body or checking identifiers.
@@ -63,5 +64,6 @@ export async function POST(req: Request) {
     });
     if (error) return fail(409, "Could not send this message. Reload to check the request is still open.");
   } else return fail(400, "Unknown action.");
+  after(async () => { await dispatchVenueConversationNotifications(auth.admin, auth.request.id); });
   return NextResponse.json({ ok: true });
 }

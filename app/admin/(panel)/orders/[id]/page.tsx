@@ -1,4 +1,5 @@
 "use client";
+import BookingOperations from "@/components/booking/BookingOperations";
 import { dateRangeLabel } from "@/lib/booking-dates";
 
 import Link from "next/link";
@@ -13,9 +14,10 @@ interface Line {
   product_name: string;
   supplier_name: string;
   unit: string | null;
-  unit_price_pence: number;
+  unit_price_pence: number | null;
   quantity: number;
-  line_total_pence: number;
+  line_total_pence: number | null;
+  request_snapshot?: {priceOnRequest?: boolean; requestOnly?: boolean};
   supplier_status: "pending" | "confirmed" | "declined";
   supplier_note: string | null;
   supplier_decided_at: string | null;
@@ -81,8 +83,17 @@ function eventText(e: OrderEvent): string {
       return "Message sent to the couple";
     case "staff_notes_updated":
       return "Internal notes updated";
+    case "workflow_reply": return "Supplier availability and service costs updated";
+    case "workflow_issue": return "Complete quote issued for customer review";
+    case "workflow_accept": return "Customer accepted the saved quote";
+    case "workflow_logistics": return "Hire dates or access details changed; fresh checks required";
+    case "workflow_handover": return "Booking responsibilities and arrangements saved";
+    case "workflow_confirm": return "Agreed offline booking recorded";
+    case "workflow_claim": return "Return inspection or supplier claim recorded";
+    case "workflow_claim_update": return "Claim review updated";
+    case "workflow_cancel_request": return "Customer requested cancellation review";
     default:
-      return e.type;
+      return e.type.replaceAll("_", " ");
   }
 }
 
@@ -159,7 +170,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const confirmedCount = lines.filter((l) => l.supplier_status === "confirmed").length;
   const allConfirmed = lines.length > 0 && confirmedCount === lines.length;
   const away = daysUntil(order.wedding_date);
-  const balance = order.subtotal_pence - order.deposit_pence;
   const messageValue = message ?? order.couple_message ?? "";
   const notesValue = notes ?? order.staff_notes ?? "";
 
@@ -171,6 +181,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         <div>
           <p className="font-mono text-sm text-ink/45">{order.reference}</p>
           <h1 className="font-serif text-4xl text-ink">{order.couple_name}</h1>
+          <p className="mt-2 text-xs text-ink/60">Next: review the quote and booking arrangements.</p>
           <p className="mt-1 text-sm text-ink/50">
             Placed {ago(order.created_at)} · {longDay(order.wedding_date)}
             {away !== null && away >= 0 ? ` (in ${away} days)` : ""}
@@ -178,6 +189,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         </div>
         <StatusPill status={order.status} />
       </div>
+
+      <BookingOperations orderId={id} role="staff" onSaved={()=>void load()}/>
 
       {notice && (
         <div role="alert" className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -189,16 +202,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               ))}
             </ul>
           )}
-          {conflicts && (
-            <button
-              type="button"
-              disabled={busy !== null}
-              onClick={() => run("force", () => adminApi(`/api/admin/orders/${id}`, "PATCH", { status: "confirmed", coupleMessage: decisionMessage.trim() || undefined, force: true }))}
-              className="mt-3 rounded-full bg-red-800 px-4 py-1.5 text-xs text-white hover:bg-red-900 disabled:opacity-50"
-            >
-              Confirm anyway
-            </button>
-          )}
+
         </div>
       )}
 
@@ -220,7 +224,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   <div>
                     <p className="font-medium text-ink">{supplier}</p>
                     <p className="text-xs text-ink/45">
-                      {money(ls.reduce((s, l) => s + l.line_total_pence, 0))}
+                      {ls.some(l=>l.line_total_pence===null) ? "Awaiting quote" : money(ls.reduce((s, l) => s + (l.line_total_pence ?? 0), 0))}
 
                     </p>
                   </div>
@@ -247,8 +251,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                             <p className="text-sm font-medium text-ink">{l.product_name}</p>
                             <p className="mt-1 text-xs text-clay">Requested hire: {dateRangeLabel(l.needed_date || order.wedding_date, l.return_date || order.wedding_date)}</p>
                             <p className="text-xs text-ink/50">
-                              {l.quantity} × {money(l.unit_price_pence)}
-                              {l.unit ? ` ${l.unit}` : ""} = <span className="text-ink">{money(l.line_total_pence)}</span>
+                              {l.quantity} × {l.unit_price_pence === null ? "Price on request" : money(l.unit_price_pence)}
+                              {l.unit ? ` ${l.unit}` : ""} = <span className="text-ink">{l.line_total_pence === null ? "Price on request" : money(l.line_total_pence)}</span>
                             </p>
                             {lab && order.wedding_date && (
                               <p className={`mt-0.5 text-xs ${TONE[lab.tone]}`}>
@@ -320,8 +324,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           })}
 
           {/* -------------------------------------------------------- history */}
-          <div>
-            <h2 className="font-serif text-2xl text-ink">History</h2>
+          <details>
+            <summary className="min-h-11 cursor-pointer py-3 font-serif text-2xl text-ink">History</summary>
             <ol className="mt-3 space-y-3 border-l border-sand pl-5">
               {[...events].reverse().map((e) => (
                 <li key={e.id} className="relative text-sm">
@@ -334,7 +338,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 </li>
               ))}
             </ol>
-          </div>
+          </details>
         </section>
 
         {/* ---------------------------------------------------------- side panel */}
@@ -348,16 +352,9 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                   <div className="h-full bg-sage transition-all" style={{ width: `${lines.length ? (confirmedCount / lines.length) * 100 : 0}%` }} />
                 </div>
                 <p className="mt-2 text-xs text-ink/50">
-                  {allConfirmed ? "Every supplier has confirmed." : `${lines.length - confirmedCount} item${lines.length - confirmedCount === 1 ? "" : "s"} still need a supplier to confirm.`}
+                  {allConfirmed ? "Availability agreed. Check the quote and customer acceptance before recording the booking." : `${lines.length - confirmedCount} item${lines.length - confirmedCount === 1 ? "" : "s"} still need a supplier to confirm.`}
                 </p>
-                <button
-                  type="button"
-                  disabled={!allConfirmed || busy !== null}
-                  onClick={() => run("confirm", () => adminApi(`/api/admin/orders/${id}`, "PATCH", { status: "confirmed", coupleMessage: decisionMessage.trim() || undefined }))}
-                  className="mt-4 w-full rounded-full bg-ink px-5 py-2.5 text-sm text-cream hover:bg-ink/90 disabled:bg-ink/25"
-                >
-                  {busy === "confirm" ? "Confirming…" : "Confirm order"}
-                </button>
+                <a href={`#booking-workflow-${id}`} className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-ink px-5 py-2.5 text-sm text-cream">Review saved quote and customer acceptance</a>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => setMode(mode === "decline" ? null : "decline")} className="rounded-full border border-red-300 px-4 py-2 text-sm text-red-700 hover:bg-red-50">
                     Decline…
@@ -429,16 +426,12 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             </section>
           )}
 
-          {/* money */}
-          <section aria-label="Money" className="rounded-3xl border border-sand bg-white p-5 shadow-sm">
-            <h2 className="font-serif text-xl text-ink">Money</h2>
-            <dl className="mt-3 space-y-1.5 text-sm">
-              <div className="flex justify-between"><dt className="text-ink/50">Order total</dt><dd className="font-serif text-lg text-ink">{money(order.subtotal_pence)}</dd></div>
-              <div className="flex justify-between"><dt className="text-ink/50">Deposit</dt><dd className="text-clay">{money(order.deposit_pence)}</dd></div>
-              <div className="flex justify-between"><dt className="text-ink/50">Balance</dt><dd className="text-ink">{money(balance)}</dd></div>
-              <div className="flex justify-between border-t border-sand pt-1.5"><dt className="text-ink/50">Styled&apos;s commission</dt><dd className="text-ink">{money(order.commission_pence)}</dd></div>
+          <section aria-label="Original request estimate" className="rounded-3xl border border-sand bg-white p-5 shadow-sm">
+            <h2 className="font-serif text-xl text-ink">Original request estimate</h2>
+            <dl className="mt-3 text-sm">
+              <div className="flex justify-between gap-3"><dt className="text-ink/60">Catalogue items</dt><dd className="font-serif text-lg text-ink">{lines.some(l=>l.line_total_pence===null) ? order.subtotal_pence > 0 ? `${money(order.subtotal_pence)} + quote pending` : "Awaiting quote" : money(order.subtotal_pence)}</dd></div>
             </dl>
-            <p className="mt-2 text-[11px] text-ink/40">Payments aren&apos;t connected yet, so nothing has been charged.</p>
+            <p className="mt-3 text-xs leading-relaxed text-ink/60">Item estimate only, not an amount due. See the saved quote for service fees and refundable security. No payment taken through Styled.</p>
           </section>
 
           {/* messages and notes */}

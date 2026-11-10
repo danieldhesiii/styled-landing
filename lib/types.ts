@@ -35,7 +35,14 @@ export type Slot =
   | "bar";
 
 // Live stock status from the vendor (placeholder data for now — see lib/stock).
-export type StockStatus = "in_stock" | "low_stock" | "made_to_order";
+export type StockStatus = "in_stock" | "low_stock" | "made_to_order" | "on_request";
+
+export interface DemoCataloguePricing {
+  dailyHireGBP: number;
+  deliverySetupCollectionGBP: number;
+  damageDepositGBP: number;
+  vatIncludedInMock: boolean;
+}
 
 export interface CatalogueItem {
   id: string;
@@ -44,9 +51,10 @@ export interface CatalogueItem {
   slot?: Slot; // present when the item appears in the render
   supplier: string;
   supplierId?: string;
+  supplierMinimumPence?: number;
   supplierLogo?: string;
   supplierArea: string;
-  unitPrice: number; // GBP per unit
+  unitPrice: number; // GBP estimate per unit; ignored when priceOnRequest is true
   unit: string; // e.g. "each", "per table", "package"
   qtyRule: QtyRule;
   styles: string[]; // style ids this item suits
@@ -54,7 +62,7 @@ export interface CatalogueItem {
   swatch: string; // hex colour used in the preview / fallback
   image?: string;
   /** Set only when provenance is known. Seed imagery remains illustrative. */
-  imageKind?: "supplier" | "illustrative";
+  imageKind?: "supplier" | "supplier_reference" | "illustrative";
   reviewsVerified?: boolean;
   dimensions?: string;
   material?: string;
@@ -66,6 +74,12 @@ export interface CatalogueItem {
   leadTimeDays: number; // how far ahead it must be booked
   stock: StockStatus; // live availability (placeholder for now)
   note?: string;
+  /** Development reference listing; requestOnly explicitly permits a manual quote request. */
+  demoOnly?: boolean;
+  demoPricing?: DemoCataloguePricing | null;
+  priceOnRequest?: boolean;
+  /** May enter a request basket; stock, fees and booking require manual confirmation. */
+  requestOnly?: boolean;
 }
 
 export interface CategoryMeta {
@@ -85,6 +99,7 @@ export interface StylePreset {
 }
 
 export interface SampleVenue {
+  supplierPolicy?: import("./venue-suppliers").VenueSupplierPolicy;
   id: string;
   name: string;
   area: string;
@@ -104,18 +119,22 @@ export interface BasketLine {
 export interface QuoteLine {
   item: CatalogueItem;
   quantity: number;
-  lineTotal: number;
+  lineTotal: number | null;
 }
 
 export interface Quote {
+  hasUnpricedItems: boolean;
+  hasRequestOnlyItems: boolean;
   lines: QuoteLine[];
   subtotal: number;
   commission: number; // what the platform earns (internal, not shown to couples)
-  deposit: number; // what the couple pays now to secure the date
+  deposit: number; // estimate only; no payment capture, zero for request-only/unpriced baskets
   bySupplier: {
     supplier: string;
     area: string;
     total: number;
+    hasUnpricedItems: boolean;
+    hasRequestOnlyItems: boolean;
     lines: QuoteLine[];
   }[];
 }

@@ -68,6 +68,7 @@ function route(auth = { ok: true, user }, failure = false) {
         },
       }),
     },
+    "@/lib/server/support-notifications": { supportEmailEnabled: () => false },
     "@/lib/support": support,
   });
   return { post: m.POST, get: m.GET, calls, reads };

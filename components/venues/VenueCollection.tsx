@@ -1,3 +1,4 @@
+import { VENUE_MODES, venuePolicy } from "@/lib/venue-suppliers";
 import VenueShortlist from "./VenueShortlist";
 import { VENUE_TYPES } from "@/lib/venue-details";
 import Link from "next/link";
@@ -38,8 +39,8 @@ export function VenueCards({
             className="flex min-w-0 flex-col border-b border-sand pb-6"
           >
             {venue.is_demo && (
-              <p className="mb-3 text-xs uppercase tracking-widest text-clay">
-                Demo venue · Not bookable
+              <p className="mb-3 text-sm uppercase tracking-widest text-clay">
+                Demo venue · Practice only
               </p>
             )}
             <Link href={detailHref} className="group">
@@ -66,14 +67,14 @@ export function VenueCards({
                 : ""}
             </p>
             {distances && !venue.is_demo && (
-              <p className="mt-2 text-xs text-ink/60">
+              <p className="mt-2 text-sm text-ink/60">
                 {distances[venue.slug]
                   ? `${distances[venue.slug].miles} miles from your chosen location`
                   : "Location needs confirming"}
               </p>
             )}
             {venue.details?.venue_type && (
-              <p className="mt-2 text-xs text-clay">
+              <p className="mt-2 text-sm text-clay">
                 {VENUE_TYPES[
                   venue.details.venue_type as keyof typeof VENUE_TYPES
                 ] || venue.details.venue_type}
@@ -82,11 +83,12 @@ export function VenueCards({
             )}
             <p className="mt-3 text-sm">
               {venue.details?.hire_from_pence != null
-                ? `Venue hire from ${formatGBP(venue.details.hire_from_pence / 100)}`
+                ? `${venue.is_demo ? "Example hire" : "Venue hire"} from ${formatGBP(venue.details.hire_from_pence / 100)}`
                 : venue.is_demo
                   ? "Illustrative listing · No hire price"
                   : "Venue hire price on request"}
             </p>
+            {venue.is_demo && <p className="mt-2 text-sm text-clay">{VENUE_MODES[venuePolicy(venue.details).mode]}</p>}
             {venue.package_from_pence !== null && (
               <p className="mt-3 text-sm">
                 Styling from {formatGBP(venue.package_from_pence / 100)}
@@ -100,10 +102,10 @@ export function VenueCards({
             <div className="mt-auto flex flex-wrap items-center gap-4 pt-5">
               <Link href={detailHref} className="text-sm underline">
                 {venue.is_demo
-                  ? "Preview venue, video & 3D tour →"
+                  ? "Explore venue →"
                   : "View venue & request a date"}
               </Link>
-              {venue.is_demo ? null : onSelect ? (
+              {venue.is_demo ? <Link href={`${detailHref}#enquire`} className="inline-flex min-h-11 items-center rounded-full bg-ink px-4 py-2 text-sm text-cream">Try a booking request</Link> : onSelect ? (
                 <button
                   type="button"
                   onClick={() => onSelect(venue)}
@@ -130,7 +132,7 @@ export function VenueOperatorCallout() {
   return (
     <section className="mt-12 grid gap-5 border-t border-sand pt-8 sm:grid-cols-[minmax(0,1fr)_auto]">
       <div>
-        <p className="text-xs uppercase tracking-widest text-clay">
+        <p className="text-sm uppercase tracking-widest text-clay">
           For venue teams
         </p>
         <h2 className="mt-2 font-serif text-3xl">Bring your venue to Styled</h2>

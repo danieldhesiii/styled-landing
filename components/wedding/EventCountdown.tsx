@@ -17,36 +17,32 @@ export default function EventCountdown({
     return () => clearInterval(timer);
   }, []);
   const days = now ? daysToEvent(date, now) : null;
+  if (days === null) {
+    return <span className="text-xs text-ink/75">Set event date</span>;
+  }
+
+  const dateLabel = new Date(date + "T12:00:00").toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const caption = days === 1 ? "day to go" : "days to go";
+
   return (
-    <div
-      role="status"
-      aria-label="Current event countdown"
-      aria-live="polite"
-      aria-atomic="true"
-      className="min-w-0 w-full text-center"
-    >
-      <p
-        title={name}
-        className="truncate font-serif text-sm leading-snug text-ink sm:text-lg"
-      >
-        {name}
-      </p>
-      <p className="mt-0.5 text-[11px] leading-snug text-ink/60 sm:text-xs">
-        {days === null ? (
-          ""
-        ) : days > 0 ? (
-          <>
-            <span className="font-medium tabular-nums text-ink">
-              {days} {days === 1 ? "day" : "days"}
-            </span>{" "}
-            to go
-          </>
-        ) : days === 0 ? (
-          "Today"
-        ) : (
-          "Event complete"
-        )}
-      </p>
-    </div>
+    <span role="status" aria-label="Current event countdown" className="inline-flex items-center gap-2 text-left">
+      {days > 0 && (
+        <span className="font-serif text-[26px] leading-none lining-nums tracking-tight text-ink sm:text-[30px]">
+          {days}
+        </span>
+      )}
+      <span className="flex flex-col gap-0.5 whitespace-nowrap">
+        <span className="text-[11px] font-medium leading-tight tracking-wide text-ink">
+          {days > 0 ? caption : days === 0 ? "Today" : "Event complete"}
+        </span>
+        <time dateTime={date} title={name} className="text-[11px] leading-tight text-ink/65">
+          {dateLabel}
+        </time>
+      </span>
+    </span>
   );
 }

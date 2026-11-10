@@ -33,6 +33,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (lineIds.length === 0 || lineIds.length > 100 || !lineIds.every((x) => typeof x === "string" && UUID.test(x))) {
     return fail(400, "Choose at least one item.");
   }
+  if(body.note!==undefined&&(typeof body.note!=="string"||body.note.length>1000||body.note.includes("\0")))return fail(422,"Keep your response under 1,000 characters.");
+  if(status==="declined"&&(typeof body.note!=="string"||body.note.trim().length<3))return fail(422,"Add a reason or suggest an alternative before declining.");
   const note = cleanText(body.note, 1000);
 
   const { data: order } = await admin.from("orders").select("id, status").eq("id", id).maybeSingle();

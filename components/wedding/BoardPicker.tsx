@@ -1,4 +1,5 @@
 "use client";
+import useOutsideClick from "@/components/ui/useOutsideClick";
 import { useState } from "react";
 import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 import type { WeddingBoard } from "@/lib/wedding";
@@ -24,9 +25,10 @@ export default function BoardPicker({
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
+  const picker = useOutsideClick<HTMLDivElement>(open, () => setOpen(false));
   if (!onAddToBoard) return null;
   return (
-    <div className="mt-3">
+    <div ref={picker} className="mt-3">
       <button
         type="button"
         aria-expanded={open}

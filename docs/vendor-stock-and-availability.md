@@ -1,3 +1,7 @@
+> **1 November 2026 import update:** See [Supplier stock import preparation](stock-import-preparation.md) for the current CSV lifecycle, private range review, explicit stock requirements and full hire-period warnings. The older blank-capacity and availability guarantees below do not describe the current importer.
+
+> **30 October 2026 update:** [Supplier meeting action plan](supplier-meeting-action-plan-2026-10-30.md) supersedes older launch, fee and availability assumptions below. Do not infer live-pilot readiness, guaranteed external stock, a fixed commission/deposit, image reuse permission or required system access from this historical document. Supplier approval, full quote/customer agreement and current operating terms are required before any real payment; no automated recovery or integration is promised.
+
 # Vendor stock & availability — the practical reality
 
 How a vendor actually gets on the page, and how their stock stays accurate and

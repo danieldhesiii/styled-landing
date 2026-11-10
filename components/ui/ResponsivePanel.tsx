@@ -6,12 +6,14 @@ export default function ResponsivePanel({
   open,
   onClose,
   title,
+  id,
   children,
   alwaysDesktop = false,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
+  id: string;
   children: ReactNode;
   alwaysDesktop?: boolean;
 }) {
@@ -34,14 +36,26 @@ export default function ResponsivePanel({
       document.body.style.overflow = previous;
     };
   }, [mobile, open]);
-  if (!mobile) return open || alwaysDesktop ? <>{children}</> : null;
+  const inline = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (mobile || !open) return;
+    const dismiss = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element) || target.closest("dialog") || inline.current?.contains(target)) return;
+      if (target.closest("[aria-controls]")?.getAttribute("aria-controls") !== id) onClose();
+    };
+    document.addEventListener("click", dismiss, true);
+    return () => document.removeEventListener("click", dismiss, true);
+  }, [id, mobile, open, onClose]);
+  if (!mobile) return open || alwaysDesktop ? <div id={id} ref={inline}>{children}</div> : null;
   if (!open) return null;
   return (
     <dialog
+      id={id}
       ref={dialog}
       aria-label={title}
       onCancel={onClose}
-      className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none overflow-auto bg-cream p-4 text-ink backdrop:bg-ink/50"
+      className="fixed inset-x-0 bottom-0 top-auto m-0 max-h-[90dvh] w-full max-w-none rounded-t-2xl overflow-auto bg-cream p-4 text-ink backdrop:bg-ink/50"
     >
       <div className="mb-5 flex items-center justify-between gap-4 border-b border-sand pb-4">
         <h2 className="font-serif text-2xl">{title}</h2>

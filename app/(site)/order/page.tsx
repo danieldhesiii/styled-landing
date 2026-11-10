@@ -49,7 +49,7 @@ export default function OrderPage() {
     <div className="mx-auto max-w-2xl py-12">
       <h1 className="font-serif text-4xl text-ink sm:text-5xl">Track your order</h1>
       <p className="mt-3 text-ink/60">
-        See which suppliers have confirmed your date, and read any message from your stylist.
+        Check supplier replies and request status.
       </p>
 
       {mine === null && <p className="mt-10 text-sm text-ink/40">Loading…</p>}
@@ -66,7 +66,7 @@ export default function OrderPage() {
         <section className="mt-12">
           <h2 className="font-serif text-2xl text-ink">{hasMine ? "Find a different order" : "Find your order"}</h2>
           <p className="mt-1 text-sm text-ink/50">
-            Use the reference from your confirmation (it looks like STY-1A2B3C4D) and the email you ordered with.
+            Enter your request reference and email.
           </p>
           <form onSubmit={lookup} className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
             <input

@@ -17,7 +17,7 @@ export default function MyBookings({
     <section>
       <h1 className="font-serif text-3xl sm:text-4xl">My bookings</h1>
       <p className="mt-3 max-w-2xl text-sm text-ink/60">
-        Track supplier and venue requests. A request becomes a booking only after confirmation.
+        Requests need confirmation before they become bookings.
       </p>
       <nav
         aria-label="Booking types"

@@ -252,3 +252,15 @@ test("inactive event photo and render references must belong to the signed-in ac
   assert.equal(api.writes[0].data.events.length, 2);
   assert.ok(api.checks.every((c) => c.filters.owner_id === "owner"));
 });
+
+test('wedding save writes every event preview selection and render reference through the authenticated route', async () => {
+  const data = packed();
+  data.events[0].previewSelection = { itemIds: ['preview-only'], mode: 'manual' };
+  data.events[0].renderId = renderId;
+  data.events.push({ ...data.events[0], id: secondId, name: 'Second event', previewSelection: { itemIds: ['demo-preview'], mode: 'auto' }, basket: [{ itemId: 'basket-only', quantity: 2 }] });
+  const api = weddingRoute([], [renderId]);
+  assert.equal((await api.put(request(data))).status, 200);
+  assert.deepEqual(api.writes[0].data.events.map(event => event.previewSelection), data.events.map(event => event.previewSelection));
+  assert.deepEqual(api.writes[0].data.events.map(event => event.renderId), [renderId, renderId]);
+  assert.deepEqual(api.writes[0].data.events[1].basket, [{ itemId: 'basket-only', quantity: 2 }]);
+});

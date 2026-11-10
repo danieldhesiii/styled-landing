@@ -36,16 +36,18 @@ export const toPence = (gbp: number): number => Math.round(gbp * 100);
 export interface PenceQuoteLine {
   item: CatalogueItem;
   quantity: number;
-  unitPricePence: number;
-  lineTotalPence: number;
+  unitPricePence: number | null;
+  lineTotalPence: number | null;
 }
 
 export interface PenceQuote {
+  hasUnpricedItems: boolean;
+  hasRequestOnlyItems: boolean;
   lines: PenceQuoteLine[];
   subtotalPence: number;
   commissionPence: number; // Styled's margin: internal, never shown to couples
   depositPence: number;
-  bySupplier: { supplier: string; area: string; totalPence: number; lines: PenceQuoteLine[] }[];
+  bySupplier: { supplier: string; area: string; totalPence: number; hasUnpricedItems: boolean; hasRequestOnlyItems: boolean; lines: PenceQuoteLine[] }[];
 }
 
 // The quote, in whole pence. Unknown items and non-positive quantities are
@@ -55,14 +57,18 @@ export function quotePence(basket: BasketLine[], lookup: ItemLookup): PenceQuote
 
   for (const { itemId, quantity } of basket) {
     const item = lookup(itemId);
-    if (!item || !Number.isInteger(quantity) || quantity <= 0) continue;
-    const unitPricePence = toPence(item.unitPrice);
-    lines.push({ item, quantity, unitPricePence, lineTotalPence: unitPricePence * quantity });
+    if (!item || (item.demoOnly && !item.requestOnly) || !Number.isInteger(quantity) || quantity <= 0) continue;
+    const packagePricing = item.demoOnly && item.requestOnly ? item.demoPricing : null;
+    const unitPrice = packagePricing ? packagePricing.dailyHireGBP + packagePricing.deliverySetupCollectionGBP + packagePricing.damageDepositGBP : item.unitPrice;
+    const unitPricePence = item.priceOnRequest || unitPrice === null || !Number.isFinite(unitPrice) || unitPrice < 0 ? null : toPence(unitPrice);
+    lines.push({ item, quantity, unitPricePence, lineTotalPence: unitPricePence === null ? null : unitPricePence * quantity });
   }
 
-  const subtotalPence = lines.reduce((sum, l) => sum + l.lineTotalPence, 0);
+  const subtotalPence = lines.reduce((sum, l) => sum + (l.lineTotalPence ?? 0), 0);
   const commissionPence = Math.round(subtotalPence * COMMISSION_RATE);
-  const depositPence = Math.round(subtotalPence * DEPOSIT_RATE);
+  const hasUnpricedItems = lines.some((line) => line.lineTotalPence === null);
+  const hasRequestOnlyItems = lines.some((line) => line.item.requestOnly === true);
+  const depositPence = hasUnpricedItems || hasRequestOnlyItems ? 0 : Math.round(subtotalPence * DEPOSIT_RATE);
 
   // Group by supplier so the couple sees who supplies what: the core of the product.
   const supplierMap = new Map<string, PenceQuoteLine[]>();
@@ -74,11 +80,13 @@ export function quotePence(basket: BasketLine[], lookup: ItemLookup): PenceQuote
   const bySupplier = Array.from(supplierMap.entries()).map(([supplier, ls]) => ({
     supplier,
     area: ls[0].item.supplierArea,
-    totalPence: ls.reduce((s, l) => s + l.lineTotalPence, 0),
+    totalPence: ls.reduce((s, l) => s + (l.lineTotalPence ?? 0), 0),
+    hasUnpricedItems: ls.some((line) => line.lineTotalPence === null),
+    hasRequestOnlyItems: ls.some((line) => line.item.requestOnly === true),
     lines: ls,
   }));
 
-  return { lines, subtotalPence, commissionPence, depositPence, bySupplier };
+  return { lines, subtotalPence, commissionPence, depositPence, bySupplier, hasUnpricedItems, hasRequestOnlyItems };
 }
 
 // The same quote in pounds, in the shape the UI components already use.
@@ -88,10 +96,12 @@ export function buildQuote(basket: BasketLine[], lookup: ItemLookup): Quote {
   const toLine = (l: PenceQuoteLine): QuoteLine => ({
     item: l.item,
     quantity: l.quantity,
-    lineTotal: gbp(l.lineTotalPence),
+    lineTotal: l.lineTotalPence === null ? null : gbp(l.lineTotalPence),
   });
 
   return {
+    hasUnpricedItems: q.hasUnpricedItems,
+    hasRequestOnlyItems: q.hasRequestOnlyItems,
     lines: q.lines.map(toLine),
     subtotal: gbp(q.subtotalPence),
     commission: gbp(q.commissionPence),
@@ -100,14 +110,17 @@ export function buildQuote(basket: BasketLine[], lookup: ItemLookup): Quote {
       supplier: g.supplier,
       area: g.area,
       total: gbp(g.totalPence),
+      hasUnpricedItems: g.hasUnpricedItems,
+      hasRequestOnlyItems: g.hasRequestOnlyItems,
       lines: g.lines.map(toLine),
     })),
   };
 }
 
 // Whole pounds when there are no pence (£320), otherwise exact (£45.50), so a
-// shown price always matches what is charged.
-export function formatGBP(n: number): string {
+// shown estimate matches the priced portion; pending prices have no monetary value.
+export function formatGBP(n: number | null): string {
+  if (n === null) return "Quoted separately";
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "GBP",

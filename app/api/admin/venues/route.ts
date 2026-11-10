@@ -1,3 +1,7 @@
+import {verifiedVenueAccount} from "@/lib/server/venue-team";
+import {feedbackInput,reviewFeedback} from "@/lib/venue-review";
+import {notifyVenueReview} from "@/lib/server/venue-review-notify";
+import {verifyVenuePartners} from "@/lib/server/venue-partners";
 import { validateVenueTransition } from "@/lib/venue-workflow";
 import {
   listingMissing,
@@ -27,12 +31,13 @@ export async function GET(req: Request) {
     if (error) return fail(500, "Could not load venues.");
     const { data: drafts, error: de } = await auth.admin
       .from("venue_listing_drafts")
-      .select("venue_id,status");
+      .select("venue_id,status,payload,updated_at");
     if (de) return fail(503, "Could not load listing reviews.");
     return NextResponse.json({
       venues: data?.map((v) => ({
         ...v,
-        review_status: drafts?.find((d) => d.venue_id === v.id)?.status || null,
+        review_status: (()=>{const d=drafts?.find(d=>d.venue_id===v.id);return d?.status==="submitted"?"submitted":reviewFeedback(d?.payload?.review_feedback)?"changes_requested":d?.status||null;})(),
+        review_updated_at:drafts?.find(d=>d.venue_id===v.id)?.updated_at||null,
       })),
     });
   }
@@ -64,12 +69,13 @@ export async function GET(req: Request) {
   if (v.error || p.error || e.error || d.error || m.error || b.error)
     return fail(500, "Could not load venue details.");
   if (!v.data) return fail(404, "Venue not found.");
+  const team=await Promise.all((m.data||[]).map(async member=>{const {data}=await auth.admin.auth.admin.getUserById(member.user_id);return {...member,email:data.user?.email||null};}));
   return NextResponse.json({
     venue: v.data,
     packages: p.data,
     enquiries: e.data,
     draft: d.data,
-    members: m.data,
+    members: team,
     blocks: b.data,
   });
 }
@@ -89,6 +95,7 @@ export async function POST(req: Request) {
   try {
     if (body.action === "saveVenue") {
       const value = parseVenue(body);
+      await verifyVenuePartners(auth.admin,value.details);
       if (value.active && listingMissing(value).length)
         return fail(
           422,
@@ -109,7 +116,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, id: data.id });
     }
     if (!uuid(body.venueId)) return fail(400, "Invalid venue.");
-    if (body.action === "approveDraft") {
+    if(body.action==="requestChanges"){
+      const message=feedbackInput(body.message);
+      if(typeof body.updatedAt!=="string")return fail(422,"Reload the submitted listing before reviewing.");
+      const {data:current,error}=await auth.admin.from("venue_listing_drafts").select("payload,updated_at").eq("venue_id",body.venueId).eq("status","submitted").eq("updated_at",body.updatedAt).maybeSingle();
+      if(error||!current)return fail(409,"This submission changed. Reload it before sending feedback.");
+      const {data:saved,error:save}=await auth.admin.from("venue_listing_drafts").update({status:"draft",payload:{...current.payload,review_feedback:{message,at:new Date().toISOString()}},updated_at:new Date().toISOString()}).eq("venue_id",body.venueId).eq("status","submitted").eq("updated_at",current.updated_at).select("venue_id").maybeSingle();
+      if(save||!saved)return fail(409,"This submission changed. Reload it before sending feedback.");
+      const id=body.venueId;after(()=>notifyVenueReview(id,"changes"));
+    } else if (body.action === "approveDraft") {
       const { data: d, error: de } = await auth.admin
         .from("venue_listing_drafts")
         .select("*")
@@ -117,7 +132,9 @@ export async function POST(req: Request) {
         .eq("status", "submitted")
         .maybeSingle();
       if (de || !d) return fail(409, "No submitted draft to review.");
+      if(typeof body.updatedAt!=="string"||body.updatedAt!==d.updated_at)return fail(409,"This submission changed. Reload before publishing.");
       const value = parseVenue({ ...d.payload, active: true });
+      await verifyVenuePartners(auth.admin,value.details);
       if (listingMissing(value).length)
         return fail(422, `Add: ${listingMissing(value).join(", ")}.`);
       const { error: save } = await auth.admin
@@ -135,9 +152,11 @@ export async function POST(req: Request) {
           500,
           "Published, but the review queue could not be cleared. Reload before making another change.",
         );
+      const id=body.venueId;after(()=>notifyVenueReview(id,"published"));
     } else if (body.action === "addMember" || body.action === "removeMember") {
+      if(body.action==="addMember"&&body.email!==undefined)body.userId=await verifiedVenueAccount(auth.admin,body.email);
       if (!uuid(body.userId))
-        return fail(422, "Enter an existing account user ID.");
+        return fail(422, "Choose a valid existing account.");
       const { data: user, error } = await auth.admin.auth.admin.getUserById(
         body.userId,
       );

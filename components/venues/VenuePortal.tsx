@@ -1,5 +1,8 @@
 "use client";
 import Link from "next/link";
+import { formDraftFingerprint } from "@/components/wedding/form-draft";
+import {venueReviewLabel,reviewFeedback} from "@/lib/venue-review";
+import VenueSupplierFields from "./VenueSupplierFields";
 import {
   useCallback,
   useEffect,
@@ -14,7 +17,7 @@ import VenueDetailsFields from "./VenueDetailsFields";
 import VenueTour from "./VenueTour";
 import VenueRequestCard, { type VenueRequest } from "./VenueRequestCard";
 type Listing = VenueListing & { active: boolean };
-type Draft = { payload: Listing; status: string; updated_at: string };
+type Draft = { payload: Listing & {review_feedback?:unknown}; status: string; updated_at: string };
 const field =
   "mt-2 block w-full rounded-lg border border-sand bg-white p-3 text-sm";
 export default function VenuePortal() {
@@ -28,10 +31,11 @@ export default function VenuePortal() {
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
-    [tab, setTab] = useState("listing"),
+    [tab, setTab] = useState("overview"),
     [adding, setAdding] = useState(false),
     [retry, setRetry] = useState(0);
   const loadSequence = useRef(0);
+  const formBaselines = useRef(new WeakMap<HTMLFormElement, string>());
   const profileRef = useRef<HTMLFormElement>(null);
   const dirtyFormRef = useRef<HTMLFormElement | null>(null);
   const leavingRef = useRef(false);
@@ -70,7 +74,7 @@ export default function VenuePortal() {
     setPending(to);
   }
   function requestNavigation(to: Destination) {
-    if (dirty) openUnsavedDialog(to);
+    if (hasFormEdits()) openUnsavedDialog(to);
     else navigate(to);
   }
   useEffect(() => {
@@ -88,7 +92,7 @@ export default function VenuePortal() {
   useEffect(() => {
     if (!dirty) return;
     const unload = (e: BeforeUnloadEvent) => {
-      if (!leavingRef.current) {
+      if (!leavingRef.current && hasFormEdits()) {
         e.preventDefault();
         e.returnValue = "";
       }
@@ -98,6 +102,7 @@ export default function VenuePortal() {
         "a[href]",
       ) as HTMLAnchorElement | null;
       if (
+        !hasFormEdits() ||
         !a ||
         a.target === "_blank" ||
         a.download ||
@@ -119,18 +124,29 @@ export default function VenuePortal() {
       document.removeEventListener("click", click, true);
     };
   }, [dirty]);
-  function markDirty() {
-    dirtyFormRef.current = profileRef.current;
-    setDirty(true);
-    if (profileRef.current)
-      setMissing(
-        listingMissing(
-          Object.fromEntries(
-            new FormData(profileRef.current),
-          ) as unknown as Parameters<typeof listingMissing>[0],
-        ),
-      );
+  function rememberForm(form: HTMLFormElement | null) {
+    if (form && !formBaselines.current.has(form)) {
+      formBaselines.current.set(form, formDraftFingerprint(new FormData(form)));
+    }
   }
+  function hasFormEdits() {
+    const form = dirtyFormRef.current;
+    return !!form?.isConnected && formBaselines.current.has(form) &&
+      formBaselines.current.get(form) !== formDraftFingerprint(new FormData(form));
+  }
+  function markFormDirty(form: HTMLFormElement | null) {
+    if (!form) return;
+    dirtyFormRef.current = form;
+    // Controlled hidden fields (supplier policy) commit after change capture.
+    requestAnimationFrame(() => {
+      if (dirtyFormRef.current !== form || !form.isConnected) return;
+      setDirty(hasFormEdits());
+      if (form === profileRef.current) setMissing(listingMissing(
+        Object.fromEntries(new FormData(form)) as unknown as Parameters<typeof listingMissing>[0],
+      ));
+    });
+  }
+  function markDirty() { markFormDirty(profileRef.current); }
   const load = useCallback(async (id = "", keepEdits = false) => {
     const sequence = ++loadSequence.current;
     const r = await fetch(
@@ -191,6 +207,8 @@ export default function VenuePortal() {
         String(body.action),
       );
       if (savedProfile) {
+        const form = dirtyFormRef.current;
+        if (form) formBaselines.current.set(form, formDraftFingerprint(new FormData(form)));
         setDirty(false);
         setMissing(null);
       }
@@ -288,8 +306,7 @@ export default function VenuePortal() {
             Your venue workspace
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink/60">
-            Prepare your listing, manage date requests and keep your calendar up
-            to date. Styled reviews listing changes before publishing them.
+            Your listing, supplier choices and venue enquiries in one place.
           </p>
         </div>
         <Link href="/venues" className="text-sm underline">
@@ -321,7 +338,7 @@ export default function VenuePortal() {
       )}
       {!!venues.length && (
         <div className="my-8 flex flex-wrap items-end gap-4">
-          <label className="min-w-0 flex-1 text-sm">
+          <label className="min-w-0 basis-full flex-1 text-sm sm:basis-0">
             Your venues
             <select
               className={field}
@@ -386,10 +403,9 @@ export default function VenuePortal() {
             </p>
           ) : (
             <form
-              onChangeCapture={(e) => {
-                dirtyFormRef.current = e.currentTarget;
-                setDirty(true);
-              }}
+              ref={rememberForm}
+              inert={busy}
+              onChangeCapture={(e) => markFormDirty(e.currentTarget)}
               onSubmit={(e) => {
                 e.preventDefault();
                 void action({
@@ -421,30 +437,17 @@ export default function VenuePortal() {
       )}
       {venue && value && venue.id === selected && !adding && (
         <>
-          <div className="mb-6 flex flex-wrap items-center gap-3 text-xs">
-            <span className="rounded-lg bg-sand px-3 py-2">
-              {venue.active ? "Listing published" : "Listing not yet published"}
-            </span>
-            {draft && (
-              <span className="rounded-lg bg-blush px-3 py-2">
-                {draft.status === "submitted"
-                  ? "Changes awaiting review"
-                  : "Draft changes saved"}
-              </span>
-            )}
-            {venue.active && (
-              <Link href={`/venues/${venue.slug}`} className="underline">
-                View public listing ↗
-              </Link>
-            )}
-          </div>
+          <section className="mb-6 rounded-2xl border border-sand bg-white p-5" aria-label="Listing status"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-serif text-2xl">{venueReviewLabel(venue.active,draft)}</h2>{venue.active&&<Link href={`/venues/${venue.slug}`} className="inline-flex min-h-11 items-center text-sm underline">View public listing ↗</Link>}</div><p className="mt-2 text-sm leading-relaxed text-ink/65">{draft?.status==="submitted"?"Styled is reviewing your submission. You can keep editing; submit again if you want those changes included.":reviewFeedback(draft?.payload.review_feedback)?"Styled has asked for changes. Update your draft, then submit it again.":venue.active?"Your venue is live. Any new edits stay private until approved.":"Finish your details, then submit your listing for Styled to review. Nothing is published automatically."}</p>{reviewFeedback(draft?.payload.review_feedback)&&<p className="mt-4 whitespace-pre-line rounded-xl bg-blush/30 p-4 text-sm"><strong>Feedback from Styled</strong><br/>{reviewFeedback(draft?.payload.review_feedback)?.message}</p>}</section>
+          <label className="mb-6 block text-sm sm:hidden">Workspace section<select aria-label="Venue workspace section" value={tab} onChange={e=>setTab(e.target.value)} className={field}>{[["overview","Overview"],["listing","Listing details"],["media","Photos"],["suppliers","Suppliers & booking"],["requests",`Requests (${requests.filter(r=>r.status==="new").length})`],["calendar","Calendar"]].map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>
           <nav
             aria-label="Venue management"
-            className="mb-8 grid grid-cols-2 gap-2 border-b border-sand pb-3 sm:grid-cols-4"
+            className="mb-8 hidden gap-2 border-b border-sand pb-3 sm:grid sm:grid-cols-6"
           >
             {[
+              ["overview","Overview"],
               ["listing", "Listing details"],
-              ["media", "Photos & tours"],
+              ["media", "Photos"],
+              ["suppliers", "Suppliers & booking"],
               [
                 "requests",
                 `Requests (${requests.filter((r) => r.status === "new").length})`,
@@ -456,29 +459,28 @@ export default function VenuePortal() {
                 type="button"
                 aria-current={tab === k ? "page" : undefined}
                 onClick={() => setTab(k)}
-                className={`rounded-full px-2 py-3 text-xs sm:px-5 sm:text-sm ${tab === k ? "bg-ink text-cream" : "border border-sand"}`}
+                className={`min-h-11 rounded-xl px-2 py-3 text-xs sm:px-5 sm:text-sm ${tab === k ? "bg-ink text-cream" : "border border-sand"}`}
               >
                 {l}
               </button>
             ))}
           </nav>
-          <section hidden={tab !== "listing" && tab !== "media"}>
+          {tab==="overview"&&<section className="mb-8"><h2 className="font-serif text-3xl">What would you like to do?</h2><div className="mt-5 divide-y divide-sand">{[["listing",draft?.status==="submitted"?"Review your submitted details":venue.active?"Update your listing":"Finish your listing",(listingMissing(value).length?`Still needed: ${listingMissing(value).join(", ")}.`:"Check your details and submit when ready.")],["suppliers","Choose suppliers and booking","Set your recommended suppliers, local sourcing and booking link."],["requests",`Respond to enquiries (${requests.filter(r=>r.status==="new").length})`,"Manage booking and viewing requests separately from listing review."],["calendar","Keep your dates up to date","Block dates booked elsewhere and review your venue calendar."]].map(([id,title,text])=><button key={id} type="button" onClick={()=>setTab(id)} className="flex min-h-20 w-full items-center justify-between gap-4 py-5 text-left"><span><span className="block text-sm font-medium">{title}</span><span className="mt-1 block text-sm text-ink/60">{text}</span></span><span aria-hidden="true">→</span></button>)}</div></section>}
+          <section hidden={!["listing","media","suppliers"].includes(tab)}>
             <div className="mb-6 max-w-3xl text-sm leading-relaxed text-ink/60">
               <p>
-                Listing edits remain unpublished until Styled approves them.
-                Uploaded photos are PUBLIC as soon as they upload, including
-                when the listing is still a draft. Never upload confidential
-                media. Discarding edits does not delete uploads.
+                Changes remain private until Styled approves them. Save a draft while you prepare your listing.
               </p>
-              <p className="mt-2">
+              {tab==="listing"&&<p className="mt-2">
                 {(missing ?? listingMissing(value)).length
                   ? `Before submitting, add: ${(missing ?? listingMissing(value)).join(", ")}.`
                   : "Your core details are ready. Check your facilities, inclusions and media before submitting."}
-              </p>
+              </p>}
             </div>
             <form
               id="venue-profile"
-              ref={profileRef}
+              ref={(form) => { profileRef.current = form; rememberForm(form); }}
+              inert={busy}
               onChangeCapture={markDirty}
               key={`${venue.id}-${draft?.updated_at || "live"}`}
               onSubmit={profile}
@@ -535,6 +537,7 @@ export default function VenuePortal() {
                 </label>
                 <VenueDetailsFields details={value.details} pricesInPounds />
               </div>
+              <div className={tab === "suppliers" ? "sm:col-span-2" : "hidden"}><VenueSupplierFields initial={value.details?.supplier_policy} isNew={!venue.active&&!value.details?.supplier_policy} onChange={markDirty}/></div>
               <fieldset
                 className={`${tab === "media" ? "grid" : "hidden"} gap-5 border-t border-sand pt-6 sm:col-span-2 sm:grid-cols-2`}
               >

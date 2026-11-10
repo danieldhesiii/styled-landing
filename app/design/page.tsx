@@ -13,10 +13,11 @@ import {
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { studioRoute, studioDestination } from "@/lib/studio-route";
-import type { BoardTarget } from "@/components/wedding/BoardPicker";
 import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 import { createClient } from "@/lib/supabase/client";
 import type { BasketLine, CatalogueItem, SampleVenue } from "@/lib/types";
+import type { LookReport } from "@/lib/look";
+import { savedRenderSnapshot } from "@/lib/saved-render";
 import { getStyle, getVenue } from "@/lib/styles";
 import { suggestedQty } from "@/lib/quote";
 import { type Brief, type UploadedPhoto } from "@/components/design/BriefStep";
@@ -28,6 +29,7 @@ import StudioNavigation, {
 } from "@/components/design/StudioNavigation";
 import ProductBrowser from "@/components/design/ProductBrowser";
 import BasketPanel from "@/components/design/BasketPanel";
+import VenueSupplierJourney from "@/components/venues/VenueSupplierJourney";
 import CheckoutStep from "@/components/design/CheckoutStep";
 import { helpTopicForPage } from "@/lib/help";
 import HowItWorks from "@/components/design/HowItWorks";
@@ -37,24 +39,22 @@ import MyBookings from "@/components/order/MyBookings";
 import LookProducts from "@/components/design/LookProducts";
 import { useShopAvailability } from "@/components/availability/useAvailability";
 
-import LocationFilter from "@/components/wedding/LocationFilter";
+import LocationFilter from "@/components/venues/LocationFilter";
 import type { DiscoveryResults } from "@/lib/location";
 import EventCountdown from "@/components/wedding/EventCountdown";
-import { isValidDay } from "@/lib/availability";
 import EventPlans from "@/components/wedding/EventPlans";
-import { eventWorkspace, eventBrief, FIRST_EVENT_ID } from "@/lib/event-plans";
+import { eventWorkspace, eventBrief, FIRST_EVENT_ID, emptyPreviewSelection, parsePreviewSelection, togglePreviewItem } from "@/lib/event-plans";
 import MyWedding from "@/components/wedding/MyWedding";
-import Boards from "@/components/wedding/Boards";
+import { newEventBrief, planningFingerprint, persistPlanningDraft, createPlanningDraft, recoverPlanningWorkspace } from "@/components/wedding/planning-state";
 import {
   deliveryDay,
   workspaceData,
-  workspaceFingerprint,
   type WorkspaceData,
   type EventPlan,
   type WeddingBoard,
+  type PreviewSelection,
 } from "@/lib/wedding";
 
-import { prepareBoard, type BoardInspiration } from "@/lib/board-inspiration";
 
 type Step = "studio" | "checkout";
 
@@ -74,12 +74,19 @@ export default function DesignPage() {
 function DesignStudio() {
   const {
     getItem,
+    setVenueScope,scope:venueScope,
     loading: catalogueLoading,
     error: catalogueError,
     refresh: refreshCatalogue,
   } = useCatalogue();
   const params = useSearchParams();
-  const { tab: studioTab, bookings: bookingSection } = studioRoute(params);
+  const { tab: requestedTab, bookings: bookingSection } = studioRoute(params);
+  const studioTab = requestedTab === "boards" ? "saved" : requestedTab;
+  useEffect(() => {
+    if (requestedTab === "boards") {
+      window.history.replaceState(null, "", studioDestination(window.location.href, "saved"));
+    }
+  }, [requestedTab]);
   const [partnerVenue, setPartnerVenue] = useState<SampleVenue | null>(null);
   const [partnerError, setPartnerError] = useState("");
   const savedItems = useSavedItems();
@@ -106,8 +113,6 @@ function DesignStudio() {
   }, [mobileBasketOpen]);
   const [step, setStep] = useState<Step>("studio");
   const [showHowTo, setShowHowTo] = useState(false);
-  const [boardInspiration, setBoardInspiration] =
-    useState<BoardInspiration | null>(null);
   const [savedLooks, setSavedLooks] = useState<SavedLook[]>([]);
   const [lookError, setLookError] = useState("");
   const [busyLooks, setBusyLooks] = useState<Set<string>>(new Set());
@@ -142,6 +147,8 @@ function DesignStudio() {
     designKey = useRef("");
   const accountId = useRef<string | null>(null);
   const [basket, setBasket] = useState<BasketLine[]>([]);
+  const [previewSelection, setPreviewSelection] = useState<PreviewSelection>(emptyPreviewSelection);
+  const [draftWriteFailed, setDraftWriteFailed] = useState(false);
   const [eventPlans, setEventPlans] = useState<EventPlan[]>([]);
   const [activeEventId, setActiveEventId] = useState(FIRST_EVENT_ID);
   const activeEventRef = useRef(FIRST_EVENT_ID);
@@ -156,6 +163,7 @@ function DesignStudio() {
   const [restored, setRestored] = useState(false);
   const productBrowserRef = useRef<HTMLDivElement>(null);
   const visualiserRef = useRef<HTMLDivElement>(null);
+  const [lookProductId,setLookProductId]=useState<string|null>(null);
   const lookProductsRef = useRef<HTMLDivElement>(null);
   function openVisualiser() {
     switchStudioTab("visualiser");
@@ -216,18 +224,22 @@ function DesignStudio() {
       designKey.current = `styled:design:${user.id}`;
       let localDraft: {
         brief?: Partial<Brief>;
+        workspace?: WorkspaceData;
         workspaceRevision?: number;
         activeEventId?: string;
         basket?: BasketLine[];
         renderId?: string | null;
+        previewSelection?: PreviewSelection;
       } | null = null;
       try {
         const raw = localStorage.getItem(designKey.current);
         if (raw) {
           const saved = JSON.parse(raw) as {
             brief?: Partial<Brief>;
+            workspace?: WorkspaceData;
             basket?: BasketLine[];
             renderId?: string | null;
+            previewSelection?: PreviewSelection;
             workspaceRevision?: number;
             activeEventId?: string;
           };
@@ -247,9 +259,8 @@ function DesignStudio() {
                   typeof (p as UploadedPhoto).url === "string",
               );
             }
-            setBrief((b) => ({ ...b, ...restoredBrief }));
+            localDraft.brief = restoredBrief;
           }
-          if (Array.isArray(saved.basket)) setBasket(saved.basket);
         }
       } catch {
         // Corrupt saved state — start fresh.
@@ -262,8 +273,9 @@ function DesignStudio() {
         if (cancelled) return;
         workspaceRevision.current = data.revision;
         setWorkspacePhotos(data.photos || {});
-        if (data.data) {
-          const stored = data.data as WorkspaceData;
+        const recovered = recoverPlanningWorkspace(localDraft, data.revision);
+        const stored = recovered || data.data as WorkspaceData | null;
+        if (stored) {
           if (stored.events?.length && stored.activeEventId) {
             setEventPlans(stored.events);
             setActiveEventId(stored.activeEventId);
@@ -273,6 +285,7 @@ function DesignStudio() {
             );
             if (selected) {
               setBasket(selected.basket);
+              setPreviewSelection(parsePreviewSelection(selected.previewSelection));
               setVersions([]);
               setRenderId(null);
               const draftMatches =
@@ -295,6 +308,7 @@ function DesignStudio() {
               ? localDraft?.brief
               : undefined;
           if (draft && localDraft?.basket) setBasket(localDraft.basket);
+          if (draft && localDraft?.previewSelection) setPreviewSelection(parsePreviewSelection(localDraft.previewSelection));
           const selectedPhotoIds =
             draft?.uploadedImages?.map((p) => p.id) ?? photoIds;
           setBrief((b) => ({
@@ -309,11 +323,22 @@ function DesignStudio() {
               .map((id) => ({ id, url: data.photos[id] })),
           }));
           setBoards(stored.boards);
-          setSavedWorkspace(workspaceFingerprint(stored));
+          if (data.data) {
+            const remote = data.data as WorkspaceData;
+            const selected = remote.events?.find((event) => event.id === remote.activeEventId);
+            const { photoIds: remotePhotoIds, ...remoteBrief } = remote.brief;
+            setSavedWorkspace(planningFingerprint(eventWorkspace(
+              { ...remoteBrief, uploadedImages: remotePhotoIds.map((id) => ({ id, url: "" })) },
+              remote.boards, remote.events || [], remote.activeEventId || FIRST_EVENT_ID,
+              selected?.basket || [], selected?.renderId || null,
+            )));
+          }
+          if (draft || recovered) setWorkspaceTouched(true);
         }
         if (
-          !data.data?.events?.length &&
+          !stored?.events?.length &&
           localDraft?.renderId &&
+          (!data.data || (localDraft.workspaceRevision === data.revision && (localDraft.activeEventId || FIRST_EVENT_ID) === FIRST_EVENT_ID)) &&
           localDraft.renderId !== "placeholder" &&
           !entryParams.has("venue") &&
           !entryParams.has("style")
@@ -321,12 +346,19 @@ function DesignStudio() {
           setRenderId(localDraft.renderId);
           void restoreEventRender(localDraft.renderId, FIRST_EVENT_ID);
         }
-        if (!data.data)
+        if (!data.data) {
+          if (!recovered) {
+            if (localDraft?.brief) setBrief((current) => ({ ...current, ...localDraft.brief }));
+            if (Array.isArray(localDraft?.basket)) setBasket(localDraft.basket);
+            if (localDraft?.previewSelection) setPreviewSelection(parsePreviewSelection(localDraft.previewSelection));
+          }
           setSavedWorkspace(
-            workspaceFingerprint(
-              workspaceData({ ...brief, planSetupComplete: false }, []),
+            planningFingerprint(
+              eventWorkspace({ ...brief, planSetupComplete: false }, [], [], FIRST_EVENT_ID, [], null),
             ),
           );
+        }
+        if (!data.data && localDraft?.brief) setWorkspaceTouched(true);
         setWorkspaceLoaded(true);
       } catch (e) {
         if (!cancelled)
@@ -347,6 +379,7 @@ function DesignStudio() {
         ].includes(styleParam)
       )
         setBrief((b) => ({ ...b, styleId: styleParam }));
+      if (styleParam) setWorkspaceTouched(true);
       const slug = params.get("venue");
       if (slug && /^[a-z0-9-]+$/.test(slug))
         setBrief((b) => ({
@@ -357,6 +390,7 @@ function DesignStudio() {
           uploadedImages: [],
         }));
       if (slug) {
+        setWorkspaceTouched(true);
         const consumed = new URL(window.location.href);
         consumed.searchParams.delete("venue");
         window.history.replaceState(null, "", consumed);
@@ -368,25 +402,15 @@ function DesignStudio() {
     };
   }, []);
 
-  // Persist the design whenever it changes (once the initial restore has run,
-  // so we never overwrite saved state with defaults).
+  // Every editable field here is recoverable from an account/event-scoped draft.
   useEffect(() => {
-    if (!restored) return;
-    try {
-      localStorage.setItem(
-        designKey.current,
-        JSON.stringify({
-          brief,
-          basket,
-          renderId,
-          activeEventId,
-          workspaceRevision: workspaceRevision.current,
-        }),
-      );
-    } catch {
-      // Storage full or unavailable — non-fatal.
-    }
-  }, [brief, basket, renderId, activeEventId, restored]);
+    if (!restored || !workspaceLoaded || !designKey.current) return;
+    const durable = persistPlanningDraft(() => localStorage, designKey.current, createPlanningDraft(
+      eventWorkspace(brief, boards, eventPlans, activeEventId, basket, renderId, previewSelection),
+      brief, workspaceRevision.current,
+    ));
+    setDraftWriteFailed(!durable);
+  }, [brief, boards, basket, renderId, previewSelection, activeEventId, restored, workspaceLoaded, eventPlans]);
 
   // Saved looks (favourites) live in the database under the couple's Supabase
   // user (guest or account), so they persist and follow them across devices once
@@ -535,13 +559,16 @@ function DesignStudio() {
     await changeSavedLook(id, true);
   }
 
-  function loadSavedLook(look: SavedLook, url: string, itemIds?: string[]) {
-    setBoardInspiration(null);
-    // Set the style without wiping the render (patchBrief would clear it).
-    setBrief((b) => ({ ...b, styleId: look.styleId }));
-    showRender({ id: look.id, url, itemIds });
+  function loadSavedLook(look: SavedLook, url: string, itemIds?: string[], report?: LookReport, originalUrl?: string) {
+    // Keep this event’s editable plan unchanged when viewing an account-wide save.
+    renderRestoreToken.current += 1;
+    setVersions([{ id: look.id, url, itemIds, look: report, originalUrl: originalUrl || look.originalUrl }]);
+    setRenderId(look.id);
+    setActionNotice("Look opened. Your current event and basket are unchanged.");
     openVisualiser();
   }
+
+  useEffect(()=>{setVenueScope(brief.venueId.startsWith("listing:")?brief.venueId.slice(8):"");},[brief.venueId,setVenueScope]);
 
   useEffect(() => {
     if (!brief.venueId.startsWith("listing:")) {
@@ -550,6 +577,7 @@ function DesignStudio() {
       return;
     }
     const controller = new AbortController();
+    const eventId = activeEventRef.current;
     setPartnerError("");
     setPartnerVenue((previous) =>
       previous?.id === brief.venueId ? previous : null,
@@ -560,6 +588,7 @@ function DesignStudio() {
       .then(async (r) => {
         const d = await r.json();
         if (!r.ok) throw Error(d.error);
+        if (controller.signal.aborted || activeEventRef.current !== eventId) return;
         setPartnerVenue(d.venue);
         setBrief((b) =>
           b.venueId === d.venue.id
@@ -574,7 +603,7 @@ function DesignStudio() {
           );
       });
     return () => controller.abort();
-  }, [brief.venueId]);
+  }, [brief.venueId, activeEventId]);
   const addedFromLink = useRef<string | null>(null);
   useEffect(() => {
     if (!restored || catalogueLoading || catalogueError) return;
@@ -587,6 +616,7 @@ function DesignStudio() {
     const item = getItem(id);
     if (item) {
       addedFromLink.current = id;
+      setWorkspaceTouched(true);
       setBasket((lines) =>
         lines.some((l) => l.itemId === id)
           ? lines
@@ -611,6 +641,29 @@ function DesignStudio() {
     catalogueLoading,
     catalogueError,
   ]);
+
+  const previewFromLink = useRef<string | null>(null);
+  useEffect(() => {
+    if (!restored || !workspaceLoaded || catalogueLoading || catalogueError) return;
+    const expectedScope = brief.venueId.startsWith("listing:") ? brief.venueId.slice(8) : null;
+    if ((venueScope?.slug ?? null) !== expectedScope) return;
+    const id = params.get("preview");
+    if (!id) { previewFromLink.current = null; return; }
+    if (previewFromLink.current === id) return;
+    const item = getItem(id);
+    previewFromLink.current = id;
+    if (item) {
+      setWorkspaceTouched(true);
+      setPreviewSelection((selection) => ({ ...selection, mode: "manual", itemIds: [...new Set([...selection.itemIds, item.id])] }));
+      setActionNotice(`${item.name} selected for this event’s preview. Your basket is unchanged.`);
+    } else {
+      setActionNotice("This product is not available in your current catalogue. Choose another product for the preview.");
+    }
+    const consumed = new URL(window.location.href);
+    consumed.searchParams.delete("preview");
+    consumed.searchParams.set("tab", item ? "visualiser" : "catalogue");
+    window.history.replaceState(null, "", consumed);
+  }, [restored, workspaceLoaded, catalogueLoading, catalogueError, params, getItem, brief.venueId, venueScope?.slug]);
 
   // Availability per supplier for the couple's wedding date.
   const shopAvailability = useShopAvailability(
@@ -646,18 +699,11 @@ function DesignStudio() {
   // "none" is a description-led look with no preset; show a neutral name for it.
   const styleName = brief.styleId === "none" ? "Your design" : style.name;
   // The "before" image a render is compared against / saved alongside.
-  const originalImage = brief.uploadedImages[0]?.url ?? venue.image ?? null;
+  const originalImage = currentRender?.originalUrl ?? brief.uploadedImages[0]?.url ?? venue.image ?? null;
 
   const patchBrief = (patch: Partial<Brief>) => {
+    if (workspaceLock.current || activeEventRef.current !== activeEventId) return;
     setWorkspaceTouched(true);
-    if (patch.venueId !== undefined) {
-      const url = new URL(window.location.href);
-      if (patch.venueId.startsWith("listing:"))
-        url.searchParams.set("venue", patch.venueId.slice(8));
-      else url.searchParams.delete("venue");
-      window.history.replaceState(null, "", url);
-    }
-
     // A render is only valid for the venue, photos and style it was made from.
     if (
       patch.venueId !== undefined ||
@@ -673,17 +719,14 @@ function DesignStudio() {
     const token = ++renderRestoreToken.current;
     try {
       const response = await fetch(`/api/renders/${id}`);
-      const data = await response.json();
+      const data = response.ok ? savedRenderSnapshot(id, await response.json()) : null;
       if (
         activeEventRef.current !== eventId ||
         token !== renderRestoreToken.current ||
-        !response.ok ||
-        data.status !== "succeeded"
+        !data
       )
         return;
-      setVersions([
-        { id, url: data.imageUrl, itemIds: data.itemIds, look: data.look },
-      ]);
+      setVersions([data]);
       setRenderId(id);
     } catch {
       setLookError(
@@ -704,24 +747,12 @@ function DesignStudio() {
       activeEventId,
       basket,
       renderId,
+      previewSelection,
     );
     let next = outgoing.events!;
     if (newPlan) {
       if (next.length >= 12) return false;
-      const initial = workspaceData(
-        {
-          ...brief,
-          venueId: "manor_orangery",
-          venueChoice: "exploring",
-          venueName: "",
-          venuePostcode: "",
-          uploadedImages: [],
-          budget: 0,
-          budgetUnknown: true,
-          planSetupComplete: false,
-        },
-        [],
-      ).brief;
+      const initial = workspaceData(newEventBrief(), []).brief;
       next = [
         ...next,
         {
@@ -731,6 +762,7 @@ function DesignStudio() {
           brief: initial,
           basket: [],
           renderId: null,
+          previewSelection: emptyPreviewSelection(),
         },
       ];
     }
@@ -772,13 +804,20 @@ function DesignStudio() {
       setDateEditorRequest(0);
       setBrief(eventBrief(target, photos));
       setBasket(target.basket);
+      setPreviewSelection(parsePreviewSelection(target.previewSelection));
       renderRestoreToken.current += 1;
       setVersions([]);
       setRenderId(target.renderId || null);
-      setBoardInspiration(null);
       setDiscovery(null);
+      setSearchRadius(50);
+      setLookProductId(null);
+      setMobileBasketOpen(false);
+      setPartnerError("");
+      const url = new URL(window.location.href);
+      for (const key of ["venue", "style", "supplier", "add", "preview"]) url.searchParams.delete(key);
+      window.history.replaceState(null, "", url);
       setPartnerVenue(null);
-      setSavedWorkspace(workspaceFingerprint(value));
+      setSavedWorkspace(planningFingerprint(value));
       setWorkspaceTouched(false);
       if (target.renderId) void restoreEventRender(target.renderId, targetId);
       setActionNotice(
@@ -801,7 +840,7 @@ function DesignStudio() {
     patch?: Partial<Brief>,
     nextBasket = basket,
   ) {
-    if (!workspaceLoaded || workspaceLock.current) return false;
+    if (!workspaceLoaded || workspaceLock.current || activeEventRef.current !== activeEventId) return false;
     workspaceLock.current = true;
     setWorkspaceSaving(true);
     setWorkspaceError("");
@@ -812,6 +851,7 @@ function DesignStudio() {
       activeEventId,
       nextBasket,
       renderId,
+      previewSelection,
     );
     try {
       const res = await fetch("/api/wedding", {
@@ -829,7 +869,8 @@ function DesignStudio() {
       setBoards(nextBoards);
       setEventPlans(value.events!);
       if (patch) setBrief((current) => ({ ...current, ...patch }));
-      setSavedWorkspace(workspaceFingerprint(value));
+      setSavedWorkspace(planningFingerprint(value));
+      setWorkspaceTouched(false);
       return true;
     } catch (e) {
       setWorkspaceError(
@@ -842,46 +883,9 @@ function DesignStudio() {
     }
   }
 
-  async function addToBoard(boardId: string, target: BoardTarget) {
-    const board = boards.find((b) => b.id === boardId);
-    if (!board || !workspaceLoaded || workspaceLock.current) return false;
-    if (
-      board.pins.some(
-        (pin) => pin.kind === target.kind && pin.ref === target.ref,
-      )
-    ) {
-      setActionNotice("Already on this board.");
-      return true;
-    }
-    if (board.pins.length >= 100) {
-      setWorkspaceError(
-        "This board has 100 ideas. Create another board to keep collecting.",
-      );
-      return false;
-    }
-    const next = boards.map((b) =>
-      b.id === boardId
-        ? {
-            ...b,
-            pins: [
-              ...b.pins,
-              {
-                id: crypto.randomUUID(),
-                kind: target.kind,
-                ref: target.ref,
-                text: target.text || "",
-              },
-            ],
-          }
-        : b,
-    );
-    const ok = await saveWorkspace(next);
-    if (ok) setActionNotice("Added to your board and saved to your account.");
-    return ok;
-  }
   const workspaceDirty =
-    workspaceLoaded &&
-    workspaceFingerprint(
+    workspaceLoaded && restored && workspaceTouched &&
+    planningFingerprint(
       eventWorkspace(
         brief,
         boards,
@@ -889,17 +893,18 @@ function DesignStudio() {
         activeEventId,
         basket,
         renderId,
+        previewSelection,
       ),
     ) !== savedWorkspace;
   useEffect(() => {
-    if (!workspaceDirty || (!savedWorkspace && !workspaceTouched)) return;
+    if (!workspaceDirty || !draftWriteFailed) return;
     const protect = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", protect);
     return () => window.removeEventListener("beforeunload", protect);
-  }, [workspaceDirty, savedWorkspace, workspaceTouched]);
+  }, [workspaceDirty, draftWriteFailed]);
   useEffect(() => {
     const back = () => setStep("studio");
     window.addEventListener("popstate", back);
@@ -911,7 +916,25 @@ function DesignStudio() {
     return () => clearTimeout(timer);
   }, [actionNotice]);
 
+  function toggleVisualiserProduct(item: CatalogueItem) {
+    if (workspaceLock.current || activeEventRef.current !== activeEventId) return;
+    setWorkspaceTouched(true);
+    setPreviewSelection((selection) => togglePreviewItem(selection, item.id));
+  }
+  function removePreviewItem(itemId: string) {
+    if (workspaceLock.current || activeEventRef.current !== activeEventId) return;
+    setWorkspaceTouched(true);
+    setPreviewSelection((selection) => ({ ...selection, itemIds: selection.itemIds.filter((id) => id !== itemId) }));
+  }
+  function changePreviewMode(mode: PreviewSelection["mode"]) {
+    if (workspaceLock.current || activeEventRef.current !== activeEventId) return;
+    setWorkspaceTouched(true);
+    setPreviewSelection((selection) => ({ ...selection, mode }));
+  }
+
   function addItem(item: CatalogueItem) {
+    if (workspaceLock.current || activeEventRef.current !== activeEventId) return;
+    setWorkspaceTouched(true);
     setBasket((b) => {
       if (b.some((l) => l.itemId === item.id)) return b;
       return [
@@ -921,12 +944,16 @@ function DesignStudio() {
     });
   }
   function removeItem(itemId: string) {
+    if (workspaceLock.current || activeEventRef.current !== activeEventId) return;
+    setWorkspaceTouched(true);
     setBasket((b) => b.filter((l) => l.itemId !== itemId));
   }
   function setItemDates(
     itemId: string,
     hireDates?: import("@/lib/booking-dates").HireDates,
   ) {
+    if (workspaceLock.current || activeEventRef.current !== activeEventId) return;
+    setWorkspaceTouched(true);
     setBasket((lines) =>
       lines.map((line) =>
         line.itemId === itemId ? { ...line, hireDates } : line,
@@ -934,6 +961,8 @@ function DesignStudio() {
     );
   }
   function setQty(itemId: string, quantity: number) {
+    if (workspaceLock.current || activeEventRef.current !== activeEventId) return;
+    setWorkspaceTouched(true);
     setBasket((b) =>
       b.map((l) => (l.itemId === itemId ? { ...l, quantity } : l)),
     );
@@ -951,125 +980,45 @@ function DesignStudio() {
     });
   }
 
-  const headerHasEvent =
-    workspaceLoaded && restored && isValidDay(brief.weddingDate);
   const activeEventName =
     eventPlans.find((event) => event.id === activeEventId)?.name ||
     "Wedding day";
 
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="studio-page-enter min-h-screen bg-cream">
       <SkipLink target="studio-content" />
-      {/* Slim app header */}
-      <header className="sticky top-0 z-30 border-b border-sand bg-cream/80 backdrop-blur">
-        <div
-          className={`mx-auto max-w-7xl items-center gap-2 px-3 py-3 sm:px-5 ${headerHasEvent ? "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]" : "flex justify-between"}`}
-        >
-          <Link
-            href="/"
-            className="justify-self-start font-serif text-xl tracking-wide text-ink"
-          >
-            Styled<span className="text-clay">.</span>
-          </Link>
-          {headerHasEvent && (
-            <EventCountdown name={activeEventName} date={brief.weddingDate} />
-          )}
-          <div className="flex min-w-0 items-center justify-self-end gap-1.5 sm:gap-3">
-            {step === "studio" && (
-              <button
-                type="button"
-                onClick={() => setMobileBasketOpen(true)}
-                aria-label={`Open basket, ${basket.reduce((n, line) => n + line.quantity, 0)} items`}
-                className="flex min-h-11 items-center gap-1 rounded-full border border-sand px-2 text-xs text-ink sm:gap-2 sm:px-3"
-              >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                >
-                  <path d="M5 7h14l1 14H4L5 7z M9 7V5a3 3 0 0 1 6 0v2" />
-                </svg>
-                <span
-                  className={headerHasEvent ? "hidden lg:inline" : undefined}
-                >
-                  Basket{" "}
-                  <span className="tabular-nums">
-                    ({basket.reduce((n, line) => n + line.quantity, 0)})
-                  </span>
-                </span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                setShowHowTo(true);
-              }}
-              className={`${headerHasEvent ? "hidden xl:flex" : "hidden sm:flex"} items-center gap-1.5 rounded-full border border-sand px-3 py-2 text-xs text-ink/70 hover:border-clay/50 hover:text-ink transition-colors`}
-            >
-              <span className="text-[11px]">?</span>{" "}
-              <span className="hidden sm:inline">How it works</span>
-              <span className="sm:hidden">Help</span>
-            </button>
-            {step === "checkout" && (
-              <button
-                type="button"
-                onClick={() => setStep("studio")}
-                className={`${headerHasEvent ? "hidden lg:inline-flex" : ""} text-xs text-ink/50 hover:text-ink transition-colors`}
-              >
-                ← Back to design
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => openBookings()}
-              aria-current={studioTab === "orders" ? "page" : undefined}
-              className={`${headerHasEvent ? "hidden" : "md:hidden"} min-h-11 rounded-full border border-sand px-2 py-2 text-xs sm:px-3`}
-            >
-              My bookings
-            </button>
-            <AccountMenu
-              onOpenHelp={() => setShowHowTo(true)}
-              onOpenOrders={() => {
-                openBookings();
-              }}
-            />
+      <header className="sticky top-0 z-30 border-b border-sand bg-cream/95 backdrop-blur">
+        <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center gap-x-2 px-3 py-1 sm:gap-x-3 sm:px-5 lg:gap-x-6">
+          <Link href="/" className="shrink-0 font-serif text-2xl tracking-tight text-ink">Styled<span className="text-clay">.</span></Link>
+          {workspaceLoaded && restored && <button type="button" title="Edit event dates" disabled={workspaceSaving || generationBusy || step !== "studio"} onClick={() => { setDateEditorRequest(n => n + 1); switchStudioTab("wedding"); }} className="inline-flex min-h-11 shrink-0 items-center rounded-sm px-1 focus-visible:outline-clay"><EventCountdown name={activeEventName} date={brief.weddingDate} /></button>}
+          {step === "studio" && <div className="hidden min-w-0 md:order-last md:block md:w-full lg:order-none lg:w-auto lg:flex-1"><StudioNavigation venueSuppliers={venueScope?.policy.mode === "venue_only" || venueScope?.policy.mode === "venue_partners"} active={studioTab} onSelect={switchStudioTab} /></div>}
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+            {step === "studio" ? <button type="button" onClick={() => setMobileBasketOpen(true)} aria-label={`Open basket, ${basket.reduce((total, line) => total + line.quantity, 0)} items`} className="flex min-h-11 items-center gap-2 rounded-md px-2 text-xs text-ink/70 hover:bg-sand/30 hover:text-ink">
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 7h14l1 14H4L5 7z M9 7V5a3 3 0 0 1 6 0v2" /></svg>
+              <span className="tabular-nums">{basket.reduce((total, line) => total + line.quantity, 0)}</span>
+            </button> : <button type="button" onClick={() => setStep("studio")} className="min-h-11 px-2 text-xs text-ink/65 hover:text-ink">Back to studio</button>}
+            <button type="button" onClick={() => setShowHowTo(true)} aria-label="How it works" className="flex h-11 w-11 items-center justify-center rounded-md text-sm text-ink/60 hover:bg-sand/30 hover:text-ink">?</button>
+            <AccountMenu onOpenHelp={() => setShowHowTo(true)} onOpenOrders={() => openBookings()} />
           </div>
         </div>
-      </header>
-
-      {step === "studio" && (
-        <div className="border-b border-sand">
-          <div className="mx-auto max-w-7xl px-5">
-            <StudioNavigation active={studioTab} onSelect={switchStudioTab} />
-          </div>
-        </div>
-      )}
-      <main
-        id="studio-content"
-        className="mx-auto max-w-7xl px-4 pb-24 sm:px-5 md:pb-8"
-      >
-        <div className="flex justify-end pt-2"><SupportButton label="Help & support" className="min-h-11 text-sm text-ink/70 underline underline-offset-4 hover:text-ink" /></div>
-        {workspaceLoaded && restored && (
+        {workspaceLoaded && restored && <div className="border-t border-sand/60">
+          <div className="mx-auto max-w-7xl px-3 sm:px-5">
           <EventPlans
+            compact
             events={eventPlans}
             activeId={activeEventId}
-            brief={brief}
             disabled={workspaceSaving || generationBusy || step !== "studio"}
             dirty={workspaceDirty}
             onSave={() => saveWorkspace()}
-            onEditDates={() => {
-              setDateEditorRequest((n) => n + 1);
-              switchStudioTab("wedding");
-            }}
             onSwitch={(id) => switchEvent(id)}
             onCreate={(name, kind) =>
               switchEvent(crypto.randomUUID(), { name, kind })
             }
           />
-        )}
+          </div>
+        </div>}
+      </header>
+      <main id="studio-content" className="mx-auto max-w-7xl px-3 pb-24 sm:px-5 md:pb-8">
         {actionNotice && (
           <p
             role="status"
@@ -1079,7 +1028,7 @@ function DesignStudio() {
           </p>
         )}
         {step === "studio" && (
-          <div className="py-6 sm:py-8">
+          <div className="py-5 sm:py-6">
             {(["catalogue", "saved", "visualiser"] as StudioTab[]).includes(
               studioTab,
             ) &&
@@ -1089,7 +1038,7 @@ function DesignStudio() {
                   className="mb-5 rounded-xl border border-sand bg-white p-4 text-sm"
                 >
                   {catalogueError
-                    ? "The catalogue could not be loaded. Your wedding plan, boards and bookings are still available."
+                    ? catalogueError + " Your wedding plan, saved items and bookings are still available."
                     : "Loading catalogue pieces…"}
                   {catalogueError && (
                     <button
@@ -1102,77 +1051,28 @@ function DesignStudio() {
                   )}
                 </div>
               )}
-            {(studioTab === "catalogue" || studioTab === "venues") && (
-              <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <p className="text-xs text-ink/60">
-                  {studioTab === "venues"
-                    ? "Find a space for your day"
-                    : "Discover pieces from wedding suppliers"}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => switchStudioTab("wedding")}
-                  className="text-left text-xs leading-relaxed text-ink/60 hover:text-ink"
-                >
-                  {brief.weddingDate
-                    ? new Date(
-                        brief.weddingDate + "T12:00:00",
-                      ).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })
-                    : "Set up your wedding plan"}
-                  <span className="ml-2">· {brief.guestCount} guests</span>
-                  <span className="ml-2 underline underline-offset-4">
-                    Wedding plan →
-                  </span>
-                </button>
-              </div>
-            )}
+            {(["saved","looks"] as StudioTab[]).includes(studioTab)&&<nav aria-label="Your inspiration" className="studio-panel mb-5 flex flex-wrap gap-6 border-b border-sand">{([["saved","Saved items"],["looks","Saved looks"]] as [StudioTab,string][]).map(([id,label])=><button type="button" key={id} aria-current={studioTab===id?"page":undefined} onClick={()=>switchStudioTab(id)} className={`min-h-12 border-b-2 text-sm ${studioTab===id?"border-clay font-medium":"border-transparent text-ink/60"}`}>{label}</button>)}</nav>}
             {(["saved", "looks"] as StudioTab[]).includes(studioTab) && (
               <section aria-labelledby="saved-title" className="mb-6">
                 <h1
                   id="saved-title"
-                  className="mt-2 font-serif text-3xl sm:text-4xl"
+                  className="font-serif text-3xl tracking-tight sm:text-4xl"
                 >
-                  Saved
+                  {studioTab==="looks"?"Saved looks":"Saved items"}
                 </h1>
                 <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/60">
-                  Your favourite pieces and looks, in one place.
+                  {studioTab==="looks"?"Open a saved preview to return to the visualiser.":"Your favourite products, ready when you need them."}
                 </p>
-                <nav
-                  aria-label="Saved collection"
-                  className="mt-6 flex gap-5 border-b border-sand sm:gap-8"
-                >
-                  {(
-                    [
-                      ["saved", "Items", savedItems.ids.length],
-                      ["looks", "Looks", savedLooks.length],
-                    ] as const
-                  ).map(([tab, label, count]) => (
-                    <button
-                      key={tab}
-                      type="button"
-                      onClick={() => switchStudioTab(tab)}
-                      aria-current={studioTab === tab ? "page" : undefined}
-                      className={`min-h-12 border-b-2 text-sm ${studioTab === tab ? "border-clay font-medium text-ink" : "border-transparent text-ink/60 hover:text-ink"}`}
-                    >
-                      {label}
-                      <span className="ml-2 text-xs tabular-nums text-ink/50">
-                        {count}
-                      </span>
-                    </button>
-                  ))}
-                </nav>
-                <p className="mt-4 text-xs leading-relaxed text-ink/60">
-                  {studioTab === "looks"
-                    ? "Open a look to explore its pieces."
-                    : "Save ideas here. Add pieces to your basket when ready."}
-                </p>
+
+
               </section>
             )}
 
+            {draftWriteFailed && workspaceDirty && (
+              <p role="status" className="mb-5 rounded-xl border border-clay p-4 text-sm">
+                This browser could not keep your draft. Save your plan before leaving.
+              </p>
+            )}
             {workspaceError && (
               <div
                 role="alert"
@@ -1198,9 +1098,6 @@ function DesignStudio() {
                 onUnsave={unsaveLook}
                 busyIds={busyLooks}
                 error={lookError}
-                boards={boards}
-                boardsBusy={workspaceSaving || !workspaceLoaded}
-                onAddToBoard={addToBoard}
               />
             )}
             {studioTab === "orders" && (
@@ -1211,7 +1108,7 @@ function DesignStudio() {
                 onBrowse={() => switchStudioTab("catalogue")}
               />
             )}
-            <div hidden={studioTab !== "wedding"}>
+            <div className="studio-panel" hidden={studioTab !== "wedding"}>
               <MyWedding
                 key={activeEventId}
                 dateEditorRequest={dateEditorRequest}
@@ -1226,7 +1123,6 @@ function DesignStudio() {
                   quantity: line.quantity,
                 }))}
                 renderCount={versions.length}
-                boardCount={boards.length}
                 photos={workspacePhotos}
                 brief={brief}
                 onChange={patchBrief}
@@ -1236,80 +1132,20 @@ function DesignStudio() {
                 status={
                   !workspaceLoaded
                     ? "Loading saved details…"
-                    : workspaceFingerprint(
-                          eventWorkspace(
-                            brief,
-                            boards,
-                            eventPlans,
-                            activeEventId,
-                            basket,
-                            renderId,
-                          ),
-                        ) === savedWorkspace
+                    : !workspaceDirty
                       ? "Saved to your account"
                       : "You have unsaved changes to your wedding plan"
                 }
                 onBrowse={() => switchStudioTab("catalogue")}
-                onBoards={() => switchStudioTab("boards")}
+                onSaved={() => switchStudioTab("saved")}
                 onBookings={(section) => openBookings(section || "suppliers")}
                 onFindVenue={() => switchStudioTab("venues")}
                 onVisualise={openVisualiser}
               />
             </div>
-            <div hidden={studioTab !== "boards"}>
-              <Boards
-                boards={boards}
-                onSave={saveWorkspace}
-                busy={workspaceSaving}
-                loaded={workspaceLoaded}
-                photos={workspacePhotos}
-                onPhoto={(id, url) =>
-                  setWorkspacePhotos((p) => ({ ...p, [id]: url }))
-                }
-                savedIds={savedItems.ids}
-                looks={savedLooks}
-                onAdd={addItem}
-                availability={shopAvailability}
-                basket={basket}
-                onQty={setQty}
-                onRemove={removeItem}
-                onChangeDates={() => switchStudioTab("wedding")}
-                onAlternatives={() => switchStudioTab("catalogue")}
-                savedError={savedItems.error || undefined}
-                savingItems={savedItems.busy}
-                onOpenSaved={() => switchStudioTab("saved")}
-                onOpenLooks={() => switchStudioTab("looks")}
-                onSaveItem={(id) => {
-                  if (!savedItems.ids.includes(id)) void savedItems.toggle(id);
-                }}
-                onUseBoard={(board) => {
-                  setBoardInspiration(prepareBoard(board));
-                  setRenderId(null);
-                  openVisualiser();
-                }}
-                onOpenLook={async (id) => {
-                  const look = savedLooks.find((l) => l.id === id);
-
-                  const response = await fetch(`/api/renders/${id}`);
-                  const data = await response.json();
-                  if (!response.ok || !data.imageUrl)
-                    throw Error("This look is no longer available.");
-                  loadSavedLook(
-                    look || {
-                      id,
-                      styleId: "none",
-                      styleName: "Board look",
-                      originalUrl: data.originalUrl || undefined,
-                      savedAt: Date.now(),
-                    },
-                    data.imageUrl,
-                    data.itemIds,
-                  );
-                }}
-              />
-            </div>
-            <div hidden={studioTab !== "catalogue"}>
-              <LocationFilter
+            <div className="studio-panel" hidden={studioTab !== "catalogue"}>
+              {venueScope?.policy.mode!=="venue_only"&&<LocationFilter
+                entity="suppliers"
                 venueSlug={
                   brief.venueId.startsWith("listing:")
                     ? brief.venueId.slice(8)
@@ -1320,12 +1156,13 @@ function DesignStudio() {
                 onResult={setDiscovery}
                 radius={searchRadius}
                 onRadius={setSearchRadius}
-              />
+              />}
             </div>
-            <div hidden={studioTab !== "venues"}>
+            <div className="studio-panel" hidden={studioTab !== "venues"}>
               {restored && (
                 <VenueExplorer
-                  matches={discovery?.venues}
+                  matches={discovery?.placeMatches ? undefined : discovery?.venues}
+                  placeMatches={discovery?.placeMatches?.venues}
                   searchRadius={searchRadius}
                   active={studioTab === "venues"}
                   guestCount={brief.guestCount}
@@ -1374,20 +1211,22 @@ function DesignStudio() {
               hidden={
                 studioTab === "venues" ||
                 studioTab === "wedding" ||
-                studioTab === "boards" ||
+
                 studioTab === "looks" ||
                 studioTab === "orders"
               }
-              className={`${studioTab === "venues" || studioTab === "wedding" || studioTab === "boards" || studioTab === "looks" || studioTab === "orders" ? "hidden" : "grid"} gap-5 ${basket.length ? "lg:grid-cols-[minmax(0,1fr)_340px]" : "lg:grid-cols-1"} lg:items-start`}
+              className={`${studioTab === "venues" || studioTab === "wedding" ||  studioTab === "looks" || studioTab === "orders" ? "hidden" : "grid"} gap-5 ${basket.length ? "lg:grid-cols-[minmax(0,1fr)_340px]" : "lg:grid-cols-1"} lg:items-start`}
             >
               {/* Catalogue first, optional visualiser below. */}
               <div className="min-w-0 space-y-5">
+                {venueScope && <VenueSupplierJourney name={venueScope.name} slug={venueScope.slug} policy={venueScope.policy} inStudio/>}
                 {/* Marketplace catalogue */}
                 <div
                   ref={productBrowserRef}
                   hidden={studioTab === "visualiser"}
-                  className="overflow-hidden rounded-3xl border border-sand bg-white shadow-sm"
+                  className="studio-panel overflow-hidden rounded-3xl border border-sand bg-white shadow-sm"
                 >
+                  {venueScope?.policy.mode!=="venue_only" && <>
                   {savedItems.error && (
                     <div
                       role="alert"
@@ -1403,8 +1242,26 @@ function DesignStudio() {
                       </button>
                     </div>
                   )}
+                  {studioTab === "catalogue" && !params.get("product") && <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sand p-4 sm:p-5">
+                    <p className="text-sm text-ink/70">
+                      {previewSelection.itemIds.length
+                        ? `${previewSelection.itemIds.length} preview ${previewSelection.itemIds.length === 1 ? "product" : "products"} for ${activeEventName}`
+                        : "Choose products for a preview. Your basket stays separate."}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={openVisualiser}
+                      disabled={!workspaceLoaded || workspaceSaving}
+                      className="min-h-11 rounded-full bg-ink px-5 py-3 text-sm text-cream disabled:opacity-40"
+                    >
+                      {previewSelection.itemIds.length ? "Visualise selected" : "Open visualiser"}
+                    </button>
+                  </div>}
                   <ProductBrowser
-                    matches={discovery?.suppliers}
+                    selectedVisualiserIds={previewSelection.itemIds}
+                    onVisualise={toggleVisualiserProduct}
+                    matches={discovery?.placeMatches ? undefined : discovery?.suppliers}
+                    placeMatches={discovery?.placeMatches?.suppliers}
                     searchRadius={searchRadius}
                     styleId={brief.styleId}
                     basket={basket}
@@ -1425,15 +1282,13 @@ function DesignStudio() {
                     savesLoaded={savedItems.loaded}
                     savingItems={savedItems.busy}
                     onToggleSave={(id) => void savedItems.toggle(id)}
-                    boards={boards}
-                    boardsBusy={workspaceSaving || !workspaceLoaded}
-                    onAddToBoard={addToBoard}
                   />
+                  </>}
                 </div>
                 <div
                   ref={visualiserRef}
                   hidden={studioTab !== "visualiser"}
-                  className="scroll-mt-24 space-y-5"
+                  className="studio-panel scroll-mt-28 space-y-5"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-4 px-1 py-2">
                     <div>
@@ -1441,7 +1296,7 @@ function DesignStudio() {
                         AI visualiser
                       </h1>
                       <p className="mt-2 text-sm text-ink/60">
-                        Preview your venue, then explore the pieces below.
+                        Choose a venue photo and preview the products selected for this event.
                       </p>
                     </div>
                     <button
@@ -1452,66 +1307,6 @@ function DesignStudio() {
                       Back to catalogue
                     </button>
                   </div>
-                  {boardInspiration && (
-                    <section
-                      aria-label="Board inspiration ready"
-                      className="border-b border-sand bg-white p-5"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h2 className="font-serif text-2xl">
-                          From {boardInspiration.name}
-                        </h2>
-                        <button
-                          type="button"
-                          onClick={() => setBoardInspiration(null)}
-                          className="min-h-10 rounded-full border border-sand px-4 text-xs"
-                        >
-                          Remove board inspiration
-                        </button>
-                      </div>
-                      <p className="mt-2 text-sm leading-relaxed text-ink/60">
-                        {boardInspiration.photoIds.length} inspiration{" "}
-                        {boardInspiration.photoIds.length === 1
-                          ? "photo"
-                          : "photos"}
-                        {" and "}
-                        {boardInspiration.itemIds.length} catalogue{" "}
-                        {boardInspiration.itemIds.length === 1
-                          ? "piece"
-                          : "pieces"}{" "}
-                        prepared for a new look. Your venue photo and basket are
-                        unchanged. Choose a venue photo or an example room, then
-                        generate when ready.
-                      </p>
-                      {!!boardInspiration.photoIds.length && (
-                        <div className="mt-3 flex gap-2">
-                          {boardInspiration.photoIds.map(
-                            (id) =>
-                              workspacePhotos[id] && (
-                                <img
-                                  key={id}
-                                  src={workspacePhotos[id]}
-                                  alt="Board inspiration reference"
-                                  className="h-16 w-20 rounded-lg object-cover"
-                                />
-                              ),
-                          )}
-                        </div>
-                      )}
-                      {boardInspiration.notes && (
-                        <p className="mt-3 text-xs text-ink/60">
-                          Board notes: {boardInspiration.notes}
-                        </p>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => switchStudioTab("boards")}
-                        className="mt-3 min-h-10 text-xs underline"
-                      >
-                        Back to boards
-                      </button>
-                    </section>
-                  )}
                   <div id="studio-visualiser">
                     {partnerError && (
                       <p role="alert" className="p-4 text-sm">
@@ -1530,6 +1325,8 @@ function DesignStudio() {
                             : "reception"
                       }
                       onGeneratingChange={setGenerationBusy}
+                      onBrowseProducts={() => switchStudioTab("catalogue")}
+                      onRemoveItem={removePreviewItem}
                       venue={headerVenue}
                       uploadedImages={brief.uploadedImages}
                       style={style}
@@ -1537,32 +1334,29 @@ function DesignStudio() {
                       renderUrl={currentRender?.url ?? null}
                       renderId={renderId}
                       versions={versions}
-                      itemIds={[
-                        ...new Set([
-                          ...basket.map((l) => l.itemId),
-                          ...(boardInspiration?.itemIds || []),
-                        ]),
-                      ]}
-                      boardInspiration={boardInspiration}
+                      itemIds={previewSelection.itemIds}
+                      selectionMode={previewSelection.mode}
+                      onSelectionMode={changePreviewMode}
                       deliveryDate={deliveryDay(brief)}
                       weddingDate={brief.weddingDate}
                       onWeddingDate={(d) => patchBrief({ weddingDate: d })}
                       guestCount={brief.guestCount}
                       onRender={showRender}
                       onDeleteVersion={deleteVersion}
-                      onStyle={(id) => patchBrief({ styleId: id })}
+                      onStyle={(styleId) => {
+                        if (workspaceLock.current || activeEventRef.current !== activeEventId) return;
+                        setWorkspaceTouched(true);
+                        setBrief((previous) => ({ ...previous, styleId }));
+                      }}
                       onVenue={(id) =>
                         patchBrief({ venueId: id, venueChoice: "exploring" })
                       }
-                      onAddAngle={(photo) => {
-                        setWorkspaceTouched(true);
-                        setBrief((b) => ({
-                          ...b,
-                          uploadedImages: [...b.uploadedImages, photo],
-                        }));
-                      }}
+                      onAddAngle={(photo) => patchBrief({
+                        uploadedImages: [...brief.uploadedImages, photo],
+                      })}
                       onRemoveAngle={removeAngle}
-                      onShopLook={() => {
+                      onShopLook={(itemId) => {
+                        setLookProductId(itemId||null);
                         lookProductsRef.current?.scrollIntoView({
                           behavior: "smooth",
                           block: "start",
@@ -1576,7 +1370,12 @@ function DesignStudio() {
                   </div>
                   <div ref={lookProductsRef} className="scroll-mt-24">
                     <LookProducts
+                      openProductId={lookProductId}
+                      onCloseProduct={()=>setLookProductId(null)}
                       wide={basket.length === 0}
+                      selectedIds={previewSelection.itemIds}
+                      selectedVisualiserIds={previewSelection.itemIds}
+                      onVisualise={toggleVisualiserProduct}
                       itemIds={currentRender?.itemIds || []}
                       report={currentRender?.look}
                       illustrative={currentRender?.id === "placeholder"}
@@ -1592,9 +1391,6 @@ function DesignStudio() {
                       saving={savedItems.busy}
                       savesLoaded={savedItems.loaded}
                       availability={shopAvailability}
-                      boards={boards}
-                      boardsBusy={workspaceSaving || !workspaceLoaded}
-                      onAddToBoard={addToBoard}
                       onChangeDates={() => switchStudioTab("wedding")}
                     />
                   </div>
@@ -1628,6 +1424,7 @@ function DesignStudio() {
 
         {step === "checkout" && (
           <CheckoutStep
+            venueSlug={brief.venueId.startsWith("listing:")?brief.venueId.slice(8):undefined}
             key={activeEventId}
             eventName={
               eventPlans.find((e) => e.id === activeEventId)?.name ||
@@ -1659,6 +1456,7 @@ function DesignStudio() {
 
       {step === "studio" && (
         <StudioNavigation
+          venueSuppliers={venueScope?.policy.mode==="venue_only"||venueScope?.policy.mode==="venue_partners"}
           mobile
           active={studioTab}
           onSelect={switchStudioTab}

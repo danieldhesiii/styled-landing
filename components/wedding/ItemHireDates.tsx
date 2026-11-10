@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import {
   hireDateError,
   itemHireDates,
@@ -22,6 +23,7 @@ export default function ItemHireDates({
   onChange: (itemId: string, dates?: HireDates) => void;
   id: string;
 }) {
+  const [editing, setEditing] = useState(false);
   const dates = itemHireDates(line, defaults);
   const issue = hireDateError(dates.start, dates.end);
   return (
@@ -33,22 +35,23 @@ export default function ItemHireDates({
       }
     >
       <legend className="sr-only">Hire dates for {name}</legend>
-      <label className="flex min-h-11 items-center gap-2">
-        <input
-          type="checkbox"
-          checked={!!line.hireDates}
-          className="h-4 w-4 accent-clay"
-          onChange={(e) =>
-            onChange(
-              line.itemId,
-              e.target.checked ? { ...defaults } : undefined,
-            )
-          }
-        />
-        Different dates for this item
-      </label>
-      {line.hireDates ? (
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-3">
+        <p className="py-2 text-ink/70">
+          {dateRangeLabel(dates.start, dates.end)}
+          {line.hireDates ? " · Item dates" : " · Event dates"}
+        </p>
+        <button
+          type="button"
+          aria-expanded={editing}
+          aria-controls={`${id}-editor`}
+          onClick={() => setEditing(!editing)}
+          className="min-h-11 underline underline-offset-4"
+        >
+          {editing ? "Done" : "Change dates"}
+        </button>
+      </div>
+      {editing && (
+        <div id={`${id}-editor`} className="grid min-w-0 gap-3 sm:grid-cols-2">
           <label htmlFor={`${id}-start`}>
             Delivery / collect from supplier
             <input
@@ -56,9 +59,7 @@ export default function ItemHireDates({
               type="date"
               min={todayUtc()}
               value={dates.start}
-              onChange={(e) =>
-                onChange(line.itemId, { ...dates, start: e.target.value })
-              }
+              onChange={(e) => onChange(line.itemId, { ...dates, start: e.target.value })}
               className="mt-1 block w-full min-w-0 rounded-lg border border-sand bg-white p-2.5 text-sm"
             />
           </label>
@@ -69,17 +70,16 @@ export default function ItemHireDates({
               type="date"
               min={dates.start || todayUtc()}
               value={dates.end}
-              onChange={(e) =>
-                onChange(line.itemId, { ...dates, end: e.target.value })
-              }
+              onChange={(e) => onChange(line.itemId, { ...dates, end: e.target.value })}
               className="mt-1 block w-full min-w-0 rounded-lg border border-sand bg-white p-2.5 text-sm"
             />
           </label>
+          {line.hireDates && (
+            <button type="button" onClick={() => onChange(line.itemId, undefined)} className="min-h-11 text-left underline underline-offset-4 sm:col-span-2">
+              Use event dates
+            </button>
+          )}
         </div>
-      ) : (
-        <p className="text-ink/60">
-          Default hire: {dateRangeLabel(dates.start, dates.end)}
-        </p>
       )}
       {issue && (
         <p role="alert" className="mt-2 text-red-700">

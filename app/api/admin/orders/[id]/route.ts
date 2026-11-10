@@ -62,6 +62,7 @@ export async function PATCH(
   const coupleMessage = cleanText(body.coupleMessage, 1000);
   const staffNotes = cleanText(body.staffNotes, 2000);
   const status = body.status as OrderStatus | undefined;
+  if(status==="confirmed")return fail(409,"Use the saved quote workflow after customer acceptance and agreed booking arrangements.");
   if (status !== undefined && !STAFF_SETTABLE.includes(status))
     return fail(400, "That status can't be set by hand.");
   if (
@@ -97,71 +98,7 @@ export async function PATCH(
       );
     }
 
-    if (status === "confirmed") {
-      const { data: lines } = await admin
-        .from("order_lines")
-        .select(
-          "id, product_id, product_name, supplier_name, quantity, supplier_status, needed_date, return_date",
-        )
-        .eq("order_id", id);
-      const blocking = blockingLines(lines ?? []);
-      if (blocking.length > 0) {
-        return fail(
-          409,
-          "Every supplier needs to confirm before the order can be confirmed.",
-          {
-            blocking: blocking.map((l) => ({
-              lineId: l.id,
-              name: l.product_name,
-              supplier: l.supplier_name,
-              status: l.supplier_status,
-            })),
-          },
-        );
-      }
-      // Stock may have been reduced since the order came in.
-      if (order.wedding_date && body.force !== true) {
-        const wanted = (lines ?? [])
-          .filter((l) => l.product_id)
-          .map((l) => ({
-            itemId: l.product_id as string,
-            quantity: l.quantity as number,
-          }));
-        const results = await Promise.all(
-          wanted.map((w) => {
-            const line = lines?.find((l) => l.product_id === w.itemId);
-            return checkQuantities(
-              admin,
-              [w],
-              (line?.return_date || order.wedding_date) as string,
-              id,
-              line?.needed_date || order.wedding_date,
-            );
-          }),
-        );
-        const checks = new Map(results.flatMap((r) => [...r]));
-        const conflicts = (lines ?? [])
-          .filter(
-            (l) =>
-              l.product_id &&
-              checks.get(l.product_id as string)?.status === "unavailable",
-          )
-          .map((l) => ({
-            lineId: l.id,
-            name: l.product_name,
-            availableUnits:
-              checks.get(l.product_id as string)?.availableUnits ?? 0,
-            requested: l.quantity,
-          }));
-        if (conflicts.length > 0) {
-          return fail(
-            409,
-            "Availability has changed since this order came in. Review it, or confirm anyway.",
-            { conflicts },
-          );
-        }
-      }
-    }
+
 
     patch.status = status;
     patch.decided_at = new Date().toISOString();
@@ -213,7 +150,6 @@ export async function PATCH(
 
   // Let the couple know when their order is decided. Best effort; never blocks.
   if (
-    status === "confirmed" ||
     status === "declined" ||
     status === "cancelled"
   ) {

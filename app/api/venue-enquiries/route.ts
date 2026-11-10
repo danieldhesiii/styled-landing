@@ -1,3 +1,4 @@
+import {venuePolicy} from "@/lib/venue-suppliers";
 import { requireVenueAccount } from "@/lib/server/venue-access";
 import { notifyVenueRequest } from "@/lib/server/venue-notify";
 import { NextResponse, after } from "next/server";
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
       return fail(429, "Please wait before sending another enquiry.");
     const { data: venue, error: venueError } = await admin
       .from("venue_listings")
-      .select("id,capacity_min,capacity_max")
+      .select("id,capacity_min,capacity_max,details")
       .eq("id", result.value.venue_id)
       .eq("active", true)
       .maybeSingle();
@@ -66,6 +67,7 @@ export async function POST(req: Request) {
       (venue.capacity_max && result.value.guest_count > venue.capacity_max)
     )
       return fail(422, "Your guest count is outside this venue’s capacity.");
+    if(result.value.package_id&&venuePolicy(venue.details).mode!=="styled")return fail(422,"This venue handles supplier arrangements through its own approved network. Contact its team about packages.");
     if (result.value.request_kind === "booking") {
       const { data: booked, error: bookedError } = await admin
         .from("venue_enquiries")
@@ -93,6 +95,7 @@ export async function POST(req: Request) {
       if (error) throw error;
       if (!p) return fail(422, "Please select a package for this venue.");
     }
+    if(result.value.package_id&&venuePolicy(venue.details).mode!=="styled")return fail(422,"This venue handles supplier arrangements through its own approved network. Contact its team about packages.");
     if (result.value.request_kind === "booking") {
       const { data: blocked, error: blockError } = await admin
         .from("venue_date_blocks")
@@ -138,7 +141,7 @@ export async function GET(req: Request) {
   const { data, error } = await auth.admin
     .from("venue_enquiries")
     .select(
-      "id,venue_id,preferred_date,booking_start,booking_end,viewing_time,next_actor,request_kind,guest_count,status,message,response,alternative_dates,responded_at,created_at,venue_listings(name,slug)",
+      "id,venue_id,preferred_date,booking_start,booking_end,viewing_time,next_actor,request_kind,guest_count,status,message,response,alternative_dates,responded_at,created_at,venue_listings(name,slug,details)",
     )
     .eq("owner_user_id", auth.user.id)
     .order("created_at", { ascending: false })

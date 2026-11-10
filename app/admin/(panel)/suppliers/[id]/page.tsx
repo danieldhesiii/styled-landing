@@ -1,8 +1,10 @@
 "use client";
+import ProductEditDialog from "@/components/admin/ProductEditDialog";
+import SupplierRangeReview from "@/components/booking/SupplierRangeReview";
 
 import AssetUpload from "@/components/vendor/AssetUpload";
 import StockImportPanel from "@/components/stock/StockImportPanel";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { adminApi, money } from "@/lib/admin-client";
@@ -32,6 +34,8 @@ interface Product {
   capacity: number | null;
   leadTimeDays: number;
   active: boolean;
+  note: string;
+  updatedAt: string;
 }
 
 const FIELD =
@@ -58,6 +62,9 @@ export default function SupplierDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [query, setQuery] = useState(""), [category, setCategory] = useState("all"), [productPublication, setProductPublication] = useState("all"), [sort, setSort] = useState("name");
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [productBusy, setProductBusy] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
 
@@ -69,6 +76,10 @@ export default function SupplierDetailPage() {
     commissionRate: "",
   });
   const [savingSupplier, setSavingSupplier] = useState(false);
+  const [publication, setPublication] = useState<{ reviewState: string; canReactivate: boolean; reason: string | null } | null>(null);
+  const [supplierError, setSupplierError] = useState(""), [supplierNotice, setSupplierNotice] = useState("");
+  const [pendingActive, setPendingActive] = useState<boolean | null>(null);
+  const loadSequence = useRef(0), supplierSaving = useRef(false);
 
   const [showAdd, setShowAdd] = useState(false);
   const [product, setProduct] = useState({ ...BLANK_PRODUCT });
@@ -77,28 +88,29 @@ export default function SupplierDetailPage() {
   const [logins, setLogins] = useState<{ userId: string; email: string }[]>([]);
   const [loginEmail, setLoginEmail] = useState("");
   const [creatingLogin, setCreatingLogin] = useState(false);
-  const [newCredential, setNewCredential] = useState<{
-    email: string;
-    password: string;
-  } | null>(null);
+  const [invitationNotice, setInvitationNotice] = useState("");
+  const [confirmAccess, setConfirmAccess] = useState(false);
 
-  function load() {
-    adminApi(`/api/admin/suppliers/${id}`).then((r) => {
-      if (r.status === 404) return setNotFound(true);
-      if (!r.ok)
-        return setError(r.data?.error ?? "Couldn't load the supplier.");
+  async function load() {
+    const sequence = ++loadSequence.current;
+    try {
+      const r = await adminApi(`/api/admin/suppliers/${id}`);
+      if (sequence !== loadSequence.current) return;
+      if (r.status === 404) { setNotFound(true); return; }
+      if (!r.ok) throw Error(r.data?.error ?? "Couldn't load the supplier.");
+      setNotFound(false); setError(null); setSupplierError("");
       const s = r.data.supplier as Supplier;
-      setSupplier(s);
-      setEdit({
-        name: s.name,
-        area: s.area,
-        contactEmail: s.contactEmail ?? "",
-        logoUrl: s.logoUrl ?? "",
-        commissionRate:
-          s.commissionRate === null ? "" : String(s.commissionRate),
-      });
+      setSupplier(s); setPublication(r.data.publication);
+      setEdit({ name: s.name, area: s.area, contactEmail: s.contactEmail ?? "",
+        logoUrl: s.logoUrl ?? "", commissionRate: s.commissionRate === null ? "" : String(s.commissionRate) });
       setProducts(r.data.products as Product[]);
-    });
+    } catch (e) {
+      if (sequence === loadSequence.current) {
+        const message = e instanceof Error ? e.message : "Could not refresh supplier status. Try again.";
+        setError(message);
+        if (supplier) setSupplierError(`${message} Displayed status may be out of date.`);
+      }
+    }
   }
   function loadLogins() {
     adminApi(`/api/admin/suppliers/${id}/users`).then((r) => {
@@ -109,39 +121,56 @@ export default function SupplierDetailPage() {
     if (id) {
       load();
       loadLogins();
-    } /* eslint-disable-next-line react-hooks/exhaustive-deps */
+    }
+    return () => { ++loadSequence.current; };
   }, [id]);
 
   async function createLogin(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setNewCredential(null);
+    setInvitationNotice("");
     setCreatingLogin(true);
     const r = await adminApi(`/api/admin/suppliers/${id}/users`, "POST", {
-      email: loginEmail,
+      email: loginEmail, confirmAccess,
     });
     setCreatingLogin(false);
     if (!r.ok) return setError(r.data?.error ?? "Couldn't create the login.");
-    if (r.data.password)
-      setNewCredential({ email: r.data.email, password: r.data.password });
+    setInvitationNotice(r.data.message || "Invitation prepared.");
+    setConfirmAccess(false);
     setLoginEmail("");
     loadLogins();
   }
 
   async function saveSupplier(patch: Record<string, unknown>) {
-    setSavingSupplier(true);
-    setError(null);
-    const r = await adminApi(`/api/admin/suppliers/${id}`, "PATCH", patch);
-    setSavingSupplier(false);
-    if (!r.ok)
-      return setError(r.data?.error ?? "Couldn't update the supplier.");
-    load();
+    if (supplierSaving.current) return;
+    supplierSaving.current = true;
+    ++loadSequence.current; // An older read must not overwrite the saved result.
+    setSavingSupplier(true); setPendingActive(typeof patch.active === "boolean" ? patch.active : null);
+    setSupplierError(""); setSupplierNotice("");
+    try {
+      const r = await adminApi(`/api/admin/suppliers/${id}`, "PATCH", patch);
+      if (!r.ok) throw Error(r.data?.error ?? "Couldn't update the supplier.");
+      if (!r.data?.supplier || typeof r.data.supplier.active !== "boolean")
+        throw Error("Saved state could not be verified. Refresh supplier status before trying again.");
+      setSupplier(r.data.supplier as Supplier);
+      setSupplierNotice(r.data.message || "Supplier saved.");
+      // Visibility-only changes do not reset unsaved profile fields or depend
+      // on a second request. Editorial saves also refresh review/product state.
+      if (patch.active === undefined) await load();
+    } catch (e) {
+      setSupplierError(e instanceof Error ? e.message : "Could not verify the change. Refresh supplier status before trying again.");
+    } finally {
+      supplierSaving.current = false; setSavingSupplier(false); setPendingActive(null);
+    }
   }
 
   async function toggleProduct(p: Product) {
+    if (productBusy) return;
+    setProductBusy(p.id);
     const r = await adminApi(`/api/admin/products/${p.id}`, "PATCH", {
       active: !p.active,
     });
+    setProductBusy("");
     if (!r.ok) return setError(r.data?.error ?? "Couldn't update the product.");
     setProducts((prev) =>
       prev.map((x) => (x.id === p.id ? { ...x, active: !x.active } : x)),
@@ -176,7 +205,9 @@ export default function SupplierDetailPage() {
       </div>
     );
   }
-  if (!supplier) return <p className="text-sm text-ink/40">Loading…</p>;
+  if (!supplier) return <p role={error ? "alert" : "status"} className="text-sm text-ink/70">{error || "Loading…"}</p>;
+  const shown = products.filter(p => (category === "all" || p.category === category) && (productPublication === "all" || (productPublication === "published" ? p.active && supplier.active : !p.active || !supplier.active)) && (!query.trim() || `${p.name} ${p.id}`.toLowerCase().includes(query.trim().toLowerCase())))
+    .sort((a, b) => sort === "price" ? a.unitPricePence - b.unitPricePence : a.name.localeCompare(b.name));
 
   const pset = new Set(product.styles);
   const liveNote =
@@ -220,18 +251,26 @@ export default function SupplierDetailPage() {
               </p>
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm text-ink/70">
-            <input
-              type="checkbox"
-              checked={supplier.active}
-              disabled={savingSupplier}
-              onChange={(e) => saveSupplier({ active: e.target.checked })}
-              className="h-4 w-4 rounded border-sand text-clay focus:ring-clay/30"
-            />
-            {supplier.active
-              ? "Active (showing in the shop)"
-              : "Switched off (hidden from the shop)"}
-          </label>
+          <div className="max-w-md space-y-2 text-sm">
+            <label className="flex min-h-11 items-center gap-3 text-ink">
+              <input type="checkbox" aria-label="Supplier active in shop" checked={supplier.active}
+                disabled={savingSupplier || (!supplier.active && !publication?.canReactivate)}
+                aria-describedby="supplier-visibility-help"
+                onChange={e => void saveSupplier({ active: e.target.checked })}
+                className="h-4 w-4 rounded border-sand text-clay focus:ring-clay/30" />
+              {savingSupplier && pendingActive !== null ? pendingActive ? "Reactivating…" : "Pausing…"
+                : supplier.active ? "Active in shop" : publication?.canReactivate ? "Paused — hidden from shop" : "Hidden — review required"}
+            </label>
+            <p id="supplier-visibility-help" className="text-ink/65">
+              {publication?.canReactivate ? "Pausing hides this supplier and its products. Approved products can return when reactivated."
+                : supplier.active ? "No current approval recorded. Pausing is allowed; reactivation will require range approval."
+                : publication?.reason || "Refresh to verify range approval before reactivating."}
+            </p>
+            {!publication?.canReactivate && <a href="#range-review" className="inline-flex min-h-11 items-center underline">Review range and permissions</a>}
+            <button type="button" disabled={savingSupplier} onClick={() => void load()} className="ml-3 inline-flex min-h-11 items-center underline disabled:opacity-40">Refresh supplier status</button>
+            {supplierError && <p role="alert" className="rounded-xl bg-blush/30 p-3">{supplierError}</p>}
+            {supplierNotice && <p role="status" className="rounded-xl bg-sage/10 p-3">{supplierNotice}</p>}
+          </div>
         </div>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
@@ -349,24 +388,7 @@ export default function SupplierDetailPage() {
           </ul>
         )}
 
-        {newCredential && (
-          <div className="mt-4 rounded-2xl bg-sage/15 px-4 py-3 text-sm text-ink/80">
-            <p className="font-medium text-ink">
-              Login created. Share these once, securely:
-            </p>
-            <p className="mt-1">
-              Email: <span className="font-mono">{newCredential.email}</span>
-            </p>
-            <p>
-              Temporary password:{" "}
-              <span className="font-mono">{newCredential.password}</span>
-            </p>
-            <p className="mt-1 text-xs text-ink/50">
-              This password is shown only now. They sign in at /portal/login and
-              should change it.
-            </p>
-          </div>
-        )}
+        {invitationNotice && <p role="status" className="mt-4 rounded-xl bg-sage/15 p-4 text-sm">{invitationNotice}</p>}
 
         <form
           onSubmit={createLogin}
@@ -386,12 +408,13 @@ export default function SupplierDetailPage() {
               className={FIELD}
             />
           </div>
+          <label className="flex w-full items-start gap-3 text-sm"><input type="checkbox" checked={confirmAccess} onChange={e=>setConfirmAccess(e.target.checked)} className="mt-1"/>The supplier has approved this email address for access to its workspace.</label>
           <button
             type="submit"
-            disabled={creatingLogin}
+            disabled={creatingLogin || !confirmAccess}
             className="rounded-full bg-ink px-5 py-2.5 text-sm text-cream hover:bg-ink/90 disabled:bg-ink/30"
           >
-            {creatingLogin ? "Creating…" : "Create login"}
+            {creatingLogin ? "Preparing…" : "Send private invitation"}
           </button>
         </form>
       </div>
@@ -677,12 +700,19 @@ export default function SupplierDetailPage() {
 
       {products.length === 0 && !showAdd && (
         <div className="mt-6 rounded-3xl border border-dashed border-sand px-6 py-14 text-center text-sm text-ink/50">
-          No products yet. Add their first piece to list it in the shop.
+          No products yet. Add a draft, then review the range before publication.
         </div>
       )}
 
-      {products.length > 0 && (
-        <div className="mt-6 overflow-hidden rounded-3xl border border-sand bg-white shadow-sm">
+      {products.length > 0 && <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="text-sm">Search products<input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Name or product ID" className={FIELD}/></label>
+        <label className="text-sm">Category<select value={category} onChange={e => setCategory(e.target.value)} className={FIELD}><option value="all">All categories</option>{VENDOR_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}</select></label>
+        <label className="text-sm">Publication<select value={productPublication} onChange={e => setProductPublication(e.target.value)} className={FIELD}><option value="all">All products</option><option value="published">Published</option><option value="private">Private / draft</option></select></label>
+        <label className="text-sm">Sort<select value={sort} onChange={e => setSort(e.target.value)} className={FIELD}><option value="name">Name A–Z</option><option value="price">Price low to high</option></select></label>
+      </div>}
+      {products.length > 0 && !shown.length && <p role="status" className="mt-5 text-sm">No products match these filters.</p>}
+      {shown.length > 0 && (
+        <div className="mt-6 overflow-x-auto rounded-3xl border border-sand bg-white shadow-sm">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-sand text-left text-xs uppercase tracking-wider text-ink/40">
@@ -694,10 +724,10 @@ export default function SupplierDetailPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-sand">
-              {products.map((p) => (
+              {shown.map((p) => (
                 <tr key={p.id} className="transition-colors hover:bg-cream/60">
                   <td className="px-5 py-3 font-medium text-ink">
-                    {p.name}
+                    <button type="button" onClick={() => setEditing(p)} className="min-h-11 text-left underline underline-offset-4">{p.name}</button>
                     <div className="text-xs font-normal text-ink/40">
                       {p.unit}
                     </div>
@@ -716,10 +746,11 @@ export default function SupplierDetailPage() {
                       <input
                         type="checkbox"
                         checked={p.active}
+                        disabled={!!productBusy}
                         onChange={() => toggleProduct(p)}
                         className="h-4 w-4 rounded border-sand text-clay focus:ring-clay/30"
                       />
-                      {p.active ? "Live" : "Hidden"}
+                      {p.active && supplier.active ? "Published" : p.active ? "Supplier hidden" : "Private / draft"}
                     </label>
                   </td>
                 </tr>
@@ -728,6 +759,8 @@ export default function SupplierDetailPage() {
           </table>
         </div>
       )}
+      {editing && <ProductEditDialog key={editing.id} product={editing} onClose={() => setEditing(null)} onSaved={load} />}
+      <SupplierRangeReview supplierId={id}/>
     </div>
   );
 }

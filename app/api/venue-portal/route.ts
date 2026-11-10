@@ -1,3 +1,5 @@
+import {notifyVenueReview} from "@/lib/server/venue-review-notify";
+import {EMPTY_VENUE_POLICY,venuePolicy} from "@/lib/venue-suppliers";
 import { validateVenueTransition } from "@/lib/venue-workflow";
 import { NextResponse, after } from "next/server";
 import { randomUUID } from "node:crypto";
@@ -111,6 +113,7 @@ export async function POST(req: Request) {
           .slice(0, 80) || "venue"
       }-${randomUUID().slice(0, 8)}`;
       const value = parseVenue({ ...body, slug, active: false });
+      value.details.supplier_policy={...((value.details.supplier_policy)||EMPTY_VENUE_POLICY),catalogueSupplierIds:[]};
       const { data: created, error: ce } = await auth.admin
         .from("venue_listings")
         .insert(value)
@@ -143,23 +146,29 @@ export async function POST(req: Request) {
     if (body.action === "save" || body.action === "submit") {
       const { data: live, error } = await auth.admin
         .from("venue_listings")
-        .select("slug")
+        .select("slug,details")
         .eq("id", id)
         .single();
       if (error) throw error;
       const value = parseVenue({ ...body, slug: live.slug, active: false });
+      const publishedPolicy=venuePolicy(live.details);
+      value.details.supplier_policy={...(value.details.supplier_policy||publishedPolicy),catalogueSupplierIds:publishedPolicy.catalogueSupplierIds};
       const missing = listingMissing(value);
       if (body.action === "submit" && missing.length)
         return fail(422, `Before submitting, add: ${missing.join(", ")}.`);
+      const {data:previous,error:previousError}=await auth.admin.from("venue_listing_drafts").select("payload").eq("venue_id",id).maybeSingle();
+      if(previousError)return fail(503,"Could not check your saved feedback. Your edits are still in this form.");
+      const payload=body.action==="save"&&previous?.payload?.review_feedback?{...value,review_feedback:previous.payload.review_feedback}:value;
       const { error: save } = await auth.admin
         .from("venue_listing_drafts")
         .upsert({
           venue_id: id,
-          payload: value,
+          payload,
           status: body.action === "submit" ? "submitted" : "draft",
           updated_at: new Date().toISOString(),
         });
       if (save) return fail(503, "Could not save your draft. Your edits are still in this form.");
+      if(body.action==="submit")after(()=>notifyVenueReview(id,"submitted"));
     } else if (body.action === "respond") {
       if (!venueUuid(body.id)) return fail(400, "Choose a request.");
       const value = parseVenueResponse(body, londonToday());

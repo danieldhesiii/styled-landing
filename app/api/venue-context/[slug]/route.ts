@@ -1,3 +1,4 @@
+import {venuePolicy} from "@/lib/venue-suppliers";
 import { NextResponse } from "next/server";
 import { loadPublicVenue } from "@/lib/server/venues";
 import { safeImageUrl } from "@/lib/venue-input";
@@ -16,6 +17,7 @@ export async function GET(
     return NextResponse.json(
       {
         venue: {
+          supplierPolicy:venuePolicy(result.venue.details),
           id: `listing:${result.venue.slug}`,
           name: result.venue.name,
           area: result.venue.location,

@@ -2,7 +2,7 @@
 // (which labels it). The numbers come from the database function
 // public.product_availability; this file only decides what to call them.
 
-export type AvailabilityStatus = "available" | "limited" | "unavailable" | "made_to_order";
+export type AvailabilityStatus = "available" | "limited" | "unavailable" | "made_to_order" | "request_only";
 
 export interface ItemAvailability {
   status: AvailabilityStatus;
@@ -37,6 +37,8 @@ export type BadgeTone = "ok" | "warn" | "bad" | "muted";
 
 export function availabilityLabel(a: ItemAvailability): { label: string; tone: BadgeTone } {
   switch (a.status) {
+    case "request_only":
+      return { label: "Availability on request", tone: "muted" };
     case "available":
       return { label: "Available for your date", tone: "ok" };
     case "limited":

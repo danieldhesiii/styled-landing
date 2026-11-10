@@ -175,7 +175,7 @@ export default function AccountMenu({
                 href="/venue-portal"
                 className="block border-t border-sand px-4 py-2 text-sm text-ink/70 hover:bg-cream"
               >
-                Switch to venue workspace ↗
+                My venue workspace ↗
               </a>
             )}
             {workspaces.supplier && (
@@ -183,7 +183,7 @@ export default function AccountMenu({
                 href="/portal"
                 className="block px-4 py-2 text-sm text-ink/70 hover:bg-cream"
               >
-                Switch to supplier workspace ↗
+                My supplier workspace ↗
               </a>
             )}
             <button

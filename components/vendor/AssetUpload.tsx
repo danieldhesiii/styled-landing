@@ -63,7 +63,7 @@ export default function AssetUpload({
           }}
         />
       </label>
-      <p role="status" className="mt-2 text-xs text-ink/60">
+      <p role="status" className="mt-2 text-sm text-ink/60">
         {status || "JPEG, PNG or WebP, up to 5 MB."}
       </p>
     </div>

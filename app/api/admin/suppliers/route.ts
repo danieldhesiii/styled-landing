@@ -45,7 +45,7 @@ export async function GET(req: Request) {
       active: s.active,
       createdAt: s.created_at,
       products: counts.get(s.id)?.total ?? 0,
-      activeProducts: counts.get(s.id)?.active ?? 0,
+      activeProducts: s.active ? counts.get(s.id)?.active ?? 0 : 0,
     })),
   });
 }
@@ -68,7 +68,10 @@ export async function POST(req: Request) {
   const name = str(body.name);
   const area = str(body.area);
   const contactEmail = str(body.contactEmail).toLowerCase();
-  const active = body.active === undefined ? true : body.active === true;
+  // New suppliers must enter the existing range/permission review flow.
+  if (body.active !== undefined && body.active !== false)
+    return fail(422, "New suppliers start as drafts. Submit and approve their range before publication.");
+  const active = false;
   const applicationId = str(body.applicationId);
 
   if (name.length < 2 || name.length > 120) return fail(422, "Please enter the supplier's name.");

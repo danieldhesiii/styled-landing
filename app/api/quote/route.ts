@@ -20,7 +20,7 @@ export async function POST(req: Request) {
 
   let priced;
   try {
-    priced = await priceBasket(body.basket);
+    priced = await priceBasket(body.basket, req);
   } catch (err) {
     console.error("[quote]", err);
     return NextResponse.json({ ok: false, error: "Couldn't price your basket. Please try again." }, { status: 500 });

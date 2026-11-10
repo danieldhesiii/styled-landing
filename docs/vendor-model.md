@@ -1,3 +1,5 @@
+> **30 October 2026 update:** [Supplier meeting action plan](supplier-meeting-action-plan-2026-10-30.md) supersedes older launch, fee and availability assumptions below. Do not infer live-pilot readiness, guaranteed external stock, a fixed commission/deposit, image reuse permission or required system access from this historical document. Supplier approval, full quote/customer agreement and current operating terms are required before any real payment; no automated recovery or integration is promised.
+
 # The vendor model — how Styled actually works with suppliers
 
 A plain-English guide to the business model, how availability and fulfilment work,

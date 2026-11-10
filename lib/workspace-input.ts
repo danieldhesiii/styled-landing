@@ -1,3 +1,4 @@
+import { parsePreviewSelection } from "./event-plans";
 import type { WorkspaceData, WeddingBoard, BoardPin } from "./wedding";
 import { isValidDay } from "./availability";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -156,6 +157,7 @@ export function parseWorkspace(raw: unknown): WorkspaceData {
         kind: e.kind as import("./wedding").EventPlan["kind"],
         brief,
         basket,
+        previewSelection: parsePreviewSelection(e.previewSelection),
         renderId: e.renderId as string | null | undefined,
       };
     });

@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter,usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const LINKS = [
-  {href:"/admin/support",label:"Support",match:(p:string)=>p.startsWith("/admin/support")},
+  {href:"/admin/pilot",label:"Pilot workflow template",match:(p:string)=>p.startsWith("/admin/pilot")},
+  {href:"/admin/requests",label:"Request tracker",match:(p:string)=>p.startsWith("/admin/requests")},
+  {href:"/admin/operations",label:"Service checks",match:(p:string)=>p.startsWith("/admin/operations")},
+  {href:"/admin/venue-notifications",label:"Venue notifications",match:(p:string)=>p.startsWith("/admin/venue-notifications")},
+  {href:"/admin/support",label:"Customer questions",match:(p:string)=>p.startsWith("/admin/support")},
   {
     href: "/admin/locations",
     label: "Locations",
@@ -13,7 +17,7 @@ const LINKS = [
   },
   {
     href: "/admin/venues",
-    label: "Venues",
+    label: "Venue reviews",
     match: (p: string) => p.startsWith("/admin/venues"),
   },
   {
@@ -38,7 +42,7 @@ const LINKS = [
   },
   {
     href: "/admin/availability",
-    label: "Availability",
+    label: "Products & availability",
     match: (p: string) => p.startsWith("/admin/availability"),
   },
   {
@@ -49,7 +53,7 @@ const LINKS = [
 ];
 
 export default function AdminNav({ email }: { email: string }) {
-  const pathname = usePathname();
+  const pathname = usePathname(),router=useRouter();
 
   async function signOut() {
     await createClient().auth.signOut();
@@ -58,7 +62,7 @@ export default function AdminNav({ email }: { email: string }) {
 
   return (
     <header className="sticky top-0 z-30 border-b border-sand bg-cream/90 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center gap-6 px-5 py-3">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-5 py-3">
         <Link
           href="/admin"
           className="font-serif text-xl tracking-wide text-ink"
@@ -68,25 +72,7 @@ export default function AdminNav({ email }: { email: string }) {
             Staff
           </span>
         </Link>
-        <nav
-          className="flex min-w-0 items-center gap-1 overflow-x-auto"
-          aria-label="Staff"
-        >
-          {LINKS.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              aria-current={l.match(pathname) ? "page" : undefined}
-              className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
-                l.match(pathname)
-                  ? "bg-ink text-cream"
-                  : "text-ink/60 hover:text-ink"
-              }`}
-            >
-              {l.label}
-            </Link>
-          ))}
-        </nav>
+        <label className="min-w-0 flex-1 text-xs text-ink/60">Staff section<select aria-label="Staff section" value={LINKS.find(l=>l.match(pathname))?.href||"/admin"} onChange={e=>router.push(e.target.value)} className="mt-1 block min-h-11 w-full max-w-xs rounded-xl border border-sand bg-white px-3 text-sm text-ink">{LINKS.map(l=><option key={l.href} value={l.href}>{l.label}</option>)}</select></label>
         <div className="ml-auto flex items-center gap-3 text-xs text-ink/50">
           <span className="hidden sm:inline">{email}</span>
           <button

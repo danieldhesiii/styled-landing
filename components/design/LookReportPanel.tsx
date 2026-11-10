@@ -12,11 +12,14 @@ export default function LookReportPanel({
   look,
   weddingDate,
   onWeddingDate,
+  onOpenProduct,
 }: {
+  onOpenProduct?: (id:string)=>void;
   look: LookReport;
   weddingDate: string;
   onWeddingDate: (date: string) => void;
 }) {
+  const preview=look.demoReference;
   const today = new Date().toISOString().slice(0, 10);
   const substitutions = look.excluded.filter((e) => e.substituteId);
   const leftOut = look.excluded.filter((e) => !e.substituteId);
@@ -25,7 +28,7 @@ export default function LookReportPanel({
     <section aria-label="What's in this picture" className="border-t border-sand bg-cream/40 px-4 py-3">
       <details className="group">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-xs text-ink/70 [&::-webkit-details-marker]:hidden">
-          <span>{look.items.length} catalogue references{look.excluded.length ? ` · ${look.excluded.length} changes` : ""}</span>
+          <span>{look.items.length + (preview?1:0)} catalogue references{look.excluded.length ? ` · ${look.excluded.length} changes` : ""}</span>
           <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180"><path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </summary>
 
@@ -48,7 +51,7 @@ export default function LookReportPanel({
       {look.items.length > 0 && (
         <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
           {look.items.map((i) => (
-            <li key={i.id} className="flex items-center gap-2 rounded-lg border border-sand bg-white px-2.5 py-1.5">
+            <li key={i.id}><button type="button" onClick={()=>onOpenProduct?.(i.id)} aria-label={`View ${i.name}`} className="flex w-full items-center gap-2 rounded-lg border border-sand bg-white px-2.5 py-1.5 text-left hover:border-clay">
               {i.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={i.image} alt="" className="h-8 w-8 shrink-0 rounded object-cover" />
@@ -64,11 +67,12 @@ export default function LookReportPanel({
               {i.source === "substitute" && (
                 <span className="shrink-0 rounded-full bg-sand px-1.5 py-0.5 text-[9px] text-ink/60">swapped in</span>
               )}
-            </li>
+            </button></li>
           ))}
         </ul>
       )}
 
+      {preview&&<button type="button" onClick={()=>onOpenProduct?.(preview.id)} aria-label={`View ${preview.name}`} className="mt-2 w-full rounded-lg border border-sand bg-white px-3 py-2 text-left text-xs hover:border-clay"><span className="font-medium">{preview.name}</span><span className="block text-ink/60">View details</span></button>}
       {substitutions.length > 0 && (
         <ul className="mt-2 space-y-1 text-[11px] text-ink/60">
           {substitutions.map((e) => (

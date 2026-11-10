@@ -1,0 +1,237 @@
+WEDDING MARKETPLACE SITE: FIX LIST
+From site walkthrough, Sat 7 Nov 2026
+Goal: have everything ready and polished before the Simon meeting.
+Decision: start on fixes now, not next week.
+
+=====================================================================
+BRIEF FOR CHATGPT
+=====================================================================
+
+Context: This is a wedding/event marketplace website. Customers set up
+an event, browse a catalog of hire products from suppliers, use an AI
+visualizer to see products in their venue photo, and send requests to
+suppliers. There is a staff/admin dashboard for managing products,
+suppliers and customer questions. The backend uses Supabase.
+
+What we need from you:
+1. Analyse every item in this file (the meeting notes AND the
+   "Specific action list" section near the end, which is our own
+   priority list).
+2. Merge duplicates and group the work into logical build areas.
+3. For each item, say what needs to be built or changed (frontend,
+   backend/Supabase, or both) and flag anything we need to check or
+   decide before building.
+4. Produce a step-by-step build plan in a sensible order (fix broken
+   things first, then structural changes, then design/clutter, then
+   legal and "How it works" last), with rough effort for each step.
+5. List any questions you need us to answer before starting.
+
+=====================================================================
+PRIORITY 1: BROKEN / NOT WORKING
+=====================================================================
+
+[ ] Help & Support form not delivering
+    - Submitting a question gives a reference number, but the message
+      does NOT arrive in the support email (Outlook).
+    - It also does NOT appear under "Customer questions" in the admin
+      dashboard.
+    - Fix both: email delivery AND logging into admin dashboard.
+    - Re-test with a real submission from a customer account.
+
+[ ] Venue section is empty
+    - Nothing built in the venue part of event setup yet. Needs building.
+
+[ ] Supplier location search doesn't work
+    - Search by location fails because suppliers have no locations saved.
+    - Add location fields to supplier profiles, then hook up search.
+    - Location picker in the event/visualizer area should show place names.
+
+[ ] Chrome "changes may not be saved" pop-up
+    - Appears when leaving pages, including the admin dashboard.
+    - There's nothing to save on most of these pages, so the warning
+      makes no sense. Remove the leave-page warning where it isn't needed.
+
+[ ] Visualizer: catalog item to image flow
+    - Selecting a catalog item to add to the visualizer image stopped
+      working (likely a rolled-back change). Restore it.
+
+=====================================================================
+PRIORITY 2: EVENT SETUP & PLANNING FLOW
+=====================================================================
+
+[ ] Rename "Supplier budget" to "Product budget"
+    - Also consider "Product basket budget" or "Decoration basket budget".
+    - Update the same wording in the "With plan" / "How your plan is
+      used" section.
+
+[ ] Delivery date options
+    - Keep option for delivery same day as event (for people with a
+      dedicated setup day) as well as day before.
+
+[ ] Events behave like separate accounts
+    - Switching event resets everything else. Confirm this is intended
+      and that it's clear to the user which event they're in.
+
+[ ] "How it works" content (do this LAST, near deployment)
+    - Doesn't refresh when we make changes. Rewrite once everything
+      else is final.
+
+=====================================================================
+PRIORITY 3: TOO MUCH TEXT / VISUAL CLUTTER (site-wide)
+=====================================================================
+
+Main issue: every page explains itself and everything is always
+visible. It overwhelms users and makes the site feel cheap.
+
+[ ] Strip back explanatory text across the whole site
+[ ] Hide info that doesn't need to be visible all the time
+    (tooltips, expandable sections, "more info" toggles)
+[ ] Reduce the number of clickable things on screen at once
+[ ] Pages specifically called out:
+    - Product listings (cards in the catalog)
+    - Find venues section
+    - Requests page (requests sent to suppliers)
+    - Basket area (too many expanding info panels, "comical")
+    - Admin dashboard
+
+=====================================================================
+PRIORITY 4: CATALOG & LISTINGS REDESIGN
+=====================================================================
+
+[ ] Catalog layout
+    - Remove horizontal scrolling. Use a standard grid like other shops.
+    - Research other marketplaces/shops (e.g. Next, Moss Bros) and copy
+      the category page layout.
+
+[ ] Same-day delivery / hire return toggle
+    - Remove from the catalog. Belongs in the wedding plan / event
+      setup, not on the browse page.
+
+[ ] Suppliers side panel
+    - Clicking "Suppliers" opens an odd side panel. Filters panel looks
+      fine; make suppliers match it.
+    - Buttons in the panel are different sizes. Make them consistent.
+
+[ ] Supplier profile links
+    - Clicking a supplier's name should open their supplier profile page.
+
+[ ] Product listing pages
+    - Less info on the listing card.
+    - Clicking a listing should open a full product page (like Next):
+      big images, details on the side, quantity, add to basket/payment,
+      and a clear way back to the category.
+
+=====================================================================
+PRIORITY 5: VISUALIZER
+=====================================================================
+
+[ ] Remove ALL crescent moon disclaimers (Kam doing this now)
+[ ] Redesign the heading area (venue photo / describe section), it
+    looks off
+[ ] Flip the flow: user picks items from the catalog FIRST, then sees
+    them added into their venue image (not the other way round)
+[ ] Prompt reliability
+    - Requested items (e.g. chandelier) aren't reliably added.
+    - "Improve my description" works but didn't change a pre-filled
+      description. Check it handles that case.
+    - We enhance the prompt via ChatGPT rather than training a model.
+      Research better prompt engineering for consistent results.
+
+=====================================================================
+PRIORITY 6: ADMIN DASHBOARD (full review)
+=====================================================================
+
+[ ] Make the whole dashboard easier to understand
+[ ] Product management: add products, filter/search products (needed
+    once the catalog grows)
+[ ] Pop-up goes off the screen. Fix sizing.
+[ ] Remove filler text (renew drafts, follow-up, sync flags, "40 hours",
+    etc.). Only show what we actually use.
+[ ] Customer questions section must show support form submissions
+    (see Priority 1)
+[ ] Remove the leave-page warning (see Priority 1)
+[ ] Store the staff/admin login details somewhere secure and shared
+    (password manager), not in chat history
+
+=====================================================================
+PRIORITY 7: LEGAL
+=====================================================================
+
+[ ] Research what legal content a UK marketplace site needs
+    (privacy policy, terms of service, cookie policy, supplier terms,
+    returns/hire terms, etc.)
+[ ] Update service info, privacy policy and terms of service
+
+=====================================================================
+DECISIONS MADE
+=====================================================================
+
+- Boards feature REMOVED for now. Possible future feature.
+- KEEP Saved items and Saved looks.
+- Account page works fine. Basket works fine (just needs less clutter).
+- Start fixes now rather than waiting until next week.
+
+=====================================================================
+SPECIFIC ACTION LIST (pulled out by Kam and Dan after the meeting)
+These are our own agreed actions, in addition to the notes above.
+=====================================================================
+
+1.  Wedding plan section: change "Supplier budget" to "Product budget".
+
+2.  "How it works" needs to be updated at the end, once everything
+    else is finished.
+
+3.  Venue section still needs to be built.
+
+4.  Supplier locations: check location for suppliers actually works
+    and is built correctly. Is there a location function/column
+    already built in Supabase? If not, what needs adding (table
+    columns, search function, etc.)?
+
+5.  Too much writing on every page. Simplify the text site-wide.
+
+6.  Change how the catalogue is viewed so you don't have to scroll
+    sideways.
+
+7.  Get rid of the delivery date and schedule delivery date section
+    in the catalogue (it belongs in the wedding plan / event setup).
+
+8.  Fix the suppliers buttons on the side panel. They don't look good
+    (uneven sizes, odd layout).
+
+9.  Change how the product is actually laid out on the website.
+    Compare to other websites (e.g. Next, Moss Bros) and use a proper
+    product page layout.
+
+10. Double check the Help & Support email replies work (form gave a
+    reference number but nothing arrived in the email or admin
+    dashboard during testing).
+
+11. Get rid of Boards. Keep Saved items and Saved looks.
+
+12. Change the layout and headings of the AI visualiser.
+
+13. People should be able to select items/images from the catalogue
+    and then see how it's going to look in their venue, NOT have the
+    image generated first.
+
+14. Update the Privacy Policy and T&Cs.
+
+15. Look at the Chrome pop-up that keeps coming up with the "changes
+    may not be saved" text, and remove it where it isn't needed.
+
+16. Full review of the admin dashboard.
+
+17. Does the admin dashboard actually make changes to the live site
+    when stuff is updated on there? Test this end to end (e.g. edit a
+    product in admin, check it changes on the customer-facing site).
+
+=====================================================================
+FINAL STEPS
+=====================================================================
+
+[ ] Remove Boards from navigation and pages
+[ ] Once fixes are in, do another full walkthrough and reassess
+[ ] Update "How it works"
+[ ] Final test of support form, basket, visualizer and admin before
+    the Simon meeting

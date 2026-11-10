@@ -2,10 +2,10 @@
 
 import HelpButton from "@/components/help/HelpButton";
 import { useEffect, useState } from "react";
+import type { LookReport } from "@/lib/look";
+import { savedRenderSnapshot } from "@/lib/saved-render";
 
-import BoardPicker, {
-  type BoardPickerProps,
-} from "@/components/wedding/BoardPicker";
+import type { BoardPickerProps } from "@/components/wedding/BoardPicker";
 
 export interface SavedLook {
   id: string;
@@ -23,7 +23,7 @@ interface Props extends BoardPickerProps {
   looks: SavedLook[];
   onClose: () => void;
   onCreate?: () => void;
-  onLoad: (look: SavedLook, url: string, itemIds?: string[]) => void;
+  onLoad: (look: SavedLook, url: string, itemIds?: string[], report?: LookReport, originalUrl?: string) => void;
   onUnsave: (id: string) => void;
 }
 
@@ -45,6 +45,7 @@ export default function SavedLooks({
   const [urls, setUrls] = useState<Record<string, string | null>>({});
   const [originalUrls, setOriginalUrls] = useState<Record<string, string>>({});
   const [itemIdsById, setItemIdsById] = useState<Record<string, string[]>>({});
+  const [reports, setReports] = useState<Record<string, LookReport>>({});
   const [loading, setLoading] = useState(true);
   // Which cards are currently showing their "before" (original) image.
   const [comparing, setComparing] = useState<Record<string, boolean>>({});
@@ -56,18 +57,18 @@ export default function SavedLooks({
       const next: Record<string, string | null> = {};
       const nextOriginals: Record<string, string> = {};
       const nextItems: Record<string, string[]> = {};
+      const nextReports: Record<string, LookReport> = {};
       await Promise.all(
         looks.map(async (l) => {
           try {
-            const data = await (await fetch(`/api/renders/${l.id}`)).json();
-            next[l.id] =
-              data?.status === "succeeded" && data.imageUrl
-                ? data.imageUrl
-                : null;
+            const response = await fetch(`/api/renders/${l.id}`);
+            const data = response.ok ? savedRenderSnapshot(l.id, await response.json()) : null;
+            next[l.id] = data?.url || null;
             // Prefer the freshly-signed original; fall back to anything stored.
             const original = data?.originalUrl ?? l.originalUrl;
             if (original) nextOriginals[l.id] = original;
             if (Array.isArray(data?.itemIds)) nextItems[l.id] = data.itemIds;
+            if (data?.look) nextReports[l.id] = data.look;
           } catch {
             next[l.id] = null;
             if (l.originalUrl) nextOriginals[l.id] = l.originalUrl;
@@ -78,6 +79,7 @@ export default function SavedLooks({
         setUrls(next);
         setOriginalUrls(nextOriginals);
         setItemIdsById(nextItems);
+        setReports(nextReports);
         setLoading(false);
       }
     })();
@@ -100,9 +102,7 @@ export default function SavedLooks({
           <div>
             <h1 className="font-serif text-4xl text-ink">Saved looks</h1>
             <p className="mt-3 max-w-2xl text-sm text-ink/60">
-              Your saved AI previews. Open a look to explore its catalogue
-              pieces in the visualiser. Saving a look does not add anything to
-              your basket.
+              Reopen a favourite preview to continue designing.
             </p>
             <p className="mt-0.5 text-xs text-ink/50">
               {looks.length === 0
@@ -136,7 +136,7 @@ export default function SavedLooks({
             {onCreate && <button type="button" onClick={onCreate} className="mt-2 min-h-11 rounded-full bg-ink px-5 py-2 text-sm text-cream">Open Visualise</button>}
           </div>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 min-[360px]:grid-cols-2 sm:gap-5 lg:grid-cols-3">
             {looks.map((l) => {
               const url = urls[l.id];
               const original = originalUrls[l.id];
@@ -149,7 +149,7 @@ export default function SavedLooks({
                   <div className="relative aspect-[4/3] w-full bg-sand/40">
                     <button
                       type="button"
-                      onClick={() => url && onLoad(l, url, itemIdsById[l.id])}
+                      onClick={() => url && onLoad(l, url, itemIdsById[l.id], reports[l.id], original)}
                       disabled={!url}
                       className="block h-full w-full disabled:cursor-not-allowed"
                       aria-label={`Open ${l.styleName} in the studio`}
@@ -214,16 +214,12 @@ export default function SavedLooks({
                     </button>
                   </div>
                   <div className="px-3 pb-3">
+                    <button type="button" disabled={!url} onClick={() => url && onLoad(l, url, itemIdsById[l.id], reports[l.id], original)} className="mb-3 inline-flex min-h-11 w-full min-w-0 items-center justify-center rounded-full bg-ink px-2 py-2 text-xs text-cream disabled:opacity-40 sm:w-auto sm:px-4 sm:text-sm">Continue designing</button>
                     <p className="text-xs text-ink/60">
                       Illustrative AI preview. Exact appearance is not
                       guaranteed.
                     </p>
-                    <BoardPicker
-                      boards={boards}
-                      boardsBusy={boardsBusy}
-                      onAddToBoard={onAddToBoard}
-                      target={{ kind: "look", ref: l.id, text: l.styleName }}
-                    />
+
                   </div>
                 </div>
               );

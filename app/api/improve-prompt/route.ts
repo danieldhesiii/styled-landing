@@ -1,3 +1,6 @@
+import {createAdminClient} from "@/lib/supabase/admin";
+import {clientIpHash} from "@/lib/server/limits";
+import {readJsonObject, JsonBodyError} from "@/lib/server/request-json";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/server/session";
 import { env } from "@/lib/server/env";
@@ -25,9 +28,9 @@ export async function POST(req: Request) {
 
   let body: { prompt?: unknown; styleId?: unknown } = {};
   try {
-    body = await req.json();
-  } catch {
-    return fail(400, "Invalid request body.");
+    body = await readJsonObject(req);
+  } catch (error) {
+    return fail(error instanceof JsonBodyError ? error.status : 400, error instanceof JsonBodyError ? error.message : "Invalid request body.");
   }
 
   const brief = cleanBrief(body.prompt);
@@ -45,11 +48,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, prompt: brief, changed: false });
   }
 
+  // Prompt assistance also spends provider credits. Fail closed if the usage
+  // service is unavailable; never call the model after a failed limit query.
+  try {
+    const admin=createAdminClient();
+    for(const [key,limit] of [[`prompt-user:${auth.user.id}`,20],[`prompt-network:${clientIpHash(req)}`,60],['prompt-global',500]] as const){
+      const result=await admin.rpc('hit_rate_limit',{p_key:key,p_limit:limit,p_window_seconds:3600});
+      if(result.error)return fail(503,"We couldn't check the description-helper limit. Your text is still here. Try again shortly.");
+      if(result.data!==true)return fail(429,"The description helper has reached its limit for now. You can still use your own description.");
+    }
+  } catch { return fail(503,"The description helper is temporarily unavailable. Your text is still here."); }
+
   const system =
-    "You help couples describe how they want their wedding reception room to look. " +
+    "You help couples describe their wedding or event setup. " +
     "Rewrite the user's note into one vivid, concrete styling brief for an image generator. " +
     "Keep their actual intent, colours and ideas: expand and clarify, never replace them with a different wedding. " +
-    "Mention colour palette, flowers/greenery, table layout, linen, lighting and any focal points, but only build on what they implied. " +
+    "Clarify colours, materials, lighting and layout only where implied; do not add unrequested products or turn a ceremony, party or proposal into a reception. " +
+    "Preserve every product name, model number, measurement and negative instruction verbatim. Never replace a named catalogue item with a generic description or a different model. " +
     "British English. 2–4 sentences, no lists, no preamble, no quotes: just the description.";
   const user = styleName
     ? `They are starting from our "${styleName}" style. Their note: ${brief}`
@@ -75,7 +90,7 @@ export async function POST(req: Request) {
     });
 
     if (!res.ok) {
-      console.error("[improve-prompt] model error", res.status, await res.text().catch(() => ""));
+      console.error("[improve-prompt] model response status", res.status);
       // Non-fatal: give them back their own text so the flow isn't blocked.
       return NextResponse.json({ ok: true, prompt: brief, changed: false });
     }
@@ -86,7 +101,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, prompt: improved, changed: improved !== brief });
   } catch (err) {
-    console.error("[improve-prompt] request failed", err);
+    console.error("[improve-prompt] request failed");
     return NextResponse.json({ ok: true, prompt: brief, changed: false });
   }
 }

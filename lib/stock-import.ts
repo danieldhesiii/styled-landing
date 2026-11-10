@@ -18,19 +18,19 @@ export const IMPORT_COLUMNS: { key: string; help: string }[] = [
   { key: "price", help: "Price in pounds, e.g. 12.50. Required for a new product." },
   { key: "unit", help: "What the price is for, e.g. each, per guest, per table." },
   { key: "quantity_rule", help: "How a couple's quantity is worked out: fixed, per guest, per table, or per venue." },
-  { key: "capacity", help: "How many you can supply on one day. Leave empty (or write 'made to order') if you're not limited by stock." },
+  { key: "capacity", help: "How many you can supply on one day. Blank leaves existing stock unchanged; new products require a number (0 is allowed) or an explicit made to order value." },
   { key: "lead_time_days", help: "How many days' notice you need." },
   { key: "styles", help: "Styles it suits, separated by ; e.g. Garden Romance; Classic Elegance." },
   { key: "image", help: "Link to a photo (https://...). Optional." },
   { key: "note", help: "Short note shown to couples. Optional." },
-  { key: "active", help: "yes or no: show it in the shop. Optional." },
+  { key: "active", help: "no hides a product. Imports cannot publish products; new or changed catalogue content needs range review." },
   { key: "id", help: "Our product id, if you've exported your list from us. Optional; name is enough." },
 ];
 
 export const TEMPLATE_CSV =
   "name,category,price,unit,quantity_rule,capacity,lead_time_days,styles,image,note,active\r\n" +
   'Gold Chiavari Chair,Furniture & seating,5.50,per guest,per guest,120,45,Garden Romance; Classic Elegance,,Gold frame with ivory cushion,yes\r\n' +
-  "Bridal Bouquet,Florals,180,each,fixed,,90,Garden Romance,,Made to order for each bride,yes\r\n";
+  "Bridal Bouquet,Florals,180,each,fixed,made to order,90,Garden Romance,,Made to order for each bride,yes\r\n";
 
 // ---------------------------------------------------------------- CSV reader
 
@@ -175,7 +175,7 @@ export function inferQtyRule(unit: string): string {
 const clean = (s: string, max: number) =>
   s.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 
-const MADE_TO_ORDER = new Set(["", "made to order", "made-to-order", "mto", "unlimited", "none", "n/a", "na", "-", "no limit", "bespoke"]);
+const MADE_TO_ORDER = new Set(["made to order", "made-to-order", "mto", "unlimited", "no limit", "bespoke"]);
 
 // ---------------------------------------------------------------- rows
 
@@ -286,13 +286,13 @@ export function parseStockCsv(text: string): ParsedImport {
     }
 
     const capacity = get("capacity");
-    if (capacity !== undefined) {
+    if (capacity !== undefined && capacity !== "") {
       if (MADE_TO_ORDER.has(capacity.toLowerCase())) fields.capacity = null;
       else if (/^\d+$/.test(capacity.replace(/[,\s]/g, ""))) {
         const n = Number(capacity.replace(/[,\s]/g, ""));
         if (n > 100000) errors.push("Capacity is too large (the limit is 100,000 per day).");
         else fields.capacity = n;
-      } else errors.push(`Capacity “${capacity}” should be a whole number, or empty for made to order.`);
+      } else errors.push(`Capacity “${capacity}” should be a whole number or an explicit made to order value. Blank leaves existing stock unchanged.`);
     }
 
     const lead = get("lead_time_days");

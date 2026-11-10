@@ -1,3 +1,4 @@
+import sharp from "sharp";
 import { env } from "@/lib/server/env";
 
 // Thin adapter over the image-edit API (OpenAI's /v1/images/edits). Everything
@@ -33,18 +34,23 @@ export async function editImage(opts: {
   images: Buffer[];
   prompt: string;
   size: string;
+  quality?: "high";
 }): Promise<EditResult> {
   const key = env.openaiApiKey;
 
   const form = new FormData();
   form.append("model", env.imageModel);
   const field = opts.images.length > 1 ? "image[]" : "image";
-  opts.images.forEach((img, i) =>
-    form.append(field, new Blob([new Uint8Array(img)], { type: "image/jpeg" }), `venue-${i + 1}.jpg`)
-  );
+  if (!opts.images.length || opts.images.length > 16) throw new ImageModelError("failed", "Choose between 1 and 16 reference images.");
+  for (const [i,img] of opts.images.entries()) {
+    // Normalise actual bytes to match the declared MIME type, including WebP references.
+    const jpeg = await sharp(img).rotate().jpeg({quality:95}).toBuffer();
+    form.append(field, new Blob([new Uint8Array(jpeg)], {type:"image/jpeg"}), `reference-${i+1}.jpg`);
+  }
   form.append("prompt", opts.prompt);
   form.append("size", opts.size);
-  form.append("quality", env.renderQuality);
+  form.append("quality", opts.quality ?? env.renderQuality);
+  if (env.imageModel === "gpt-image-1" || env.imageModel === "gpt-image-1.5") form.append("input_fidelity", "high");
   form.append("output_format", "jpeg");
   form.append("n", "1");
 

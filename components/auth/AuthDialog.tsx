@@ -24,7 +24,7 @@ export default function AuthDialog({ initialMode = "signup", onClose, onAuthed }
     };
   }, [mounted]);
   if (!mounted) return null;
-  return createPortal(<dialog ref={ref} aria-labelledby={heading} onCancel={e => { e.preventDefault(); onClose(); }} onClick={e => { if (e.target === e.currentTarget) onClose(); }} className="m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-sm overflow-y-auto rounded-3xl border border-sand bg-white p-7 text-ink shadow-2xl backdrop:bg-black/40">
+  return createPortal(<dialog ref={ref} aria-labelledby={heading} onCancel={e => { e.preventDefault(); onClose(); }} className="m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-sm overflow-y-auto rounded-3xl border border-sand bg-white p-7 text-ink shadow-2xl backdrop:bg-black/40">
     <div className="flex items-start justify-between gap-3">
       <h2 id={heading} className="font-serif text-2xl">Your Styled account</h2>
       <button type="button" onClick={onClose} aria-label="Close account dialog" className="h-9 w-9 shrink-0 rounded-full border border-sand">×</button>

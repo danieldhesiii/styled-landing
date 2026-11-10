@@ -1,0 +1,13 @@
+# Build on Vercel; do not upload local generated files or private configuration.
+.next*/**
+node_modules/**
+.git/**
+.vercel/**
+.env*
+*.tsbuildinfo
+.DS_Store
+supabase/.temp/**
+supabase/.branches/**
+styled-landing/**
+*.dump
+*.dump.enc

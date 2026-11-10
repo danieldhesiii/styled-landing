@@ -1,7 +1,10 @@
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
+  // These endpoints own their authentication or rate limiting and do not use a browser session.
+  if (["/api/health", "/api/webhooks/brevo", "/api/webhooks/resend", "/api/client-errors"].includes(request.nextUrl.pathname)) return NextResponse.next();
   return updateSession(request);
 }
 

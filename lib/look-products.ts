@@ -9,7 +9,7 @@ export function productsForLook(opts: {
   illustrative: boolean;
   styleId?: string;
 }): { items: CatalogueItem[]; suggested: boolean; missing: number } {
-  const recorded = [...new Set([...opts.itemIds, ...(opts.report?.items.map(i => i.id) || [])])];
+  const recorded = [...new Set([...opts.itemIds, ...(opts.report?.items.map(i => i.id) || []), ...(opts.report?.demoReference ? [opts.report.demoReference.id] : [])])];
   const byId = new Map(opts.catalogue.map(i => [i.id, i]));
   if (!opts.illustrative) {
     const items = recorded.flatMap(id => byId.has(id) ? [byId.get(id)!] : []);

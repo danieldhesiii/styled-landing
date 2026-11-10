@@ -8,8 +8,21 @@ export interface DiscoveryMatch {
 }
 export interface DiscoveryResults {
   label: string;
+  /** Place matches carry no distance: a public service area is not a coordinate. */
+  placeMatches?: { suppliers: Record<string, string>; venues: Record<string, string> };
   suppliers: Record<string, DiscoveryMatch>;
   venues: Record<string, DiscoveryMatch>;
+}
+export function normalisePlace(value: string) {
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+export function matchesPlace(query: string, ...places: (string | null | undefined)[]) {
+  const words = normalisePlace(query).split(" ").filter(Boolean);
+  if (!words.length) return false;
+  return places.some(place => {
+    const value = ` ${normalisePlace(place || "")} `;
+    return words.every(word => value.includes(` ${word} `));
+  });
 }
 export function validPoint(v: unknown): v is Point {
   if (!v || typeof v !== "object") return false;

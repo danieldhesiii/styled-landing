@@ -1,8 +1,8 @@
 import { randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { parseStockCsv, inferQtyRule, nameKey, type ImportRow } from "@/lib/stock-import";
+import { parseStockCsv, inferQtyRule, nameKey } from "@/lib/stock-import";
 import { CATEGORY_META } from "@/lib/categories";
-import { todayUtc } from "@/lib/availability";
+import { isValidDay, todayUtc } from "@/lib/availability";
 
 // Plan and apply a supplier's stock list.
 //
@@ -17,7 +17,7 @@ import { todayUtc } from "@/lib/availability";
 //  - A field the file doesn't mention is left exactly as it is.
 //  - Rows that are wrong are skipped and reported; they never half-apply.
 //  - A supplier's own upload can only ever touch that supplier's products.
-//  - New products from a supplier start hidden until Styled reviews them.
+//  - Imports never publish: new and changed catalogue content needs review.
 
 export type PlanAction = "create" | "update" | "unchanged" | "error";
 
@@ -79,6 +79,68 @@ const SLOT_BY_CATEGORY: Record<string, string> = {
 };
 
 const LIVE = ["requested", "confirmed", "deposit_paid"];
+const PAGE_SIZE = 500;
+
+// Supabase caps responses. Never mistake a truncated set of reservations for
+// the full stock picture. Order by primary key for deterministic pages.
+async function readAll<T>(
+  query: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  label: string,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await query(from, from + PAGE_SIZE - 1);
+    if (error || !data) throw new Error(`Couldn't load ${label}: ${error?.message ?? "missing response"}`);
+    rows.push(...data);
+    if (data.length < PAGE_SIZE) return rows;
+  }
+}
+
+interface Reservation {
+  product_id: string;
+  quantity: number;
+  stock_start: string | null;
+  stock_end: string | null;
+  needed_date: string | null;
+  return_date: string | null;
+  orders: { wedding_date: string | null; status: string };
+}
+
+function nextDay(day: string): string {
+  return new Date(new Date(`${day}T00:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10);
+}
+
+function bookedPeaks(lines: Reservation[], today: string) {
+  const events = new Map<string, Map<string, number>>();
+  const unknown = new Set<string>();
+  for (const line of lines) {
+    // Same precedence as product_availability in the booking migrations.
+    // stock_start/end already include preparation and return buffers.
+    const start = line.stock_start ?? line.needed_date ?? line.orders?.wedding_date;
+    const end = line.stock_end ?? line.return_date ?? line.orders?.wedding_date;
+    if (!isValidDay(start) || !isValidDay(end) || end < start || !Number.isSafeInteger(line.quantity) || line.quantity <= 0) {
+      unknown.add(line.product_id);
+      continue;
+    }
+    if (end < today) continue;
+    const days = events.get(line.product_id) ?? new Map<string, number>();
+    const from = start < today ? today : start;
+    days.set(from, (days.get(from) ?? 0) + line.quantity);
+    // Hire end is inclusive: stock returns to the pool on the following day.
+    const after = nextDay(end);
+    days.set(after, (days.get(after) ?? 0) - line.quantity);
+    events.set(line.product_id, days);
+  }
+  const peaks = new Map<string, { day: string; units: number }>();
+  for (const [id, days] of events) {
+    let units = 0;
+    for (const [day, delta] of [...days].sort(([a], [b]) => a.localeCompare(b))) {
+      units += delta;
+      if (units > (peaks.get(id)?.units ?? 0)) peaks.set(id, { day, units });
+    }
+  }
+  return { peaks, unknown };
+}
 
 function makeId(name: string, taken: Set<string>): string {
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "product";
@@ -102,7 +164,7 @@ export async function planStockImport(opts: {
   csv: string;
   mode: Mode;
 }): Promise<ImportPlan> {
-  const { admin, supplierId, mode } = opts;
+  const { admin, supplierId } = opts;
   const parsed = parseStockCsv(opts.csv);
   const empty: ImportPlan = {
     rows: [],
@@ -110,46 +172,40 @@ export async function planStockImport(opts: {
     ignoredColumns: parsed.ignoredColumns,
     fileErrors: parsed.fileErrors,
     missing: [],
-    newProductsStartHidden: mode === "vendor",
+    newProductsStartHidden: true,
   };
   if (parsed.fileErrors.length > 0) return empty;
 
-  const { data: existing, error } = await admin
+  const products = await readAll<ExistingProduct>((from, to) => admin
     .from("products")
     .select("id, name, category, slot, unit_price_pence, unit, qty_rule, capacity, lead_time_days, styles, image, note, active")
-    .eq("supplier_id", supplierId);
-  if (error) throw new Error(`Couldn't load this supplier's products: ${error.message}`);
-  const products = (existing ?? []) as ExistingProduct[];
+    .eq("supplier_id", supplierId)
+    .order("id")
+    .range(from, to), "this supplier's products");
   const byId = new Map(products.map((p) => [p.id, p]));
   const byName = new Map<string, ExistingProduct[]>();
   for (const p of products) byName.set(nameKey(p.name), [...(byName.get(nameKey(p.name)) ?? []), p]);
 
-  // Ids already used anywhere (a new id must be unique across all suppliers).
-  const { data: allIds } = await admin.from("products").select("id");
-  const takenIds = new Set((allIds ?? []).map((r) => r.id as string));
-
-  // Units already booked on upcoming dates, to warn when stock is cut below them.
-  const peakBooked = new Map<string, { day: string; units: number }>();
-  if (products.length > 0) {
-    const { data: lines } = await admin
+  // Read only this supplier's catalogue. Random ids are also protected by the
+  // database primary key: a collision rolls back the transaction safely.
+  const takenIds = new Set(products.map((p) => p.id));
+  const lines: Reservation[] = [];
+  for (let offset = 0; offset < products.length; offset += 100) {
+    lines.push(...await readAll<Reservation>((from, to) => admin
       .from("order_lines")
-      .select("product_id, quantity, orders!inner(wedding_date, status)")
-      .in("product_id", products.map((p) => p.id))
+      .select("product_id, quantity, stock_start, stock_end, needed_date, return_date, orders!inner(wedding_date, status)")
+      .eq("supplier_id", supplierId)
+      .in("product_id", products.slice(offset, offset + 100).map((p) => p.id))
       .neq("supplier_status", "declined")
-      .gte("orders.wedding_date", todayUtc())
-      .in("orders.status", LIVE);
-    const perDay = new Map<string, number>();
-    for (const l of lines ?? []) {
-      const o = l.orders as unknown as { wedding_date: string };
-      const key = `${l.product_id}|${o.wedding_date}`;
-      perDay.set(key, (perDay.get(key) ?? 0) + (l.quantity as number));
-    }
-    for (const [key, units] of perDay) {
-      const [pid, day] = key.split("|");
-      const cur = peakBooked.get(pid);
-      if (!cur || units > cur.units) peakBooked.set(pid, { day, units });
-    }
+      .in("orders.status", LIVE)
+      .order("id")
+      // The untyped client infers embedded relations as arrays; this FK is many-to-one.
+      .range(from, to)
+      .returns<Reservation[]>(), "stock reservations"));
   }
+  // Do not filter by wedding date: past weddings can still occupy stock today,
+  // and item-specific hire periods can fall before or after the wedding.
+  const { peaks: peakBooked, unknown: unknownReservations } = bookedPeaks(lines, todayUtc());
 
   const claimed = new Set<string>(); // existing products already matched by an earlier row
   const seenNewNames = new Set<string>();
@@ -214,14 +270,32 @@ export async function planStockImport(opts: {
       if (f.styles !== undefined && !sameSet(f.styles, match.styles ?? [])) set("styles", "styles", match.styles ?? [], f.styles);
       if (f.image !== undefined && (f.image ?? null) !== (match.image ?? null)) set("image", "image", match.image, f.image);
       if (f.note !== undefined && (f.note ?? null) !== (match.note ?? null)) set("note", "note", match.note, f.note);
-      if (f.active !== undefined && f.active !== match.active) set("active", "active", match.active, f.active);
+      // Mirrors guard_product_publication: stock changes alone can stay live;
+      // reviewed catalogue content changes return the product/range to draft.
+      const contentChanged = changes.some((c) => c.field !== "capacity");
+      if (contentChanged) {
+        payload.active = false;
+        if (match.active) changes.push({ field: "active", from: true, to: false });
+        warnings.push("Catalogue details changed. This product will be hidden and the range will return to draft; submit it for review again.");
+      } else if (f.active === false && match.active) {
+        set("active", "active", true, false);
+      }
+      if (f.active === true && (!match.active || contentChanged)) {
+        warnings.push("Imports cannot publish products. Submit the range for review to make this product public.");
+      }
+      if ((f.capacity === undefined ? match.capacity : f.capacity) === null) {
+        warnings.push("No stock limit is recorded. This is not verified availability; confirm stock and the full hire period with the supplier.");
+      }
+      if (unknownReservations.has(match.id)) {
+        warnings.push("Some reservations have missing or invalid hire dates. Stock commitments could not be fully checked; review them with the supplier.");
+      }
 
       // Risky changes get a warning but are still allowed: the supplier knows
       // their own stock and prices.
       if (f.capacity !== undefined && f.capacity !== null) {
         const peak = peakBooked.get(match.id);
         if (peak && f.capacity < peak.units) {
-          warnings.push(`Capacity ${f.capacity} is below the ${peak.units} already booked on ${peak.day}.`);
+          warnings.push(`Capacity ${f.capacity} is below the ${peak.units} already reserved on ${peak.day} across overlapping full hire periods (including recorded preparation and return buffers).`);
         }
       }
       if (f.unit_price_pence !== undefined && match.unit_price_pence > 0) {
@@ -255,6 +329,7 @@ export async function planStockImport(opts: {
     const missing: string[] = [];
     if (!f.category) missing.push("a category");
     if (f.unit_price_pence === undefined) missing.push("a price");
+    if (f.capacity === undefined) missing.push("a capacity or an explicit ‘made to order’ value");
     if (missing.length) {
       rows.push({ ...base, action: "error", errors: [`This is a new product, so it needs ${missing.join(" and ")}.`] });
       continue;
@@ -263,9 +338,8 @@ export async function planStockImport(opts: {
     const unit = f.unit ?? "each";
     const category = f.category!;
     const icon = CATEGORY_META.find((c) => c.category === category)?.icon ?? "";
-    const forcedHidden = mode === "vendor";
-    if (forcedHidden) warnings.push("New products start hidden until Styled has reviewed them.");
-    if (f.capacity === undefined) warnings.push("No capacity given, so this is treated as made to order (no stock limit).");
+    warnings.push("New products start hidden. Submit the range for review before publication.");
+    if (f.capacity === null) warnings.push("Made to order has no stock limit recorded. Supplier confirmation is still required for the full hire period.");
 
     const id = makeId(r.name, takenIds);
     const payload = {
@@ -284,7 +358,7 @@ export async function planStockImport(opts: {
       lead_time_days: f.lead_time_days ?? 0,
       capacity: f.capacity ?? null,
       note: f.note ?? null,
-      active: forcedHidden ? false : (f.active ?? true),
+      active: false,
     };
     rows.push({
       ...base,
@@ -309,7 +383,7 @@ export async function planStockImport(opts: {
     ignoredColumns: parsed.ignoredColumns,
     fileErrors: [],
     missing: products.filter((p) => !claimed.has(p.id)).map((p) => ({ id: p.id, name: p.name })),
-    newProductsStartHidden: mode === "vendor",
+    newProductsStartHidden: true,
   };
 }
 

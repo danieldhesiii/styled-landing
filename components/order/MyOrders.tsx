@@ -28,16 +28,10 @@ export default function MyOrders({ onBrowse }: { onBrowse: () => void }) {
     <section className="rounded-2xl border border-sand bg-white p-5 sm:p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-clay">
-            Submitted to Styled
-          </p>
-          <h2 className="mt-3 font-serif text-3xl">Supplier requests</h2>
+          <h2 className="font-serif text-2xl">Your product requests</h2>
         </div>
         <HelpButton topic="orders" />
       </div>
-      <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink/60">
-        Follow the requests you have sent. Styled checks availability and delivery with suppliers before confirming a booking.
-      </p>
       <div className="mt-7 flex flex-wrap gap-3">
         <button
           type="button"
@@ -68,9 +62,7 @@ export default function MyOrders({ onBrowse }: { onBrowse: () => void }) {
         <div className="mt-7 rounded-xl bg-cream p-7">
           <h2 className="font-serif text-2xl">No requests submitted yet</h2>
           <p className="mt-3 text-sm text-ink/60">
-            Collect pieces in your basket, then choose Request supplier
-            confirmation when you’re ready. Nothing is booked or charged by
-            adding products to the basket.
+            Choose products in the catalogue, then request supplier confirmation from your basket.
           </p>
         </div>
       )}

@@ -1,3 +1,6 @@
+import {readJsonObject, JsonBodyError} from "@/lib/server/request-json";
+import {dispatchBookingNotifications} from "@/lib/server/booking-notifications";
+import {venueCatalogue} from "@/lib/server/venue-catalogue";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/server/session";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -12,10 +15,7 @@ import {
 import { resolveHireDates, type HireDates } from "@/lib/booking-dates";
 import { deliveryError } from "@/lib/wedding";
 import { checkQuantities } from "@/lib/server/availability";
-import {
-  notifySuppliersOfOrder,
-  notifyStaffOfOrder,
-} from "@/lib/server/notify";
+import { requestSnapshot } from "@/lib/server/development-request-catalogue";
 
 // POST /api/orders
 //
@@ -47,12 +47,16 @@ export async function POST(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
   const { user, supabase } = auth;
+  // Every submitted request must be owned by a verified account that can later
+  // review quotes. Guest plans stay drafts until account verification.
+  if (user.is_anonymous || !user.email || !user.email_confirmed_at)
+    return fail(401, "Sign in and confirm your email before submitting. Your basket is still here.");
 
   let body: Record<string, unknown>;
   try {
-    body = await req.json();
-  } catch {
-    return fail(400, "Invalid request body.");
+    body = await readJsonObject(req);
+  } catch (error) {
+    return fail(error instanceof JsonBodyError ? error.status : 400, error instanceof JsonBodyError ? error.message : "Invalid request body.");
   }
   if (!body || typeof body !== "object")
     return fail(400, "Invalid request body.");
@@ -120,12 +124,17 @@ export async function POST(req: Request) {
   // Each order creates work for a stylist, so cap them per guest and per network.
   const ipHash = clientIpHash(req);
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { count: mine } = await admin
+  const { count: mine, error: mineError } = await admin
     .from("orders")
     .select("id", { count: "exact", head: true })
     .eq("owner_id", user.id)
     .gte("created_at", since);
-  if ((mine ?? 0) >= env.maxOrdersPerDay) {
+  if (mineError || mine === null) {
+    const again = await replayExisting();
+    if (again) return again;
+    return fail(503, "We couldn't check request limits. Your basket is still here. Please try again shortly.");
+  }
+  if (mine >= env.maxOrdersPerDay) {
     const again = await replayExisting();
     if (again) return again;
     return fail(
@@ -133,12 +142,17 @@ export async function POST(req: Request) {
       "You've placed several orders today. Please wait, or contact us if you need more.",
     );
   }
-  const { count: network } = await admin
+  const { count: network, error: networkError } = await admin
     .from("orders")
     .select("id", { count: "exact", head: true })
     .eq("client_ip_hash", ipHash)
     .gte("created_at", since);
-  if ((network ?? 0) >= env.maxOrdersPerIpPerDay) {
+  if (networkError || network === null) {
+    const again = await replayExisting();
+    if (again) return again;
+    return fail(503, "We couldn't check request limits. Your basket is still here. Please try again shortly.");
+  }
+  if (network >= env.maxOrdersPerIpPerDay) {
     const again = await replayExisting();
     if (again) return again;
     return fail(
@@ -150,12 +164,22 @@ export async function POST(req: Request) {
   // Price the basket from the live catalogue.
   let priced;
   try {
-    priced = await priceBasket(body.basket);
+    priced = await priceBasket(body.basket, req);
   } catch (err) {
     console.error("[orders] pricing failed:", err);
     return fail(500, "Couldn't price your order. Please try again.");
   }
   if (!priced.ok) return fail(priced.status, priced.error, priced.extra);
+
+  if(body.venueSlug!==undefined){
+    if(typeof body.venueSlug!=="string"||!body.venueSlug)return fail(422,"Choose a valid venue.");
+    try{const scoped=await venueCatalogue(body.venueSlug,[...priced.items.values()]);
+      const allowed=new Set(scoped.items.map(i=>i.id));
+      if(priced.lines.some(l=>!allowed.has(l.itemId)))return fail(422,"Your venue coordinates its own suppliers or these products are outside its approved local range. Contact the venue team or update your basket.");
+      f.venueLabel=scoped.scope.name;
+      f.notes=[f.notes,`Venue route: ${scoped.scope.slug} (${scoped.scope.policy.mode})`].filter(Boolean).join("\n");
+    }catch{return fail(422,"Could not verify this venue’s supplier route. Return to the venue page or contact its team.");}
+  }
 
   let itemDates: Map<string, HireDates>;
   try {
@@ -176,7 +200,7 @@ export async function POST(req: Request) {
   // Notice period: each item must be bookable far enough before the date it's
   // actually needed — its delivery date, which can be earlier than the wedding.
   const itemsOnOrder = [...priced.items.values()].filter((i) =>
-    priced.lines.some((l) => l.itemId === i.id),
+    !i.requestOnly && priced.lines.some((l) => l.itemId === i.id),
   );
   const tooSoon: { itemId: string; name: string; leadTimeDays: number }[] = [];
   if (f.weddingDate) {
@@ -218,6 +242,7 @@ export async function POST(req: Request) {
     try {
       const byStart = new Map<string, { dates: HireDates; lines: { itemId: string; quantity: number }[] }>();
       for (const line of priced.quote.lines) {
+        if (line.item.requestOnly) continue;
         const dates = itemDates.get(line.item.id)!;
         const key = `${dates.start}:${dates.end}`;
         const group = byStart.get(key) ?? { dates, lines: [] };
@@ -262,7 +287,8 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   const { quote } = priced;
-  const { data: orderId, error } = await admin.rpc("create_order", {
+  const hasRequestLines = quote.lines.some(l => l.item.requestOnly);
+  const { data: orderId, error } = await admin.rpc(hasRequestLines ? "create_development_request_order" : "create_order", {
     p_owner: user.id,
     p_order: {
       brief_id: brief?.id ?? null,
@@ -275,20 +301,21 @@ export async function POST(req: Request) {
       guest_count: f.guestCount,
       subtotal_pence: quote.subtotalPence,
       commission_pence: quote.commissionPence,
-      deposit_pence: quote.depositPence,
+      deposit_pence: hasRequestLines ? 0 : quote.depositPence,
       notes: f.notes,
       idempotency_key: f.idempotencyKey,
       client_ip_hash: ipHash,
     },
     p_lines: quote.lines.map((l) => ({
-      product_id: l.item.id,
-      supplier_id: priced.items.get(l.item.id)!.supplierId,
+      product_id: l.item.requestOnly ? null : l.item.id,
+      supplier_id: l.item.requestOnly ? null : priced.items.get(l.item.id)!.supplierId,
+      ...(l.item.requestOnly ? { request_snapshot: requestSnapshot(priced.items.get(l.item.id)!) } : {}),
       product_name: l.item.name,
       supplier_name: l.item.supplier,
-      unit: l.item.unit,
-      unit_price_pence: l.unitPricePence,
+      unit: l.item.requestOnly && l.item.demoPricing ? "one-day package estimate" : l.item.unit,
+      unit_price_pence: l.item.priceOnRequest ? null : l.unitPricePence,
       quantity: l.quantity,
-      line_total_pence: l.lineTotalPence,
+      line_total_pence: l.item.priceOnRequest ? null : l.lineTotalPence,
       // Delivery date, if different from the wedding day (else create_order defaults it).
       needed_date: itemDates.get(l.item.id)!.start,
       return_date: itemDates.get(l.item.id)!.end,
@@ -331,20 +358,9 @@ export async function POST(req: Request) {
     return fail(500, "Couldn't place your order. Please try again.");
   }
 
-  // Tell each supplier they have items to confirm. Best effort and only on a
-  // genuinely new order (replays return earlier), so a couple is never emailed
-  // about, nor a supplier double-notified for, the same order twice.
-  const [staffNotified] = await Promise.all([
-    notifyStaffOfOrder(admin, orderId as string),
-    notifySuppliersOfOrder(admin, orderId as string),
-  ]);
-  await admin
-    .from("order_events")
-    .insert({
-      order_id: orderId,
-      type: "review_notification",
-      detail: { staffEmailSent: staffNotified },
-    });
+  // Queue rows are created transactionally with the order lines. Delivery is
+  // separately tracked and never turns a request into a booking.
+  if (!hasRequestLines) await dispatchBookingNotifications(admin,orderId as string);
 
   const order = await loadOrderView(supabase, orderId as string);
   return NextResponse.json(

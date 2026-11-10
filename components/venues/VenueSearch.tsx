@@ -9,7 +9,7 @@ import {
   validVenueDay,
 } from "@/lib/venue-details";
 import type { DiscoveryMatch, DiscoveryResults } from "@/lib/location";
-import LocationFilter from "@/components/wedding/LocationFilter";
+import LocationFilter from "./LocationFilter";
 import { VenueCards } from "./VenueCollection";
 import { readVenueShortlist } from "./VenueShortlist";
 import DemoVenues from "./DemoVenues";
@@ -37,7 +37,7 @@ const emptyFilters: VenueSearchFilters = {
   sort: "",
 };
 const field =
-  "mt-2 block w-full rounded-lg border border-sand bg-white px-3 py-3 text-sm";
+  "mt-2 block min-h-11 w-full rounded-lg border border-sand bg-white px-3 py-3 text-sm motion-safe:transition-colors motion-safe:duration-200 hover:border-clay/60";
 
 export default function VenueSearch({
   active = true,
@@ -48,6 +48,7 @@ export default function VenueSearch({
   weddingDate,
   postcode = "",
   matches,
+  placeMatches,
   searchRadius = 50,
   selectedSlug,
   onSelect,
@@ -63,6 +64,7 @@ export default function VenueSearch({
   weddingDate?: string;
   postcode?: string;
   matches?: Record<string, DiscoveryMatch>;
+  placeMatches?: Record<string, string>;
   searchRadius?: number;
   selectedSlug?: string;
   onSelect?: (venue: VenueListing) => void;
@@ -188,8 +190,10 @@ export default function VenueSearch({
   }, [active, date, collectionKnown]);
   const collectionEmpty =
     collectionKnown && catalogue.length === 0 && !loading && !error;
+  const places = result?.placeMatches?.venues ||
+    (result || ignoreParentLocation ? undefined : placeMatches);
   const distances =
-    result?.venues || (ignoreParentLocation ? undefined : matches);
+    places ? undefined : result?.venues || (ignoreParentLocation ? undefined : matches);
   const counties = [
     ...new Set(
       [...catalogue, ...(loaded?.venues || [])]
@@ -217,6 +221,7 @@ export default function VenueSearch({
   ).filter(
     (venue) =>
       (!shortlistOnly || saved.includes(venue.id)) &&
+      (!places || Object.hasOwn(places, venue.slug)) &&
       (!distances?.[venue.slug] ||
         !radius ||
         distances[venue.slug].miles <= radius),
@@ -238,11 +243,26 @@ export default function VenueSearch({
       a.name.localeCompare(b.name)
     );
   });
+  const activeFilters: { label: string; remove: () => void }[] = [
+    ...(filters.q ? [{ label: `Search: ${filters.q}`, remove: () => applyFilter("q", "") }] : []),
+    ...(filters.county ? [{ label: `County: ${filters.county}`, remove: () => applyFilter("county", "") }] : []),
+    ...(filters.guests ? [{ label: `${filters.guests} guests`, remove: () => applyFilter("guests", "") }] : []),
+    ...(filters.date ? [{ label: `Date: ${filters.date}`, remove: () => applyFilter("date", "") }] : []),
+    ...(filters.type ? [{ label: VENUE_TYPES[filters.type as keyof typeof VENUE_TYPES] || filters.type, remove: () => applyFilter("type", "") }] : []),
+    ...(filters.setting ? [{ label: filters.setting === "outdoor" ? "Outdoor" : "Indoor", remove: () => applyFilter("setting", "") }] : []),
+    ...(filters.budget ? [{ label: `Starting hire up to £${filters.budget}`, remove: () => applyFilter("budget", "") }] : []),
+    ...filters.features.map(feature => ({ label: VENUE_FEATURES[feature as keyof typeof VENUE_FEATURES] || feature, remove: () => applyFilter("features", filters.features.filter(value => value !== feature)) })),
+  ];
   function update<K extends keyof VenueSearchFilters>(
     key: K,
     value: VenueSearchFilters[K],
   ) {
     setFilters((current) => ({ ...current, [key]: value }));
+  }
+  function applyFilter<K extends keyof VenueSearchFilters>(key: K, value: VenueSearchFilters[K]) {
+    const next = { ...filters, [key]: value };
+    setFilters(next);
+    writeUrl(next);
   }
   function writeUrl(values: VenueSearchFilters) {
     if (!syncUrl) return;
@@ -264,7 +284,7 @@ export default function VenueSearch({
     <>
       <div hidden={collectionEmpty}>
         <form
-          className="my-8 rounded-2xl border border-sand bg-white p-5 sm:p-6"
+          aria-label="Venue search" className="my-8 border-y border-sand bg-white/40 py-6"
           onSubmit={(event) => {
             event.preventDefault();
             writeUrl(filters);
@@ -332,15 +352,14 @@ export default function VenueSearch({
                 filters.type ||
                 filters.setting ||
                 filters.budget ||
-                filters.features.length ||
-                filters.sort
+                filters.features.length
               )
             }
           >
-            <summary className="cursor-pointer text-sm">
-              More filters: type, hire budget, facilities & sort
+            <summary className="inline-flex min-h-11 cursor-pointer items-center py-2 text-sm underline underline-offset-4">
+              More filters
             </summary>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-5 grid gap-4 sm:grid-cols-3">
               <label className="text-sm">
                 Venue type
                 <select
@@ -383,26 +402,13 @@ export default function VenueSearch({
                   className={field}
                 />
               </label>
-              <label className="text-sm">
-                Sort by
-                <select
-                  name="sort"
-                  value={filters.sort}
-                  onChange={(e) => update("sort", e.target.value)}
-                  className={field}
-                >
-                  <option value="">Venue name</option>
-                  <option value="price">Starting hire price</option>
-                  <option value="capacity">Largest guest capacity</option>
-                  <option value="distance">Nearest location</option>
-                </select>
-              </label>
+
             </div>
             <fieldset className="mt-5 border-t border-sand pt-5">
               <legend className="text-sm">Facilities that matter to you</legend>
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {Object.entries(VENUE_FEATURES).map(([key, label]) => (
-                  <label key={key} className="flex items-center gap-2 text-sm">
+                  <label key={key} className="flex min-h-11 items-center gap-2 text-sm">
                     <input
                       type="checkbox"
                       name="feature"
@@ -424,7 +430,7 @@ export default function VenueSearch({
                 ))}
               </div>
             </fieldset>
-            <p className="mt-4 text-xs leading-relaxed text-ink/60">
+            <p className="mt-4 text-sm leading-relaxed text-ink/60">
               Starting hire prices exclude styling unless stated. Budget
               searches require a published starting price. Confirm inclusions
               and access with the venue.
@@ -432,18 +438,17 @@ export default function VenueSearch({
           </details>
           <p
             id={syncUrl ? "public-venue-date-help" : "studio-venue-date-help"}
-            className="mt-3 text-xs text-ink/60"
+            className="mt-3 text-sm text-ink/60"
           >
-            Date searches exclude known booked and blocked dates. Every date
-            still needs venue confirmation.
+            Known booked dates are excluded. Confirm availability with the venue.
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-5">
-            <button className="rounded-full bg-ink px-6 py-3 text-sm text-cream">
+            <button className="min-h-11 rounded-full bg-ink px-6 py-3 text-sm text-cream hover:bg-ink/90 motion-safe:transition-colors motion-safe:duration-200">
               Find venues
             </button>
             <button
               type="button"
-              className="text-sm underline"
+              className="min-h-11 text-sm underline underline-offset-4"
               onClick={() => {
                 setFilters({ ...emptyFilters });
                 setShortlistOnly(false);
@@ -460,7 +465,7 @@ export default function VenueSearch({
             {invalidDate && (
               <button
                 type="button"
-                className="text-sm underline"
+                className="min-h-11 text-sm underline underline-offset-4"
                 onClick={() => update("date", "")}
               >
                 Clear invalid date
@@ -469,6 +474,7 @@ export default function VenueSearch({
           </div>
         </form>
         <LocationFilter
+          entity="venues"
           key={locationRevision}
           postcode={locationPostcode}
           result={result}
@@ -476,7 +482,7 @@ export default function VenueSearch({
           radius={radius}
           onRadius={setRadius}
         />
-        {matches && !result && !ignoreParentLocation && (
+        {(matches || placeMatches) && !result && !ignoreParentLocation && (
           <button
             type="button"
             onClick={() => setIgnoreParentLocation(true)}
@@ -485,7 +491,10 @@ export default function VenueSearch({
             Clear wedding location filter
           </button>
         )}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 text-sm">
+        {activeFilters.length > 0 && <ul aria-label="Active venue filters" className="mb-5 flex flex-wrap gap-2">
+          {activeFilters.map((filter, index) => <li key={`${filter.label}-${index}`} className="min-w-0 max-w-full"><button type="button" onClick={filter.remove} aria-label={`Remove filter: ${filter.label}`} className="inline-flex min-h-11 max-w-full items-center gap-3 rounded-full border border-sand px-4 py-2 text-left text-sm hover:bg-sand/40 motion-safe:transition-colors motion-safe:duration-200"><span className="min-w-0 break-words">{filter.label}</span><span aria-hidden="true">×</span></button></li>)}
+        </ul>}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-4 border-b border-sand pb-4 text-sm">
           <p role="status">
             {collectionEmpty
               ? "No published venues yet"
@@ -497,15 +506,31 @@ export default function VenueSearch({
                     ? "Venue search unavailable"
                     : `${visible.length} ${visible.length === 1 ? "venue matches" : "venues match"} your search`}
           </p>
-          <label className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-x-6 gap-y-3 sm:w-auto">
+              <label className="flex w-full items-center gap-3 text-sm sm:w-auto">
+                Sort by
+                <select
+                  name="sort"
+                  value={filters.sort}
+                  onChange={(e) => applyFilter("sort", e.target.value)}
+                  className="min-h-11 min-w-0 flex-1 rounded-lg border border-sand bg-cream px-3 py-2 text-sm sm:flex-none"
+                >
+                  <option value="">Venue name</option>
+                  <option value="price">Starting hire price</option>
+                  <option value="capacity">Largest guest capacity</option>
+                  <option value="distance">Nearest location</option>
+                </select>
+              </label>
+          <label className="flex min-h-11 flex-wrap items-center gap-2">
             <input
               type="checkbox"
               checked={shortlistOnly}
               onChange={(e) => setShortlistOnly(e.target.checked)}
             />
             My shortlist{" "}
-            <span className="text-xs text-ink/50">(saved on this device)</span>
+            <span className="text-sm text-ink/50">(this device)</span>
           </label>
+          </div>
         </div>
       </div>
       {invalidDate && (
@@ -535,14 +560,14 @@ export default function VenueSearch({
         !loading &&
         !error &&
         (visible.length ? (
-          <VenueCards
+          <div className="motion-safe:animate-fade-in"><VenueCards
             venues={visible}
             distances={distances}
             selectedSlug={selectedSlug}
             onSelect={onSelect}
             requestDate={date || undefined}
             guestCount={Number(filters.guests) || undefined}
-          />
+          /></div>
         ) : (
           <div role="status" className="rounded-xl bg-cream p-6">
             <h2 className="font-serif text-2xl">
@@ -552,8 +577,8 @@ export default function VenueSearch({
             </h2>
             <p className="mt-3 text-sm text-ink/60">
               {collectionEmpty
-                ? "We are onboarding venue partners. Explore the clearly marked demos below, or keep planning with your own venue. Demo venues cannot be booked."
-                : "Try a nearby county, another date, a wider distance or fewer filters. You can also keep planning with your own venue."}
+                ? "Try a demo below or add your own venue to your plan."
+                : "Try another date, a wider area or fewer filters."}
             </p>
           </div>
         ))}
@@ -561,8 +586,7 @@ export default function VenueSearch({
         <div>
           <h2 className="font-serif text-2xl">Already have your venue?</h2>
           <p className="mt-2 text-sm text-ink/60">
-            Save your booked venue and photos privately in your wedding plan.
-            This does not create a public listing.
+            Add your venue and photos to your private plan.
           </p>
         </div>
         {onVisualise ? (
@@ -582,10 +606,8 @@ export default function VenueSearch({
           </Link>
         )}
       </div>
-      <p className="mt-5 text-xs leading-relaxed text-ink/60">
-        Saving a venue is a planned choice for your wedding, not a confirmed
-        booking. It does not reserve a date. Agree bookings, contracts and
-        payment separately with the venue.
+      <p className="mt-5 text-sm leading-relaxed text-ink/60">
+        Saving a venue does not reserve a date. Agree the booking and payment with the venue.
       </p>
       <DemoVenues />
     </>

@@ -9,7 +9,7 @@ export async function GET() {
     const supabase = await createClient();
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error) return reply(error.status && [400, 401, 403].includes(error.status) ? 401 : 503);
-    if (!user || user.is_anonymous) return reply(401);
+    if (!user || user.is_anonymous || !user.email || !user.email_confirmed_at) return reply(401);
     const admin = createAdminClient();
     const link = await admin.from("supplier_users").select("supplier_id").eq("user_id", user.id).maybeSingle();
     if (link.error) return reply(503);

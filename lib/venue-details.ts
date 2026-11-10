@@ -1,3 +1,4 @@
+import {parseVenuePolicy,type VenueSupplierPolicy} from "./venue-suppliers";
 export const VENUE_TYPES = {
   barn: "Barn",
   country_house: "Country house",
@@ -21,6 +22,7 @@ export const VENUE_FEATURES = {
   pet_friendly: "Pets welcome",
 } as const;
 export interface VenueDetails {
+  supplier_policy?:VenueSupplierPolicy;
   venue_type: string | null;
   hire_from_pence: number | null;
   ceremony_capacity: number | null;
@@ -109,6 +111,7 @@ export function parseVenueDetails(raw: Record<string, unknown>): VenueDetails {
   )
     throw Error("Choose venue facilities from the list.");
   d.features = [...new Set(features)];
+  if(raw.supplier_policy!==undefined) d.supplier_policy=parseVenuePolicy(raw.supplier_policy);
   return d;
 }
 export function listingMissing(v: {

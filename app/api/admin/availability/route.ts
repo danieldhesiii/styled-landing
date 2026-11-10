@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   const [{ data: products, error }, { data: suppliers }, { data: overrides }] = await Promise.all([
     admin
       .from("products")
-      .select("id, name, category, capacity, active, unit, qty_rule, supplier_id, suppliers(name, area)")
+      .select("id, name, category, capacity, active, unit, qty_rule, supplier_id, suppliers(name, area, active)")
       .order("sort_order"),
     admin.from("suppliers").select("id, name, area, active").order("name"),
     admin.from("availability_overrides").select("product_id, supplier_id").gte("day", today),
@@ -36,7 +36,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     ok: true,
     products: (products ?? []).map((p) => {
-      const s = p.suppliers as unknown as { name: string; area: string } | null;
+      const s = p.suppliers as unknown as { name: string; area: string; active: boolean } | null;
       return {
         id: p.id,
         name: p.name,
@@ -44,6 +44,7 @@ export async function GET(req: Request) {
         unit: p.unit,
         capacity: p.capacity,
         active: p.active,
+        supplierActive: s?.active === true,
         supplierId: p.supplier_id,
         supplier: s?.name ?? "",
         area: s?.area ?? "",

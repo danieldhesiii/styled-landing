@@ -44,7 +44,7 @@ export default function RecoveryForm({
             });
       if (result.error) throw result.error;
       setNotice(
-        "If that address is eligible, an email will arrive with the next step. Check your spam folder too. Open the latest link in this same browser; links expire and can only be used once.",
+        "If eligible, you’ll receive an email. Check spam and open the latest link in this browser.",
       );
     } catch (err) {
       setError(authError(err));
@@ -54,11 +54,10 @@ export default function RecoveryForm({
   }
   return (
     <>
-      <h1 className="font-serif text-3xl text-ink">Recover account access</h1>
+      <h1 className="font-serif text-3xl text-ink">Account recovery</h1>
       {invalidLink && (
         <p role="alert" className="mt-4 text-sm text-ink/80">
-          That link could not be used. It may have expired, already been opened,
-          or been opened in a different browser. Request a fresh email below.
+          That link is no longer valid. Request a new email below.
         </p>
       )}
       <form onSubmit={submit} className="mt-6 space-y-4">
@@ -90,7 +89,7 @@ export default function RecoveryForm({
           <option value="reset">Reset my password</option>
           <option value="signup">Resend account confirmation</option>
           <option value="email_change">
-            Resend guest upgrade / email change confirmation
+            Confirm changed email
           </option>
         </select>
         {error && (

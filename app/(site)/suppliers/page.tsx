@@ -11,8 +11,14 @@ export const metadata = {
     "Explore wedding supplier profiles and catalogue pieces, subject to manual availability and quote confirmation.",
 };
 
-export default async function SuppliersIndexPage() {
-  const suppliers = await loadPublicSuppliers();
+export default async function SuppliersIndexPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string }> }) {
+  const params = await searchParams;
+  const query = typeof params.q === "string" ? params.q.trim() : "";
+  const suppliers = (await loadPublicSuppliers(true)).filter(s =>
+    (s.name + " " + s.area).toLowerCase().includes(query.toLowerCase()));
+  const pages = Math.max(1, Math.ceil(suppliers.length / 12));
+  const page = Math.max(1, Math.min(pages, Number.parseInt(params.page || "1", 10) || 1));
+  const pageHref = (n: number) => "/suppliers?" + new URLSearchParams({ q: query, page: String(n) });
 
   return (
     <div className="py-12">
@@ -20,16 +26,21 @@ export default async function SuppliersIndexPage() {
         Meet our suppliers
       </h1>
       <p className="mt-3 max-w-xl text-ink/60">
-        Explore supplier profiles and catalogue pieces for your wedding. Availability, final prices and delivery or collection are confirmed manually for your date and venue.
+        Explore suppliers and their products. Prices, availability and delivery need confirmation.
       </p>
 
+      <form action="/suppliers" className="mt-6 flex flex-wrap gap-2">
+        <input type="search" name="q" aria-label="Search suppliers by name or area" placeholder="Supplier name or area" defaultValue={query} className="min-w-0 rounded-lg border border-sand bg-white px-4 py-2" />
+        <button className="rounded-full bg-ink px-5 py-2 text-cream">Search</button>
+        {query && <Link href="/suppliers" className="self-center px-2 underline">Clear</Link>}
+      </form>
       {suppliers.length === 0 ? (
         <div className="mt-12 rounded-3xl border border-dashed border-sand px-6 py-16 text-center text-sm text-ink/50">
-          Our supplier network is being set up. Check back very soon.
+          {query ? "No suppliers match your search." : "No suppliers are listed yet."}
         </div>
       ) : (
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {suppliers.map((s) => (
+          {suppliers.slice((page - 1) * 12, page * 12).map((s) => (
             <Link
               key={s.id}
               href={`/suppliers/${s.id}`}
@@ -52,7 +63,7 @@ export default async function SuppliersIndexPage() {
                   {s.name}
                 </h2>
                 <p className="truncate text-sm text-ink/50">{s.area}</p>
-                <p className="mt-1 text-xs text-ink/40">
+                <p className="mt-1 text-sm text-ink/40">
                   {s.productCount} {s.productCount === 1 ? "piece" : "pieces"}
                 </p>
               </div>
@@ -60,8 +71,11 @@ export default async function SuppliersIndexPage() {
           ))}
         </div>
       )}
-
-
+      {pages > 1 && <nav aria-label="Supplier pages" className="mt-6 flex items-center gap-5">
+        {page > 1 && <Link href={pageHref(page - 1)}>Previous</Link>}
+        <span>Page {page} of {pages}</span>
+        {page < pages && <Link href={pageHref(page + 1)}>Next</Link>}
+      </nav>}
     </div>
   );
 }

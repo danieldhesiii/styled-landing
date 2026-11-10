@@ -78,6 +78,8 @@ export default function SuppliersPage() {
         </button>
       </div>
 
+      <Link href="/admin/suppliers/crescent-moon-preview" className="mt-5 inline-flex min-h-11 items-center rounded-full border border-sand bg-white px-5 text-sm underline">Review Crescent Moon’s six draft listings →</Link>
+
       {error && (
         <p role="alert" className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>
       )}

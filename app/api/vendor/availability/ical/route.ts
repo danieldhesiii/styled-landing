@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireVendor } from "@/lib/server/vendor";
 import { syncSupplierCalendar } from "@/lib/server/ical";
+import { calendarFeedUrl } from "@/lib/server/calendar-feed";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,8 @@ export async function PUT(req: Request) {
     return fail(400, "Invalid request body.");
   }
   const url = typeof body.url === "string" ? body.url.trim() : "";
-  if (!/^https?:\/\/.+/i.test(url) || url.length > 2000) return fail(422, "Enter a valid calendar link (webcal links won't work; use the https version).");
+  try { if (url.length > 2000) throw Error(); calendarFeedUrl(url); }
+  catch { return fail(422, "Enter a direct HTTPS calendar feed link without a sign-in or redirect."); }
 
   const { data: previous, error: readError } = await admin.from("suppliers").select("ical_url").eq("id", supplierId).single();
   if (readError) return fail(503, "Could not load your calendar connection. Please retry.");

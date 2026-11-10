@@ -38,12 +38,14 @@ export default function BoardImports({
   onUpload,
   onLink,
   onPreview,
+  pinterestImport,
 }: {
   disabled: boolean;
   hasBoard: boolean;
   onUpload: () => void;
   onLink: (url: string) => Promise<void>;
   onPreview: (url: string) => void;
+  pinterestImport?: React.ReactNode;
 }) {
   const [link, setLink] = useState(""),
     [error, setError] = useState(""),
@@ -114,6 +116,7 @@ export default function BoardImports({
             <ImportIcon source="pinterest" />
             Pinterest
           </h3>
+          {pinterestImport}
           <p className="mt-3 text-sm leading-relaxed text-ink/70">
             Preview a public board or Pin. Open private boards on Pinterest.
             Upload images you have permission to use.

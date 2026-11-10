@@ -33,11 +33,7 @@ export default function VenueMediaPlaceholder({
       <p className="mt-2 text-sm text-ink/60">
         {tour ? "Walkthrough not added yet" : "Video not added yet"}
       </p>
-      <p className="mt-3 max-w-sm text-xs leading-relaxed text-ink/50">
-        {tour
-          ? "An interactive tour will appear here once the venue adds a captured 360° or 3D walkthrough."
-          : "A venue film will appear here once the venue adds its video."}
-      </p>
+
     </div>
   );
 }

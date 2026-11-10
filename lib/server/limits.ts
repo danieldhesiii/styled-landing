@@ -27,7 +27,7 @@ export interface LimitFailure {
   error: string;
 }
 
-export async function checkRenderLimits(opts: {
+async function checkedRenderLimits(opts: {
   supabase: SupabaseClient; // as the guest (RLS-scoped)
   admin: SupabaseClient; // service role, for network-wide counts
   userId: string;
@@ -38,48 +38,66 @@ export async function checkRenderLimits(opts: {
 
   // Fail renders that have been "running" too long (crashed or killed jobs), so
   // they never block the guest or the one-in-flight rule.
-  await admin
+  const stale = await admin
     .from("renders")
     .update({ status: "failed", error_kind: "timeout", error: "Timed out", completed_at: new Date().toISOString() })
     .eq("owner_id", userId)
     .in("status", ["queued", "running"])
     .lt("created_at", new Date(Date.now() - STALE_RENDER_MINUTES * 60 * 1000).toISOString());
 
-  const { count: inFlight } = await supabase
+  if (stale.error) return unavailable();
+
+  const { count: inFlight, error: inFlightError } = await supabase
     .from("renders")
     .select("id", { count: "exact", head: true })
     .in("status", ["queued", "running"]);
-  if ((inFlight ?? 0) > 0) {
+  if (inFlightError || !validCount(inFlight)) return unavailable();
+  if (inFlight > 0) {
     return { status: 409, error: "Your last render is still being created. Hang on a moment." };
   }
 
-  const { count: mine } = await supabase
+  const { count: mine, error: mineError } = await supabase
     .from("renders")
     .select("id", { count: "exact", head: true })
     .gte("created_at", since)
     .neq("status", "failed");
-  if ((mine ?? 0) >= env.maxRendersPerDay) {
+  if (mineError || !validCount(mine)) return unavailable();
+  if (mine >= env.maxRendersPerDay) {
     return { status: 429, error: "You've reached today's render limit. Please try again tomorrow." };
   }
 
-  const { count: network } = await admin
+  const { count: network, error: networkError } = await admin
     .from("renders")
     .select("id", { count: "exact", head: true })
     .eq("client_ip_hash", ipHash)
     .gte("created_at", since)
     .neq("status", "failed");
-  if ((network ?? 0) >= env.maxRendersPerIpPerDay) {
+  if (networkError || !validCount(network)) return unavailable();
+  if (network >= env.maxRendersPerIpPerDay) {
     return { status: 429, error: "There have been a lot of renders from your network today. Please try again tomorrow." };
   }
 
-  const { count: everyone } = await admin
+  const { count: everyone, error: everyoneError } = await admin
     .from("renders")
     .select("id", { count: "exact", head: true })
     .gte("created_at", since)
     .neq("status", "failed");
-  if ((everyone ?? 0) >= env.maxRendersGlobalPerDay) {
+  if (everyoneError || !validCount(everyone)) return unavailable();
+  if (everyone >= env.maxRendersGlobalPerDay) {
     return { status: 503, error: "We're at capacity for today. Please try again tomorrow." };
   }
 
   return null;
+}
+
+// Never treat a failed usage query as zero: that could start paid model work
+// while spend controls are unavailable. No raw database error reaches a user.
+function validCount(count: unknown): count is number {
+  return typeof count === "number" && Number.isSafeInteger(count) && count >= 0;
+}
+function unavailable(): LimitFailure {
+  return {status: 503, error: "We couldn't check the preview limit. Your plan is safe. Please try again shortly."};
+}
+export async function checkRenderLimits(opts: Parameters<typeof checkedRenderLimits>[0]): Promise<LimitFailure | null> {
+  try { return await checkedRenderLimits(opts); } catch { return unavailable(); }
 }

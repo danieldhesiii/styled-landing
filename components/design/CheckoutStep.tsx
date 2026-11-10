@@ -27,16 +27,19 @@ interface Props extends PlanningDetails {
   styleId: string;
   guestCount: number;
   venueLabel: string;
+  venueSlug?: string;
   onBack: () => void;
   onOrdered: () => void; // called once an order is placed, so the basket can be cleared
 }
 
 // Current catalogue estimate in whole pence; final supplier terms are agreed manually.
 interface ServerQuote {
-  lines: { itemId: string; unitPricePence: number }[];
+  lines: { itemId: string; unitPricePence: number | null; requestOnly?: boolean; priceOnRequest?: boolean }[];
+  hasUnpricedLines?: boolean;
+  requestOnly?: boolean;
   subtotalPence: number;
-  depositPence: number;
-  bySupplier: { supplier: string; totalPence: number }[];
+  depositPence: number | null;
+  bySupplier: { supplier: string; totalPence: number; hasUnpricedLines?: boolean }[];
 }
 
 interface PlacedOrder {
@@ -69,6 +72,7 @@ export default function CheckoutStep({
   styleId,
   guestCount,
   venueLabel,
+  venueSlug,
   onBack,
   onOrdered,
 }: Props) {
@@ -115,6 +119,8 @@ export default function CheckoutStep({
 
   // Refresh the catalogue estimate before accepting a request.
   const fetchQuote = useCallback(async () => {
+    setServerQuote(null);
+    setError(null);
     try {
       const res = await fetch("/api/quote", {
         method: "POST",
@@ -150,6 +156,7 @@ export default function CheckoutStep({
         groups: serverQuote.bySupplier.map((g) => ({
           supplier: g.supplier,
           total: g.totalPence / 100,
+          unpriced: !!g.hasUnpricedLines,
         })),
       }
     : {
@@ -157,6 +164,7 @@ export default function CheckoutStep({
         groups: preview.bySupplier.map((g) => ({
           supplier: g.supplier,
           total: g.total,
+          unpriced: g.hasUnpricedItems,
         })),
       };
 
@@ -186,7 +194,7 @@ export default function CheckoutStep({
             quantity: l.quantity,
             seenUnitPricePence: serverQuote.lines.find(
               (q) => q.itemId === l.itemId,
-            )?.unitPricePence,
+            )?.unitPricePence ?? undefined,
           })),
           coupleName: name.trim(),
           email: email.trim(),
@@ -196,7 +204,7 @@ export default function CheckoutStep({
           itemDates: Object.fromEntries(basket.filter(l => l.hireDates).map(l => [l.itemId, l.hireDates])),
           styleId,
           guestCount,
-          venueLabel,
+          venueLabel,venueSlug,
           ...(eventName ? {notes:`Event plan: ${eventName}`} : {}),
           idempotencyKey: idempotencyKey.current,
         }),
@@ -265,9 +273,7 @@ export default function CheckoutStep({
           <span className="font-medium text-ink">{placed.reference}</span>
         </p>
         <p className="mt-3 text-ink/60">
-          A stylist will confirm availability with each of your{" "}
-          {placed.bySupplier.length} suppliers and contact {placed.email} about
-          a final quote and the next steps. Agree payment and delivery or collection before booking. This request does not reserve stock. No payment has been taken.
+          Styled will review all requested items and contact {placed.email} with the final quote. Stock is not reserved. No payment taken.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <a
@@ -301,12 +307,12 @@ export default function CheckoutStep({
         Request supplier confirmation
       </h1>
       <p className="mt-2 text-ink/60">
-        Suppliers confirm availability and a final quote before you book. No payment is taken now.
+        Review your details and hire dates.
       </p>
 
-      <p className="mt-3 text-sm text-ink/70">{eventName && <strong>{eventName}. </strong>}Allow time for supplier lead times, delivery and setup.</p>
+      {eventName && <p className="mt-3 text-sm font-medium text-ink">{eventName}</p>}
       <ContextHelp title="Before sending your request">
-        <p>Request well ahead of the event and agree any essential arrival deadline in writing. This request does not reserve stock. Other event baskets are submitted separately.</p>
+        <p>Allow time for supplier checks, delivery and setup. Agree essential arrival deadlines in writing. Submit other event baskets separately.</p>
       </ContextHelp>
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_380px]">
         {/* Details form */}
@@ -358,7 +364,7 @@ export default function CheckoutStep({
                     ? availability.error
                     : unavailable.length > 0
                       ? "Some items need attention for this date:"
-                      : "Availability checked for each item’s complete hire period."}
+                      : basket.some(l => getItem(l.itemId)?.requestOnly) ? "Request-only items need manual availability confirmation." : "Hire periods checked."}
             </p>
             {unavailable.length > 0 && (
               <ul className="mt-2 space-y-1 rounded-xl bg-red-50 px-4 py-3 text-xs text-red-800">
@@ -373,7 +379,7 @@ export default function CheckoutStep({
           </div>
           <section className="space-y-3 rounded-xl border border-sand p-4">
             <h2 className="font-serif text-xl">Dates for your items</h2>
-            <p className="text-xs text-ink/60">All items use your default hire dates unless you choose different dates below. The final quote may vary with the hire period.</p>
+            <p className="text-xs text-ink/60">Change dates per item if needed. Hire periods may affect the final quote.</p>
             {basket.map(line => <div key={line.itemId}>
               <h3 className="mt-3 text-sm font-medium">{nameOf(line.itemId)}</h3>
               <ItemHireDates line={line} name={nameOf(line.itemId)} defaults={defaults}
@@ -381,7 +387,7 @@ export default function CheckoutStep({
             </div>)}
           </section>
           <div className="rounded-xl border border-dashed border-sand bg-cream/50 p-4 text-sm text-ink/50">
-            This form submits a request for manual review. Your final quote, any deposit, payment dates and delivery or collection costs must be agreed separately. No payment is taken here.
+            This requests supplier confirmation; it does not reserve stock or take payment.
           </div>
           {error && (
             <p
@@ -409,7 +415,7 @@ export default function CheckoutStep({
             {submitting
               ? "Submitting your request…"
               : serverQuote
-                ? "Submit request for manual review"
+                ? "Request supplier confirmation"
                 : "Preparing your quote…"}
           </button>
         </div>
@@ -421,7 +427,7 @@ export default function CheckoutStep({
             {view.groups.map((g) => (
               <div key={g.supplier} className="flex justify-between text-sm">
                 <span className="text-ink/60">{g.supplier}</span>
-                <span className="text-ink">{formatGBP(g.total)}</span>
+                <span className="text-ink">{g.unpriced ? g.total > 0 ? `${formatGBP(g.total)} + quote pending` : "Price on request" : formatGBP(g.total)}</span>
               </div>
             ))}
           </div>
@@ -438,12 +444,12 @@ export default function CheckoutStep({
 
           <div className="mt-4 border-t border-sand pt-4">
             <div className="flex justify-between text-sm">
-              <span className="text-ink/60">Estimated total</span>
+              <span className="text-ink/60">{(serverQuote?.hasUnpricedLines ?? preview.hasUnpricedItems) ? "Known estimate" : "Estimated total"}</span>
               <span className="font-serif text-lg text-ink">
-                {formatGBP(view.subtotal)}
+                {(serverQuote?.hasUnpricedLines ?? preview.hasUnpricedItems) && view.subtotal === 0 ? "Awaiting quote" : formatGBP(view.subtotal)}
               </span>
             </div>
-            <p className="mt-3 text-xs leading-relaxed text-ink/70">Item estimate only. Delivery or collection charges and any deposit are confirmed in the final quote, not charged here. <a href="/service-info" className="underline">Service information</a>.</p>
+            <p className="mt-3 text-xs leading-relaxed text-ink/70">{preview.lines.some(l => l.item.requestOnly && !!l.item.demoPricing) ? `Packages include listed delivery, setup, collection and security deposit.${preview.hasUnpricedItems ? " Unpriced items need a separate quote." : " Other costs need confirmation."}` : preview.hasUnpricedItems ? "Unpriced items are excluded. Prices and additional costs need a supplier quote." : "Delivery, collection and any deposit are agreed in the final quote."} <a href="/service-info" className="underline">Service information</a>.</p>
           </div>
         </aside>
       </div>

@@ -67,7 +67,7 @@ export default function VenuePhotoUpload({
           </label>
         ))}
       </div>
-      <p role="status" className="mt-3 text-xs text-ink/60">
+      <p role="status" className="mt-3 text-sm text-ink/60">
         {busy ? "Uploading…" : message || "JPEG, PNG or WebP, up to 5 MB."}
       </p>
     </section>

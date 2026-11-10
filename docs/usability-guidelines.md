@@ -6,6 +6,7 @@
 - Use the compact event toolbar for switching plans and saving. Longer event guidance belongs behind its information button.
 - Use the shared native-select styling. Do not add a second arrow beside a select. Preserve keyboard operation and visible focus.
 - Show the desktop basket sidebar once there are selections. The header Basket button remains available at all times.
-- Keep Google Photos and Pinterest tools visible in Boards. Use short instructions with direct links; never imply that account integration or automatic importing exists when it does not.
+- Boards is retired from customer navigation for now. Preserve its stored data. Saved items and Saved looks remain account-wide; event plans, baskets and previews remain event-specific.
+- Choose catalogue pieces before generating a preview. Keep chosen pieces visible and never treat AI imagery as stock, pricing or booking evidence.
 - Use consistent headings, readable body text and touch targets. Test narrow layouts for horizontal overflow. Shorter copy must not mean smaller, harder-to-read text.
 - Do not remove supplier conditions, errors, availability changes or confirmation steps just to shorten a screen.

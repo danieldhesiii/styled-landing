@@ -1,160 +1,106 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { supplierReadiness } from "@/lib/vendor-readiness";
-import AssetUpload from "./AssetUpload";
+import { useEffect, useState } from "react";
 export default function OnboardingChecklist() {
-  const [data, setData] = useState<{
-      profile: {
-        active: boolean;
-        logo_url: string | null;
-        bio: string | null;
-        onboarding_availability_confirmed_at: string | null;
-      };
-      productCount: number;
-      readiness: ReturnType<typeof supplierReadiness>;
-    } | null>(null),
-    [error, setError] = useState(""),
-    [bio, setBio] = useState(""),
-    [saving, setSaving] = useState(false),
-    [message, setMessage] = useState("");
-  const bioDirty = useRef(false);
-  const load = useCallback(async () => {
+  const [data, setData] = useState<any>(null),
+    [error, setError] = useState("");
+  async function load() {
     setError("");
     try {
       const r = await fetch("/api/vendor/profile", { cache: "no-store" });
       const d = await r.json();
       if (!r.ok) throw Error(d.error);
       setData(d);
-      if (!bioDirty.current) setBio(d.profile.bio || "");
-      return true;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load profile.");
-      return false;
-    }
-  }, []);
-  useEffect(() => {
-    void load();
-  }, [load]);
-  async function save(body: Record<string, unknown>) {
-    setSaving(true);
-    setError("");
-    setMessage("");
-    try {
-      const r = await fetch("/api/vendor/profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const d = await r.json();
-      if (!r.ok) throw Error(d.error);
-      if (body.bio !== undefined) bioDirty.current = false;
-      const refreshed = await load();
-      setMessage(refreshed ? "Saved." : "Changes saved; setup status could not refresh. Please retry loading.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save.");
-    } finally {
-      setSaving(false);
+      setError(e instanceof Error ? e.message : "Could not load setup.");
     }
   }
+  useEffect(() => {
+    void load();
+  }, []);
   if (!data)
     return (
-      <div className="mb-8 text-sm">
-        <p role={error ? "alert" : "status"}>{error || "Loading your supplier setup…"}</p>
-        {error && <button type="button" className="mt-2 underline" onClick={() => void load()}>Retry supplier setup</button>}
+      <div className="my-6 text-sm">
+        <p role={error ? "alert" : "status"}>
+          {error || "Loading supplier setup…"}
+        </p>
+        {error && (
+          <button onClick={() => void load()} className="min-h-11 underline">
+            Try again
+          </button>
+        )}
       </div>
     );
-  const { steps, completed: count } = data.readiness;
+  const services = data.profile.service_details || {};
+  const steps = [
+    {
+      title: "Business and delivery",
+      done:
+        !!data.profile.bio &&
+        !!services.coverage &&
+        (services.delivery || services.collection),
+      href: "/portal/business",
+      text: "Your story, delivery areas and hire rules.",
+    },
+    {
+      title: "Product catalogue",
+      done: data.productCount > 0,
+      href: "/portal/products",
+      text: "Add pieces, prices and the stock you can supply.",
+    },
+    {
+      title: "Availability",
+      done: !!data.profile.onboarding_availability_confirmed_at,
+      href: "/portal/availability",
+      text: "Check stock, blocked dates and calendar details.",
+    },
+  ];
+  const complete = steps.filter((s) => s.done).length;
   return (
-    <section className="mb-10 rounded-2xl border border-sand bg-cream p-6">
-      <h2 className="font-serif text-3xl">Your supplier setup</h2>
-      <p className="mt-2 text-sm text-ink/60">{count} of 3 setup steps complete</p>
+    <section className="mt-8 border-t border-sand pt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-serif text-2xl">Your supplier setup</h2>
+        <span className="text-sm text-ink/60">{complete} of 3 complete</span>
+      </div>
       <progress
         aria-label="Supplier setup progress"
-        value={count}
+        value={complete}
         max={3}
-        className="mt-3 w-full accent-clay"
+        className="mt-4 h-1.5 w-full accent-clay"
       />
-      <div className="mt-4 text-sm text-ink/70">
-        <p>{data.readiness.total} products in setup · {data.readiness.draft} draft / hidden · {data.readiness.live} live in the public catalogue</p>
-        {!data.profile.active && <p className="mt-2">Your supplier listing is inactive. Ask Styled to review publication; enabling a product alone will not make it public.</p>}
-        <p className="mt-2">Setup completion does not publish your catalogue. New imports start hidden for review; hidden products may also have been switched off.</p>
-        {data.readiness.publicProfileHref ? (
-          <Link className="mt-2 inline-block underline" href={data.readiness.publicProfileHref}>View your public supplier profile</Link>
-        ) : <p className="mt-2">Your public profile is not available yet. Review your products and contact Styled if you are waiting for publication.</p>}
-        <Link className="mt-2 inline-block underline" href="/portal/products">Review products</Link>
-      </div>
-      <ol className="mt-5 grid gap-5 md:grid-cols-3">
-        <li>
-          <p className="mb-3 text-sm">{steps[0] ? "✓" : "1."} Add your logo</p>
-          {data.profile.logo_url && (
-            <img
-              src={data.profile.logo_url}
-              alt="Your business logo"
-              className="mb-3 h-16 w-16 rounded-full object-cover"
-            />
-          )}
-          <AssetUpload kind="logo" onUploaded={() => void load()} />
-        </li>
-        <li>
-          <p className="mb-3 text-sm">
-            {steps[1] ? "✓" : "2."} Add your products
-          </p>
-          <Link href="/portal/import" className="text-sm underline">
-            Import your stock list
-          </Link>
-          <p className="mt-2 text-xs text-ink/60">
-            Start with a small selection. The import preview lets you check
-            changes before saving.
-          </p>
-        </li>
-        <li>
-          <p className="mb-3 text-sm">
-            {steps[2] ? "✓" : "3."} Review availability
-          </p>
-          <Link href="/portal/availability" className="text-sm underline">
-            Set dates and calendar sync
-          </Link>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => void save({ confirmAvailability: true })}
-            className="mt-3 block rounded-full border border-sand px-3 py-2 text-xs"
-          >
-            I’ve reviewed my availability
-          </button>
-        </li>
+      <ol className="mt-5 divide-y divide-sand">
+        {steps.map((s, i) => (
+          <li key={s.href} className="flex items-center gap-4 py-4">
+            <span
+              aria-hidden="true"
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${s.done ? "bg-sage/20" : "bg-sand/60"}`}
+            >
+              {s.done ? "✓" : i + 1}
+            </span>
+            <div className="min-w-0 flex-1">
+              <Link
+                href={s.href}
+                className="text-sm font-medium underline-offset-4 hover:underline"
+              >
+                {s.title}
+              </Link>
+              <p className="mt-1 text-sm text-ink/60">{s.text}</p>
+            </div>
+            <Link
+              aria-label={`Open ${s.title}`}
+              href={s.href}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-sand"
+            >
+              →
+            </Link>
+          </li>
+        ))}
       </ol>
-      <label className="mt-6 block text-sm">
-        Your business story
-        <textarea
-          value={bio}
-          onChange={(e) => { bioDirty.current = true; setBio(e.target.value); }}
-          disabled={saving}
-          maxLength={2000}
-          rows={3}
-          className="mt-2 w-full rounded-xl border border-sand bg-white p-3"
-        />
-      </label>
-      <button
-        type="button"
-        disabled={saving}
-        onClick={() => void save({ bio })}
-        className="mt-3 rounded-full bg-ink px-5 py-2 text-sm text-cream"
-      >
-        Save story
-      </button>
-      {error && (
-        <p role="alert" className="mt-3 text-sm">
-          {error}
-          <button type="button" className="ml-3 underline" onClick={() => void load()}>Refresh setup status</button>
-        </p>
-      )}
-      {message && (
-        <p role="status" className="mt-3 text-sm">
-          {message}
-        </p>
-      )}
+      <p className="mt-4 text-sm text-ink/60">
+        {data.profile.active
+          ? "Your business is active. Products marked visible can appear in the catalogue."
+          : "Your business is awaiting Styled’s publication review. Completing setup does not publish it."}
+      </p>
     </section>
   );
 }

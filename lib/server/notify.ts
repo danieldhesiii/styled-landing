@@ -1,9 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/server/env";
+import {emailProvider} from '@/lib/email-provider';
 
 // Transactional email, and the supplier "you have an order to confirm" notice.
 //
-// Sending uses Brevo, with Resend supported as a fallback. Without a provider
+// Sending prefers Resend when configured, with Brevo retained for older setups. Without a provider
 // key, emails are logged instead of sent, so local development,
 // previews and the demo-order script never fail on a missing provider. Nothing
 // here is allowed to throw into the caller: a notification must never break an
@@ -18,89 +19,48 @@ const escapeHtml = (s: string) =>
 
 interface Email {
   replyTo?: string;
+  trackingRun?: string;
   to: string[];
   subject: string;
   html: string;
   text: string;
 }
 
-export async function sendEmail(email: Email): Promise<boolean> {
-  const to = [...new Set(email.to.map((e) => e.trim()).filter(Boolean))];
-  if (to.length === 0) return false;
-
+export type EmailReceipt = { accepted: boolean; provider: "brevo" | "resend" | null; messageId: string | null; outcome: "accepted" | "rejected" | "unknown" | "disabled" };
+export async function sendTrackedEmail(email: Email): Promise<EmailReceipt> {
+  const to = [...new Set(email.to.map(e => e.trim().toLowerCase()).filter(Boolean))];
+  const provider = emailProvider(env);
+  const result = (outcome: EmailReceipt["outcome"], messageId: string | null = null): EmailReceipt => ({accepted:outcome === "accepted",provider,messageId,outcome});
+  if (!provider || !to.length) return result("disabled");
   const replyTo = email.replyTo || env.notifyReplyToEmailIfSet;
-  const key = env.resendApiKeyIfSet;
-  const brevoKey = env.brevoApiKeyIfSet;
-  if (!key && !brevoKey) {
-    // No provider configured: log so the flow is visible in dev without sending.
-    console.log(
-      `[notify] (not sent: no transactional email provider configured) to=${to.join(",")} subject="${email.subject}"`,
-    );
-    return false;
-  }
-
   try {
-    if (brevoKey) {
+    let response: Response;
+    if (provider === "brevo") {
       const match = env.notifyFromEmail.match(/^(.*?)\s*<([^>]+)>$/);
-      const sender = match
-        ? { name: match[1].trim(), email: match[2].trim() }
-        : { name: "Styled", email: env.notifyFromEmail.trim() };
-      if (sender.email.endsWith("@resend.dev")) {
-        console.error(
-          "[notify] Configure a verified Brevo sender in NOTIFY_FROM_EMAIL.",
-        );
-        return false;
-      }
-      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-        method: "POST",
-        signal: AbortSignal.timeout(10000),
-        headers: { "api-key": brevoKey, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sender,
-          to: to.map((email) => ({ email })),
-          subject: email.subject,
-          htmlContent: email.html,
-          textContent: email.text,
-          ...(replyTo
-            ? { replyTo: { email: replyTo } }
-            : {}),
-        }),
+      const sender = match ? {name:match[1].trim(),email:match[2].trim()} : {name:"Styled",email:env.notifyFromEmail.trim()};
+      if (sender.email.endsWith("@resend.dev")) return result("rejected");
+      response = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method:"POST", signal:AbortSignal.timeout(10000),
+        headers:{"api-key":env.brevoApiKeyIfSet!,"Content-Type":"application/json"},
+        body:JSON.stringify({sender,to:to.map(email=>({email})),subject:email.subject,htmlContent:email.html,textContent:email.text,
+          ...(replyTo?{replyTo:{email:replyTo}}:{}),
+          ...(email.trackingRun?{headers:{"X-Mailin-custom":JSON.stringify({styledDelivery:email.trackingRun})}}:{})})
       });
-      if (!response.ok) {
-        console.error(`[notify] Brevo returned ${response.status}`);
-        return false;
-      }
-      return true;
+    } else {
+      response = await fetch("https://api.resend.com/emails", {
+        method:"POST",signal:AbortSignal.timeout(10000),headers:{Authorization:`Bearer ${env.resendApiKeyIfSet}`,"Content-Type":"application/json"},
+        body:JSON.stringify({from:env.notifyFromEmail,...(replyTo?{reply_to:replyTo}:{}),to,subject:email.subject,html:email.html,text:email.text,
+          ...(email.trackingRun?{tags:[{name:'styled_delivery',value:email.trackingRun}]}:{})})
+      });
     }
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: env.notifyFromEmail,
-        ...(replyTo
-          ? { reply_to: replyTo }
-          : {}),
-        to,
-        subject: email.subject,
-        html: email.html,
-        text: email.text,
-      }),
-    });
-    if (!res.ok) {
-      console.error(
-        `[notify] Resend ${res.status}:`,
-        await res.text().catch(() => ""),
-      );
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.error("[notify] send failed:", err);
-    return false;
-  }
+    if (!response.ok) return result(response.status >= 500 ? "unknown" : "rejected");
+    let payload:any=null;
+    try {payload=await response.json();} catch { /* Acceptance is authoritative even without a readable message identifier. */ }
+    return result("accepted",typeof (payload?.messageId || payload?.id)==="string" ? (payload.messageId || payload.id) : null);
+  } catch { return result("unknown"); }
+}
+export async function sendEmail(email: Email): Promise<boolean> {
+  return (await sendTrackedEmail(email)).accepted;
 }
 
 const longDate = (day: string | null) =>

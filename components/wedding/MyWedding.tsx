@@ -14,7 +14,6 @@ export default function MyWedding({
   eventName = "Wedding day",
   basketCount = 0,
   renderCount = 0,
-  boardCount = 0,
   previewUrl,
   selectedItems = [],
   photos,
@@ -26,7 +25,7 @@ export default function MyWedding({
   onFindVenue,
   onVisualise,
   onBrowse,
-  onBoards,
+  onSaved,
   onBookings,
 }: {
   brief: WeddingBrief;
@@ -34,7 +33,6 @@ export default function MyWedding({
   eventName?: string;
   basketCount?: number;
   renderCount?: number;
-  boardCount?: number;
   previewUrl?: string;
   selectedItems?: { name: string; quantity: number }[];
   photos: Record<string, string>;
@@ -46,7 +44,7 @@ export default function MyWedding({
   onFindVenue: () => void;
   onVisualise: () => void;
   onBrowse: () => void;
-  onBoards: () => void;
+  onSaved: () => void;
   onBookings: (section?: "venues") => void;
 }) {
   const [panel, setPanel] = useState<Panel>("setup");
@@ -113,7 +111,7 @@ export default function MyWedding({
       ? brief.venueName
       : "Still finding a venue";
   return (
-    <section className="rounded-2xl border border-sand bg-white p-5 sm:p-8">
+    <fieldset aria-label="Wedding plan" disabled={saving || uploading} className="mx-auto w-full max-w-5xl min-w-0 rounded-xl border border-sand bg-white p-4 sm:p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <h1 className="font-serif text-3xl sm:text-4xl">Wedding plan</h1>
       </div>
@@ -155,7 +153,7 @@ export default function MyWedding({
                       "day",
                     ],
                     [
-                      "Supplier budget",
+                      "Product budget",
                       unknownBudget
                         ? "Not set yet"
                         : new Intl.NumberFormat("en-GB", {
@@ -163,7 +161,7 @@ export default function MyWedding({
                             currency: "GBP",
                             maximumFractionDigits: 0,
                           }).format(brief.budget),
-                      "Products and styling, excluding venue hire",
+                      "Catalogue products, excluding venue hire",
                       "day",
                     ],
                     [
@@ -283,10 +281,10 @@ export default function MyWedding({
                 </button>
                 <button
                   type="button"
-                  onClick={onBoards}
+                  onClick={onSaved}
                   className="rounded-full border border-sand px-5 py-3 text-sm"
                 >
-                  Boards
+                  Saved items & looks
                 </button>
                 <button
                   type="button"
@@ -299,8 +297,9 @@ export default function MyWedding({
             </>
           )}
           {(panel === "setup" || panel === "day") && (
-            <div className="mt-7 grid gap-6 lg:grid-cols-2">
-              <div className="space-y-5">
+            <div className="mt-6 grid items-start gap-5 border-t border-sand pt-6 md:grid-cols-2">
+              <div className="space-y-4 rounded-lg bg-cream p-4 sm:p-5">
+                <h2 className="font-serif text-2xl">Guests and budget</h2>
                 <div>
                   <label className="text-sm">
                     Guests for this event
@@ -347,11 +346,11 @@ export default function MyWedding({
                         })
                       }
                     />
-                    I haven’t set a supplier budget
+                    I haven’t set a product budget
                   </label>
                   {!unknownBudget && (
                     <label className="mt-3 block text-sm">
-                      Supplier basket budget (£)
+                      Product budget (£)
                       <input
                         type="number"
                         min="0"
@@ -369,11 +368,11 @@ export default function MyWedding({
                     </label>
                   )}
                   <p className="mt-2 text-xs text-ink/70">
-                    For products and styling. Your venue hire is separate.
+                    Excludes venue hire. Delivery and setup count only when included in the listed price.
                   </p>
                 </div>
               </div>
-              <div>
+              <div className="min-w-0 rounded-lg bg-cream p-4 sm:p-5">
                 <DeliveryDates {...brief} onChange={onChange} id="plan-setup" />
                 <p className="mt-2 text-xs text-ink/70">
                   Date undecided? Leave it blank and browse for ideas.
@@ -448,8 +447,7 @@ export default function MyWedding({
                   />
                 </label>
               </div>
-              {panel !== "setup" && (
-                <div className="mt-5 flex flex-wrap gap-5 text-sm">
+              <div className="mt-5 flex flex-wrap gap-5 text-sm">
                   <button
                     type="button"
                     onClick={onFindVenue}
@@ -473,7 +471,6 @@ export default function MyWedding({
                     Check venue requests →
                   </button>
                 </div>
-              )}
               <p className="mt-3 text-xs leading-relaxed text-ink/70">
                 Saving here keeps your choice private. It does not publish a
                 listing or reserve a date.
@@ -655,6 +652,6 @@ export default function MyWedding({
           )}
         </>
       )}
-    </section>
+    </fieldset>
   );
 }

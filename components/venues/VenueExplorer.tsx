@@ -7,6 +7,7 @@ import VenueSearch from "./VenueSearch";
 
 export default function VenueExplorer(props: {
   matches?: Record<string, DiscoveryMatch>;
+  placeMatches?: Record<string, string>;
   searchRadius?: number;
   active: boolean;
   guestCount: number;

@@ -1,0 +1,6 @@
+"use client";
+import {useEffect} from 'react';
+export default function GlobalError({error,reset}:{error:Error&{digest?:string};reset:()=>void}){
+ useEffect(()=>{const first=window.location.pathname.split('/')[1],section=['design','portal','admin','venues','login','auth'].includes(first)?first:'public',digest=/^[a-zA-Z0-9_-]{1,80}$/.test(error.digest||'')?error.digest:'';void fetch('/api/client-errors',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({section,digest})}).catch(()=>{});},[error.digest]);
+ return <html lang="en"><body style={{margin:0,background:'#faf6f0',color:'#2b2622',fontFamily:'Arial,sans-serif'}}><main style={{maxWidth:560,margin:'10vh auto',padding:24}}><p style={{fontFamily:'Georgia,serif',fontSize:24}}>Styled.</p><h1 style={{fontFamily:'Georgia,serif',fontSize:32}}>We could not open Styled</h1><p style={{lineHeight:1.6}}>Try again, or contact our support team. Trying again does not submit a booking or take payment. Check your last saved plan before continuing.</p><button onClick={reset} style={{minHeight:48,padding:'12px 24px',borderRadius:28,border:0,background:'#2b2622',color:'white',fontSize:16}}>Try again</button><p><a href="mailto:support@styleduk.com" style={{color:'inherit'}}>Contact support@styleduk.com</a></p></main></body></html>;
+}

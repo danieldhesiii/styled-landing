@@ -230,27 +230,16 @@ test("basket treats zero and negative budgets as unset and blocks failed availab
   assert.match(failed, /disabled=""/);
   availability = { ...availability, error: null, checked: true };
 });
-test("product sheet marks missing terms explicitly without fabricating product facts", () => {
+test("product sheet omits unknown specifications and keeps supplied critical terms visible", () => {
   const html = render("components/design/ProductDetails.tsx", {
-    item,
+    item: { ...item, dimensions: "90 cm", deliveryTerms: "Setup required: £60", damageTerms: "Refundable deposit: £100" },
     onAdd: noop,
     onClose: noop,
   });
-  for (const label of [
-    "Dimensions",
-    "Material",
-    "Hire quantity",
-    "Booking lead time",
-    "Delivery and collection terms",
-    "Damage terms",
-  ])
-    assert.ok(html.includes(label));
-  assert.equal(
-    (html.match(/Not supplied\. Ask the supplier before booking\./g) || [])
-      .length,
-    6,
-  );
-  assert.doesNotMatch(html, /500 verified/);
+  for (const text of ["Dimensions", "90 cm", "Delivery and collection terms", "Setup required: £60", "Damage terms", "Refundable deposit: £100"])
+    assert.ok(html.includes(text));
+  assert.doesNotMatch(html, /<dt[^>]*>Material|<dt[^>]*>Booking lead time|Not supplied\. Ask the supplier|No verified reviews|500 verified/);
+  assert.equal((html.match(/Ask supplier for missing specifications/g) || []).length, 1);
 });
 test("board catalogue picker uses thumbnail buttons and leaves board actions optional", () => {
   const html = render("components/wedding/BoardCataloguePicker.tsx", {
@@ -292,3 +281,4 @@ test("saved look removal shows parent errors and disables only pending removals"
     /disabled=""[^>]*aria-label="Remove Garden from saved"/,
   );
 });
+test('supplier reference photos use standard product labels while synthetic images stay identified',()=>{assert.match(imageDisclosure({image:'/img/items/crescent-moon-demo/empire-90.webp',imageKind:'supplier_reference',demoOnly:true}),/Supplier product photograph/);assert.match(imageDisclosure({image:'/img/items/example.png',imageKind:'supplier'}),/Illustrative/);});

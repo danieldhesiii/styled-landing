@@ -1,0 +1,114 @@
+[
+  {
+    "source": "1a.jpg",
+    "file": "source-01.jpg",
+    "productSlug": "necklace-empire-180",
+    "status": "visual-match",
+    "instruction": "Primary isolated product view"
+  },
+  {
+    "source": "1c19fb62-18b1-4b80-bdb8-6b60f52fe876.JPG",
+    "file": "source-02.jpg",
+    "productSlug": null,
+    "status": "needs-supplier-identification",
+    "instruction": "Mixed designs, uncertain size, or French standard/vintage variant. Do not send as a product reference until Simon identifies the model."
+  },
+  {
+    "source": "2m Empire Set .jpg",
+    "file": "source-03.jpg",
+    "productSlug": "empire-200",
+    "status": "visual-match",
+    "instruction": "Foreground chandelier, lit; ignore other chandelier designs in background"
+  },
+  {
+    "source": "2m Set 2.jpg",
+    "file": "source-04.jpg",
+    "productSlug": "empire-200",
+    "status": "visual-match",
+    "instruction": "Foreground chandelier, unlit; ignore other chandelier designs in background"
+  },
+  {
+    "source": "Clair-Paul-Wedding-Chloe-Lowe-Photography-738.jpg",
+    "file": "source-05.jpg",
+    "productSlug": null,
+    "status": "needs-supplier-identification",
+    "instruction": "Mixed designs, uncertain size, or French standard/vintage variant. Do not send as a product reference until Simon identifies the model."
+  },
+  {
+    "source": "DSC00326 copy 2.jpeg",
+    "file": "source-06.jpg",
+    "productSlug": "marie-therese-150",
+    "status": "visual-match",
+    "instruction": "Front view; matches brochure page 10; ignore workshop and people"
+  },
+  {
+    "source": "IMG_1934-edt.jpg",
+    "file": "source-07.jpg",
+    "productSlug": "necklace-empire-180",
+    "status": "visual-match",
+    "instruction": "Installed view of necklace design; ignore flowers, room and other decor"
+  },
+  {
+    "source": "IMG_4861 copy.jpeg",
+    "file": "source-08.jpg",
+    "productSlug": null,
+    "status": "needs-supplier-identification",
+    "instruction": "Mixed designs, uncertain size, or French standard/vintage variant. Do not send as a product reference until Simon identifies the model."
+  },
+  {
+    "source": "IMG_5835-edt.JPG",
+    "file": "source-09.jpg",
+    "productSlug": "necklace-empire-180",
+    "status": "visual-match",
+    "instruction": "Installed necklace design; ignore people, room and other decor"
+  },
+  {
+    "source": "Marie 100 Silver .jpg",
+    "file": "source-10.jpg",
+    "productSlug": "marie-therese-100",
+    "status": "visual-match",
+    "instruction": "Primary isolated product view"
+  },
+  {
+    "source": "Old Billingsgate-29052022-005.jpg",
+    "file": "source-11.jpg",
+    "productSlug": "necklace-empire-180",
+    "status": "visual-match",
+    "instruction": "Central in-focus necklace chandelier only; ignore foreground and background chandelier designs"
+  },
+  {
+    "source": "Screenshot 2022-09-16 at 14.36.17.png",
+    "file": "source-12.jpg",
+    "productSlug": null,
+    "status": "needs-supplier-identification",
+    "instruction": "Mixed designs, uncertain size, or French standard/vintage variant. Do not send as a product reference until Simon identifies the model."
+  },
+  {
+    "source": "Screenshot 2023-01-11 at 14.53.26.png",
+    "file": "source-13.jpg",
+    "productSlug": null,
+    "status": "needs-supplier-identification",
+    "instruction": "Mixed designs, uncertain size, or French standard/vintage variant. Do not send as a product reference until Simon identifies the model."
+  },
+  {
+    "source": "Screenshot 2024-12-10 at 10.18.28.png",
+    "file": "source-14.jpg",
+    "productSlug": null,
+    "status": "needs-supplier-identification",
+    "instruction": "Mixed designs, uncertain size, or French standard/vintage variant. Do not send as a product reference until Simon identifies the model."
+  },
+  {
+    "source": "Screenshot 2024-12-20 at 12.19.08.png",
+    "file": "source-15.jpg",
+    "productSlug": null,
+    "status": "needs-supplier-identification",
+    "instruction": "Mixed designs, uncertain size, or French standard/vintage variant. Do not send as a product reference until Simon identifies the model."
+  },
+  {
+    "source": "_ALX8602 copy.jpg",
+    "file": "source-16.jpg",
+    "productSlug": "necklace-empire-180",
+    "status": "visual-match",
+    "instruction": "Detail of outer candle lights, gold rim and crystal necklaces only"
+  }
+]

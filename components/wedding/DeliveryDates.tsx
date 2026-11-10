@@ -20,6 +20,10 @@ export default function DeliveryDates({
   id?: string;
   compact?: boolean;
 }) {
+  const previousDay = (date: string) => date
+    ? new Date(Date.parse(date + "T12:00:00Z") - 86400000).toISOString().slice(0, 10)
+    : "";
+  const dayBefore = previousDay(weddingDate);
   const error =
     weddingDate && deliveryDay({ weddingDate, deliverySameDay, deliveryDate })
       ? deliveryError(
@@ -43,22 +47,34 @@ export default function DeliveryDates({
           type="date"
           min={todayUtc()}
           value={weddingDate}
-          onChange={(e) => onChange({ weddingDate: e.target.value })}
+          onChange={(e) => onChange({
+            weddingDate: e.target.value,
+            ...(!deliverySameDay && deliveryDate === dayBefore
+              ? { deliveryDate: previousDay(e.target.value) }
+              : {}),
+            ...(returnDate === weddingDate ? { returnDate: e.target.value } : {}),
+          })}
           className={field}
         />
       </label>
-      <label className="flex items-center gap-3 text-sm">
-        <input
-          type="checkbox"
-          checked={deliverySameDay}
-          onChange={(e) => onChange({ deliverySameDay: e.target.checked })}
-          className="h-4 w-4 accent-clay"
-        />
-        Delivery is the same as my event date
+      <label className="block text-sm" htmlFor={`${id}-delivery-choice`}>
+        Requested delivery / access
+        <select
+          id={`${id}-delivery-choice`}
+          value={deliverySameDay ? "same" : deliveryDate && deliveryDate === dayBefore ? "before" : "custom"}
+          onChange={(e) => onChange(e.target.value === "same"
+            ? { deliverySameDay: true }
+            : { deliverySameDay: false, deliveryDate: e.target.value === "before" ? dayBefore : deliveryDate })}
+          className={field}
+        >
+          <option value="same">On the event day</option>
+          <option value="before" disabled={!weddingDate}>The day before the event</option>
+          <option value="custom">Choose another delivery day</option>
+        </select>
       </label>
       {!deliverySameDay && (
         <label className="block text-sm" htmlFor={`${id}-delivery`}>
-          Delivery day
+          Requested delivery day
           <input
             id={`${id}-delivery`}
             type="date"

@@ -68,7 +68,7 @@ export default function VenueDetailsFields({
             className={field}
           />
           {k === "hire_from_pence" && (
-            <span className="mt-1 block text-xs text-ink/60">
+            <span className="mt-1 block text-sm text-ink/60">
               {pricesInPounds
                 ? "Venue hire is separate from styling. Leave blank if you quote individually."
                 : "£1,000 = 100000 pence. Venue hire is separate from styling."}
@@ -94,7 +94,7 @@ export default function VenueDetailsFields({
       ))}
       <fieldset className="sm:col-span-2">
         <legend className="text-sm">Facilities you offer</legend>
-        <p className="mt-1 text-xs text-ink/60">
+        <p className="mt-1 text-sm text-ink/60">
           Only select facilities you can confirm. Add access details below.
         </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">

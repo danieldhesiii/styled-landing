@@ -1,5 +1,7 @@
 # Independent Boards workspace
 
+3 November update: Pinterest Trial access is active. The app uses a read-only board and Pin viewer. Direct copies of Pinterest API images into Styled storage and use as AI references remain separately disabled pending written permission. See `pinterest-selected-image-import.md` for setup and scope.
+
 23 October 2026. Supersedes the initial Saved/Boards grouping in studio-navigation.md.
 
 ## Implemented

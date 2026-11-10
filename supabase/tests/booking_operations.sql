@@ -1,0 +1,71 @@
+begin;
+do $$
+#variable_conflict use_variable
+declare staff_id uuid;customer_id uuid:=gen_random_uuid();vendor_id uuid:=gen_random_uuid();supplier_id uuid:=gen_random_uuid();order_id uuid:=gen_random_uuid();product_id text:='operations-test-'||gen_random_uuid();revision integer;quote_id uuid;claim_id uuid;venue_id uuid:=gen_random_uuid();venue_slug text:='operations-venue-'||gen_random_uuid();line_id uuid;reply jsonb;declarations jsonb;result jsonb;
+begin
+ select user_id into staff_id from public.staff limit 1;if staff_id is null then raise exception 'Test requires an existing development staff member';end if;
+ insert into auth.users(id,email,is_anonymous) values(customer_id,'operations-customer-'||customer_id||'@example.invalid',false),(vendor_id,'operations-vendor-'||vendor_id||'@example.invalid',false);
+ insert into public.suppliers(id,name,area,contact_email,active) values(supplier_id,'Fictional operations test '||supplier_id,'Test area','test@example.invalid',false);
+ insert into public.supplier_users(user_id,supplier_id) values(vendor_id,supplier_id);
+ insert into public.products(id,supplier_id,name,category,unit_price_pence,unit,qty_rule,stock,capacity,image,active) values(product_id,supplier_id,'Fictional fixture','florals',50000,'package','fixed','in_stock',5,'/img/venues/oak_barn.png',false);
+ execute 'set local role service_role';
+ declarations:=jsonb_build_object('availabilityMode','manual','replyHours',48,'listingPermission',true,'imageRights',true,'publicImagePermission',true,'aiReferencePermission',false,'pricesConfirmed',true,'termsConfirmed',true,'terms','Fictional test terms, not a real contract.','notes','Test only');
+ perform public.review_supplier_range(supplier_id,0,vendor_id,'submit',declarations);
+ begin perform public.review_supplier_range(supplier_id,1,customer_id,'approve','{}');raise exception 'Customer published supplier';exception when others then if sqlerrm='Customer published supplier' then raise;end if;end;
+ perform public.review_supplier_range(supplier_id,1,staff_id,'approve','{}');
+ if not (select active from public.products where id=product_id) then raise exception 'Approved range did not publish';end if;
+ insert into public.orders(id,owner_id,couple_name,email,wedding_date,venue_label,subtotal_pence,commission_pence,deposit_pence,status) values(order_id,customer_id,'Fictional customer','test@example.invalid',current_date+90,'Fictional venue',50000,0,0,'requested');
+ insert into public.order_lines(order_id,product_id,supplier_id,product_name,supplier_name,unit_price_pence,quantity,line_total_pence,supplier_status,needed_date,return_date) values(order_id,product_id,supplier_id,'Fictional fixture','Fictional test supplier',50000,1,50000,'pending',current_date+89,current_date+91);
+
+ insert into public.venue_listings(id,slug,name,location,county,active,details) values(venue_id,venue_slug,'Fictional venue fixture','Test location','Test county',true,jsonb_build_object('supplier_policy',jsonb_build_object('mode','venue_only')));
+ update public.orders set notes='Venue route: '||venue_slug||' (styled)' where id=order_id;
+ begin perform public.check_booking_venue_policy(order_id);raise exception 'Own-network venue allowed Styled products';exception when others then if sqlerrm='Own-network venue allowed Styled products' then raise;end if;end;
+ update public.venue_listings set details=jsonb_build_object('supplier_policy',jsonb_build_object('mode','venue_partners','catalogueSupplierIds',jsonb_build_array())) where id=venue_id;
+ begin perform public.check_booking_venue_policy(order_id);raise exception 'Unapproved supplier passed venue policy';exception when others then if sqlerrm='Unapproved supplier passed venue policy' then raise;end if;end;
+ update public.venue_listings set details=jsonb_build_object('supplier_policy',jsonb_build_object('mode','venue_partners','catalogueSupplierIds',jsonb_build_array(supplier_id),'localRadiusMiles','10')) where id=venue_id;
+ begin perform public.check_booking_venue_policy(order_id);raise exception 'Unknown location passed radius check';exception when others then if sqlerrm='Unknown location passed radius check' then raise;end if;end;
+ insert into public.discovery_locations(entity_type,entity_id,postcode,latitude,longitude,radius_miles,nationwide) values('venue',venue_id,'SW1A 1AA',51.5,-0.1,null,false),('supplier',supplier_id,'SW1A 1AA',51.5,-0.1,20,false);
+ perform public.check_booking_venue_policy(order_id);
+ update public.discovery_locations set latitude=55,longitude=-4 where entity_type='supplier' and entity_id=supplier_id;
+ begin perform public.check_booking_venue_policy(order_id);raise exception 'Distant supplier passed radius check';exception when others then if sqlerrm='Distant supplier passed radius check' then raise;end if;end;
+ update public.discovery_locations set latitude=51.5,longitude=-0.1 where entity_type='supplier' and entity_id=supplier_id;
+ select id into line_id from public.order_lines where order_lines.order_id=order_id;
+ if (select count(*) from public.booking_notifications where booking_notifications.order_id=order_id)<>2 then raise exception 'Initial notifications not queued transactionally';end if;
+ begin update public.orders set status='confirmed' where id=order_id;raise exception 'Legacy confirmation bypassed acceptance';exception when others then if sqlerrm='Legacy confirmation bypassed acceptance' then raise;end if;end;
+ reply:=jsonb_build_object('response','available','mode','supplier_setup','deliveryPence',7000,'setupPence',9000,'collectionPence',5000,'extraPence',0,'securityPence',15000,'prepDays',1,'returnBufferDays',1,'systemChecked',true,'siteChecked',true,'sharedStockChecked',true,'pricesIncludeVat',true,'terms','Fictional agreed quote terms','note','Test reply');
+ perform public.change_booking_workflow(order_id,0,vendor_id,'reply',jsonb_build_object('supplierId',supplier_id,'reply',reply));
+ begin perform public.change_booking_workflow(order_id,0,vendor_id,'reply',jsonb_build_object('supplierId',supplier_id,'reply',reply));raise exception 'Stale revision accepted';exception when others then if sqlerrm='Stale revision accepted' then raise;end if;end;
+ perform public.change_booking_workflow(order_id,1,staff_id,'issue',jsonb_build_object('expiresAt',now()+interval '7 days'));
+ select current_quote_id into quote_id from public.booking_workflows where booking_workflows.order_id=order_id;
+ if (select (payload->>'totalPence')::integer from public.booking_quotes where id=quote_id)<>71000 then raise exception 'Full quote total incorrect';end if;
+ begin update public.booking_quotes set payload='{}' where id=quote_id;raise exception 'Issued quote was mutable';exception when others then if sqlerrm='Issued quote was mutable' then raise;end if;end;
+ perform public.change_booking_workflow(order_id,2,customer_id,'accept',jsonb_build_object('quoteId',quote_id,'reviewed',true));
+ -- Customer access edits revoke acceptance and all supplier checks.
+ perform public.change_booking_workflow(order_id,3,customer_id,'logistics',jsonb_build_object('logistics',jsonb_build_object('setupWindow','Friday 10 to 12','collectionWindow','Sunday morning','accessNotes','Side entrance')));
+ if (select status from public.booking_quotes where id=quote_id)<>'superseded' then raise exception 'Changed details retained acceptance';end if;
+ begin perform public.change_booking_workflow(order_id,4,customer_id,'accept',jsonb_build_object('quoteId',quote_id,'reviewed',true));raise exception 'Superseded quote accepted';exception when others then if sqlerrm='Superseded quote accepted' then raise;end if;end;
+ reply:=reply||jsonb_build_object('unitPrices',jsonb_build_object(line_id::text,52000));
+ perform public.change_booking_workflow(order_id,4,vendor_id,'reply',jsonb_build_object('supplierId',supplier_id,'reply',reply));
+ perform public.change_booking_workflow(order_id,5,staff_id,'issue',jsonb_build_object('expiresAt',now()+interval '7 days'));
+ select current_quote_id into quote_id from public.booking_workflows where booking_workflows.order_id=order_id;
+ if (select (payload->>'totalPence')::integer from public.booking_quotes where id=quote_id)<>73000 then raise exception 'Updated hire price was not quoted';end if;
+ perform public.change_booking_workflow(order_id,6,customer_id,'accept',jsonb_build_object('quoteId',quote_id,'reviewed',true));
+ perform public.change_booking_workflow(order_id,7,staff_id,'handover',jsonb_build_object('handover',jsonb_build_object('contractParty','supplier','confirmationReference','Both parties agreed fixture','paymentArrangement','Supplier handles offline test invoice, no payment made','cancellationTerms','Fixture terms only')));
+ perform public.change_booking_workflow(order_id,8,staff_id,'confirm','{}');
+ perform public.change_booking_workflow(order_id,9,vendor_id,'claim',jsonb_build_object('supplierId',supplier_id,'kind','damage','amountPence',2000,'evidence','Fictional condition photos and handover note'));
+ select id into claim_id from public.booking_claims where booking_claims.order_id=order_id;
+ begin perform public.change_booking_workflow(order_id,10,staff_id,'claim_update',jsonb_build_object('claimId',claim_id,'status','resolved','note','Skip notification'));raise exception 'Claim resolution skipped notification';exception when others then if sqlerrm='Claim resolution skipped notification' then raise;end if;end;
+ perform public.change_booking_workflow(order_id,10,staff_id,'claim_update',jsonb_build_object('claimId',claim_id,'status','notified','note','Review explanation provided'));
+ perform public.change_booking_workflow(order_id,11,customer_id,'claim_update',jsonb_build_object('claimId',claim_id,'status','disputed','note','Customer disputes this fictional report'));
+ perform public.change_booking_workflow(order_id,12,staff_id,'claim_update',jsonb_build_object('claimId',claim_id,'status','resolved','note','Agreed no charge in fixture'));
+ if (select stripe_payment_intent_id from public.orders where id=order_id) is not null then raise exception 'Unexpected payment';end if;
+ -- Material edits withdraw publication and require another approval.
+ update public.products set unit_price_pence=51000 where id=product_id;
+ if (select active from public.products where id=product_id) then raise exception 'Unreviewed price stayed public';end if;
+ if has_table_privilege('anon','public.booking_quotes','select') or has_table_privilege('authenticated','public.booking_workflows','update') or has_function_privilege('authenticated','public.change_booking_workflow(uuid,integer,uuid,text,jsonb)','execute') then raise exception 'Private workflow permissions leaked';end if;
+ if not has_column_privilege('authenticated','public.order_lines','needed_date','select') or not has_column_privilege('authenticated','public.order_lines','return_date','select') then raise exception 'Owner cannot read hire dates';end if;
+ if has_table_privilege('authenticated','public.supplier_review_history','select') then raise exception 'Review history leaked';end if;
+ if (select public from storage.buckets where id='supplier-review-assets') then raise exception 'Review bucket is public';end if;
+end;$$;
+select 'Passed: venue-only/partner/local-radius rules, approval/publication, notifications, price changes, immutable quotes, stale updates, acceptance, confirmation, claims, no payments and privacy' as result;
+rollback;

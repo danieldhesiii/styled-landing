@@ -52,6 +52,10 @@ export interface LookExclusion {
 }
 
 export interface LookReport {
+  chandelierScale?: import("./chandelier-scale").ChandelierScale;
+  demoReference?: { id: string; name: string; image?: string };
+  venueSlug?: string|null;
+  supplierId?: string|null; // Enforced supplier selection; inherited by refinements.
   date: string | null; // the wedding date it was checked against
   checked: boolean; // true if availability was checked against a real date
   guestCount: number;

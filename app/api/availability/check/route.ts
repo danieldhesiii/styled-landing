@@ -6,6 +6,8 @@ import { checkQuantities } from "@/lib/server/availability";
 import { resolveHireDates } from "@/lib/booking-dates";
 import { deliveryError } from "@/lib/wedding";
 import { isValidDay, todayUtc } from "@/lib/availability";
+import { developmentRequestCatalogue } from "@/lib/server/development-request-catalogue";
+import type { ItemAvailability } from "@/lib/availability";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +64,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Invalid hire dates." }, { status: 400 });
     }
     const admin = createAdminClient();
+    const requests = new Set(developmentRequestCatalogue(req).map(i => i.id));
     const results = await Promise.all(basket.lines.map(line => {
+      if (requests.has(line.itemId)) return new Map<string, ItemAvailability>([[line.itemId, { status: "request_only", availableUnits: null, requiredQty: line.quantity }]]);
       const dates = ranges.get(line.itemId)!;
       return checkQuantities(admin, [line], dates.end, undefined, dates.start);
     }));
@@ -72,8 +76,9 @@ export async function POST(req: Request) {
       date: body.date,
       lines: Object.fromEntries(checks),
       allAvailable: [...checks.values()].every(
-        (a) => a.status !== "unavailable",
+        (a) => a.status !== "unavailable" && a.status !== "request_only",
       ),
+      canRequest: [...checks.values()].every(a => a.status !== "unavailable"),
     });
   } catch (err) {
     console.error("[availability/check]", err);

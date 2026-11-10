@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireVendor } from "@/lib/server/vendor";
 import { lineEditable, type OrderStatus } from "@/lib/server/order-workflow";
+import { supplierBookingTasks } from "@/lib/supplier-booking-task";
 
 export const dynamic = "force-dynamic";
 
@@ -55,10 +56,19 @@ export async function GET(req: Request) {
     byOrder.set(l.order_id as string, entry);
   }
 
-  // Sort: orders needing a decision first, then by soonest wedding date.
-  const orders = [...byOrder.values()].sort((a, b) => {
-    const aPending = a.actionable && a.lines.some((l) => l.status === "pending");
-    const bPending = b.actionable && b.lines.some((l) => l.status === "pending");
+  // Only inspect workflows belonging to orders with this supplier's lines.
+  const ids = [...byOrder.keys()];
+  const workflows = ids.length
+    ? await admin.from("booking_workflows").select("order_id,supplier_replies").in("order_id", ids)
+    : { data: [], error: null };
+  if (workflows.error) return NextResponse.json({ ok: false, error: "Couldn't check your outstanding service quotes." }, { status: 503 });
+  const replies = new Map((workflows.data || []).map(w => [w.order_id, w.supplier_replies?.[supplierId]]));
+  // Return only the linked supplier's task labels, never raw cross-supplier replies.
+  const orders = [...byOrder.values()].map(o => ({
+    ...o, outstandingTasks: supplierBookingTasks(o.status, o.lines, replies.get(o.orderId)),
+  })).sort((a, b) => {
+    const aPending = a.outstandingTasks.length > 0;
+    const bPending = b.outstandingTasks.length > 0;
     if (aPending !== bPending) return aPending ? -1 : 1;
     return (a.weddingDate ?? "9999").localeCompare(b.weddingDate ?? "9999");
   });

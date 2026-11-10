@@ -34,9 +34,6 @@ export default function VenueGallery({
       <dialog
         ref={dialog}
         aria-label={`${name} gallery`}
-        onClick={(e) => {
-          if (e.target === dialog.current) dialog.current.close();
-        }}
         className="max-h-[95vh] w-[95vw] max-w-5xl rounded-xl bg-cream p-4 backdrop:bg-ink/80"
       >
         <div className="mb-3 flex justify-between">

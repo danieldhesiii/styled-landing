@@ -22,6 +22,11 @@ export interface WeddingBoard {
   name: string;
   pins: BoardPin[];
 }
+export type PreviewSelectionMode = "manual" | "auto";
+export interface PreviewSelection {
+  itemIds: string[];
+  mode: PreviewSelectionMode;
+}
 export interface EventPlan {
   id: string;
   name: string;
@@ -29,6 +34,7 @@ export interface EventPlan {
   brief: Omit<WeddingBrief, "uploadedImages"> & { photoIds: string[] };
   basket: import("./types").BasketLine[];
   renderId?: string | null;
+  previewSelection?: PreviewSelection;
 }
 export interface WorkspaceData {
   events?: EventPlan[];

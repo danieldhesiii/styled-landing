@@ -92,8 +92,9 @@ sent. To actually notify people:
    price, unit (e.g. "per table"), quantity rule, **units-per-day capacity** (leave blank
    for made-to-order), lead time, and which styles it suits.
 4. **(Optional) Give them a portal login.** Same supplier page → **Portal logins →
-   Create login** with their email → send them the one-time password. They sign in at
-   **/portal/login** to confirm their own orders. *(You can skip this and relay orders to
+   Send private invitation** with the supplier-approved email. New account holders
+   choose their own password; staff never receive one. Email delivery must be configured first.
+   They use **/portal/login** to review their own requests. *(You can skip this and relay orders to
    them yourself at first.)*
 
 ---

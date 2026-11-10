@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CatalogueItem } from "@/lib/types";
 import type { WeddingBoard, BoardPin } from "@/lib/wedding";
 import type { SavedLook } from "@/components/design/SavedLooks";
@@ -7,6 +7,7 @@ import { useCatalogue } from "@/components/catalogue/CatalogueProvider";
 import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
 import { formatGBP } from "@/lib/quote";
 import PinterestPreview from "./PinterestPreview";
+import PinterestImport from "./PinterestImport";
 import BoardImports from "./BoardImports";
 import BoardCataloguePicker from "./BoardCataloguePicker";
 import ProductDetails from "@/components/design/ProductDetails";
@@ -112,6 +113,13 @@ export default function Boards({
     [uploading, setUploading] = useState(false);
   const [pinterest, setPinterest] = useState<{ boardId: string; url: string } | null>(null);
   const file = useRef<HTMLInputElement>(null);
+  const restoredPinterestBoard = useRef(false);
+  useEffect(() => {
+    if (!loaded || restoredPinterestBoard.current) return;
+    const id = new URLSearchParams(window.location.search).get('boardId');
+    if (id && boards.some(b => b.id === id)) setSelected(id);
+    restoredPinterestBoard.current = true;
+  }, [loaded, boards]);
   const board = boards.find((b) => b.id === selected) || boards[0],
     disabled = busy || uploading || !loaded;
   const field =
@@ -165,7 +173,7 @@ export default function Boards({
     setUploading(true);
     setError("");
     try {
-      const photo = await uploadVenuePhoto(f);
+      const photo = await uploadVenuePhoto(f, { isolated: true });
       onPhoto(photo.id, photo.url);
       await pin("photo", photo.id, f.name.slice(0, 100));
     } catch (e) {
@@ -206,25 +214,7 @@ export default function Boards({
           {savedError}
         </p>
       )}
-      <nav
-        aria-label="Board shortcuts"
-        className="my-5 flex flex-wrap gap-3 text-sm"
-      >
-        <button
-          type="button"
-          onClick={onOpenSaved}
-          className="min-h-10 rounded-full border border-sand px-4"
-        >
-          ♡ Saved items →
-        </button>
-        <button
-          type="button"
-          onClick={onOpenLooks}
-          className="min-h-10 rounded-full border border-sand px-4"
-        >
-          ▧ Saved looks →
-        </button>
-      </nav>
+
       <input
         ref={file}
         type="file"
@@ -275,6 +265,7 @@ export default function Boards({
           <button
             type="button"
             key={b.id}
+            disabled={disabled}
             onClick={() => setSelected(b.id)}
             aria-pressed={board?.id === b.id}
             className={`rounded-full border px-4 py-2 text-sm ${board?.id === b.id ? "border-ink bg-ink text-cream" : "border-sand"}`}
@@ -285,6 +276,7 @@ export default function Boards({
       </div>
       <div className="mb-5 border-y border-sand py-5">
         <BoardImports
+          pinterestImport={board && <PinterestImport key={board.id} targetBoardId={board.id} disabled={disabled} onBusy={setUploading} />}
           hasBoard={!!board}
           disabled={disabled || !board}
           onUpload={() => file.current?.click()}
@@ -431,7 +423,7 @@ export default function Boards({
               Your board is ready. Use Add to board to collect your first idea.
             </p>
           )}
-          <div className={`mt-5 grid min-w-0 gap-5 sm:grid-cols-2 ${pinterest?.boardId === board.id ? "" : "lg:grid-cols-3"}`}>
+          <div className={`mt-5 grid min-w-0 gap-3 min-[360px]:grid-cols-2 sm:gap-5 ${pinterest?.boardId === board.id ? "" : "lg:grid-cols-3"}`}>
             {board.pins.map((p) => {
               const sourceLink =
                 p.kind === "note" && p.text.startsWith("Pinterest: ")
@@ -441,7 +433,7 @@ export default function Boards({
               return (
                 <article
                   key={p.id}
-                  className="overflow-hidden rounded-xl border border-sand"
+                  className="min-w-0 overflow-hidden rounded-xl border border-sand"
                 >
                   {item?.image && (
                     <img
@@ -463,7 +455,7 @@ export default function Boards({
                       </p>
                     ))}
                   {p.kind === "look" && <LookImage id={p.ref!} />}
-                  <div className="p-4">
+                  <div className="break-words p-3 sm:p-4">
                     <p className="text-[10px] uppercase tracking-widest text-clay">
                       {p.kind === "product"
                         ? "Catalogue piece"
@@ -473,7 +465,7 @@ export default function Boards({
                             ? "Inspiration only"
                             : "Your note"}
                     </p>
-                    <p className="mt-2 font-serif text-xl">
+                    <p className="mt-2 font-serif text-base sm:text-xl">
                       {item?.name ||
                         (p.kind === "note"
                           ? sourceLink

@@ -1,0 +1,14 @@
+import {bookingEmailEnabled} from "@/lib/server/booking-notifications";
+import PilotReadiness from "@/components/booking/PilotReadiness";
+import RequestAttention from "@/components/booking/RequestAttention";
+import NotificationQueue from "@/components/booking/NotificationQueue";
+import Link from "next/link";
+import {env} from "@/lib/server/env";
+import {resendWebhookConfigured} from "@/lib/server/resend-webhook";
+export const metadata={title:"Service checks · Styled staff"};
+export default function OperationsPage(){
+ const email=bookingEmailEnabled();
+ const reports=resendWebhookConfigured(process.env.RESEND_WEBHOOK_SECRET);
+ const checks=[{title:"Supplier and customer emails",ready:email,text:email?"Sending is enabled. Verify delivery with your own test accounts before relying on alerts.":"Booking emails are off or the provider is missing. Review saved requests in the staff queue."},{title:"Email delivery reports",ready:reports,text:reports?"Callback secret configured. Verify a signed provider event before relying on delivery reports.":"Delivery reports need setup. Add the existing Resend webhook secret to development, redeploy and verify a signed callback."},{title:"Support inbox",ready:true,text:"Review saved questions and reply in the support inbox."},{title:"Payments",ready:false,text:"Payments are off. Agree commission, deposits, balances and cancellation terms before enabling them."}];
+ return <div className="max-w-3xl"><h1 className="font-serif text-4xl">Service checks</h1><p className="mt-3 text-sm text-ink/65">Check services and resolve outstanding work.</p><ul className="mt-7 divide-y divide-sand">{checks.map(c=><li key={c.title} className="py-6"><div className="flex flex-wrap items-center gap-3"><h2 className="font-serif text-2xl">{c.title}</h2><span className={`rounded-full px-3 py-1 text-xs ${c.ready?"bg-sage/20":"bg-blush/30"}`}>{c.title==="Email delivery reports"&&c.ready?"Configured; needs verification":c.ready?"Available":"Needs setup"}</span></div><p className="mt-3 text-sm leading-relaxed text-ink/70">{c.text}</p></li>)}</ul><nav aria-label="Operational queues" className="mt-6 flex flex-wrap gap-4 text-sm"><Link href="/admin" className="min-h-11 underline">Order queue</Link><Link href="/admin/venue-notifications" className="min-h-11 underline">Venue notifications</Link><Link href="/admin/support" className="min-h-11 underline">Support inbox</Link><Link href="/admin/vendors" className="min-h-11 underline">Applications</Link><Link href="/admin/suppliers" className="min-h-11 underline">Supplier management</Link></nav><PilotReadiness/><RequestAttention/><details className="mt-8 border-t border-sand pt-3"><summary className="min-h-11 cursor-pointer py-3 text-sm font-medium">Email queue and supplier follow-ups</summary><NotificationQueue/></details></div>;
+}

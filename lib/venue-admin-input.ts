@@ -65,13 +65,11 @@ export function parseVenue(body: Record<string, unknown>) {
   const description = str(body.description);
   if (description.length > 10000)
     throw new Error("Keep the description under 10,000 characters.");
+  const policy = typeof body.supplier_policy === "string" ? JSON.parse(body.supplier_policy) : body.supplier_policy;
+  const detailBody = body.details && typeof body.details === "object" && !Array.isArray(body.details) ? body.details as Record<string,unknown> : body;
   return {
     details: parseVenueDetails(
-      body.details &&
-        typeof body.details === "object" &&
-        !Array.isArray(body.details)
-        ? (body.details as Record<string, unknown>)
-        : body,
+      {...detailBody, ...(policy!==undefined?{supplier_policy:policy}:{})},
     ),
     name,
     slug,

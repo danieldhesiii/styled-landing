@@ -27,18 +27,18 @@ export default function VenueTour({
     >
       <div className="flex flex-wrap items-center justify-between gap-5">
         <div>
-          <p className="text-xs uppercase tracking-widest text-clay">
+          <p className="text-sm uppercase tracking-widest text-clay">
             Explore the space
           </p>
           <h2 className="mt-2 font-serif text-3xl">360° & 3D walkthrough</h2>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/60">
             {url
-              ? "Look around the rooms and move between viewpoints. Use the tour controls to explore at your own pace."
+              ? "Use the tour controls to explore the rooms."
               : demo
-                ? "This preview shows where an interactive venue tour will go. No tour has been added yet."
+                ? "Example tour space. No walkthrough added."
                 : management
-                  ? "Add a public Matterport or Kuula tour link above when a captured walkthrough is ready. You can leave this section empty while arranging your capture."
-                  : "A walkthrough has not been added for this venue yet. You can explore the photographs or request an in-person viewing below."}
+                  ? "Add a Matterport or Kuula link when your walkthrough is ready."
+                  : "No walkthrough yet. Browse photos or request a viewing."}
           </p>
         </div>
         {url ? (
@@ -84,13 +84,13 @@ export default function VenueTour({
             <iframe
               title={`${name} walkthrough`}
               src={url}
-              className="aspect-[4/5] w-full sm:aspect-video"
+              className="aspect-video w-full"
               allow="xr-spatial-tracking; fullscreen"
               allowFullScreen
               referrerPolicy="no-referrer"
             />
           )}
-          <p className="mt-3 text-xs text-ink/60">
+          <p className="mt-3 text-sm text-ink/60">
             The interactive tour is hosted by{" "}
             {url.includes("kuula.co") ? "Kuula" : "Matterport"}. Photographs and
             a viewing are also available.

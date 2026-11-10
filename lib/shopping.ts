@@ -1,6 +1,15 @@
 import type { ItemAvailability } from "./availability";
 import type { CatalogueItem } from "./types";
 
+/** Request-only items have quantity validation, not an invented stock ceiling. */
+export function purchaseAvailability(item: CatalogueItem, availability?: ItemAvailability): ItemAvailability | undefined {
+  return item.requestOnly ? undefined : availability;
+}
+
+export function canRequestItem(item: CatalogueItem): boolean {
+  return !item.demoOnly || item.requestOnly === true;
+}
+
 /** Stock ceilings apply to the whole delivery window, never a fabricated stock label. */
 export function quantityLimit(a?: ItemAvailability): number {
   if (a?.reason === "blocked") return 0;
@@ -11,13 +20,14 @@ export function quantityLimit(a?: ItemAvailability): number {
 export function validQuantity(n: number, a?: ItemAvailability): boolean {
   return Number.isInteger(n) && n >= 1 && n <= quantityLimit(a);
 }
-export function imageDisclosure(item: CatalogueItem): string {
-  if (!item.image) return "No product photograph supplied";
+export function imageDisclosure(item: CatalogueItem, compact = false): string {
+  if (!item.image) return compact ? "Photo not supplied" : "No product photograph supplied";
+  if(item.demoOnly&&item.imageKind==="supplier_reference") return compact?"Supplier photo":"Supplier product photograph";
   if (item.imageKind === "illustrative" || item.image.startsWith("/img/items/"))
-    return "Illustrative catalogue image, not a supplier photograph";
+    return compact ? "Illustrative image" : "Illustrative catalogue image, not a supplier photograph";
   return item.imageKind === "supplier"
-    ? "Supplier product photograph"
-    : "Image source unverified. Confirm appearance with the supplier.";
+    ? compact ? "Supplier photo" : "Supplier product photograph"
+    : compact ? "Unverified image" : "Image source unverified. Confirm appearance with the supplier.";
 }
 export function reviewDisclosure(item: CatalogueItem): string {
   if (!item.reviewsVerified) return "No verified reviews available";

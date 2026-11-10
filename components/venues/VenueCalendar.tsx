@@ -80,7 +80,7 @@ export default function VenueCalendar({
       </div>
       <div className="grid grid-cols-7 gap-1 text-center text-sm">
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-          <span key={d} className="py-2 text-xs text-ink/50">
+          <span key={d} className="py-2 text-sm text-ink/50">
             {d}
           </span>
         ))}
@@ -105,7 +105,7 @@ export default function VenueCalendar({
           );
         })}
       </div>
-      <p role="status" className="mt-3 text-xs text-ink/60">
+      <p role="status" className="mt-3 text-sm text-ink/60">
         {failed
           ? "Date checks are temporarily unavailable. You can still request a date below."
           : !blocked

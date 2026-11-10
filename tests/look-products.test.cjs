@@ -55,3 +55,4 @@ test("version references are deduplicated and withdrawn pieces stay unpurchasabl
   assert.equal(result.missing, 1);
   assert.deepEqual(resolve({itemIds:["modern"]}).items, [modern]);
 });
+test('supplier preview references, including older saved looks, become normal selectable product cards',()=>{const preview={id:'demo-preview',name:'Preview'};const result=productsForLook({catalogue:[chair,preview],itemIds:[chair.id],report:{items:[{id:chair.id}],demoReference:preview},illustrative:false});assert.deepEqual(result.items,[chair,preview]);assert.equal(result.missing,0);assert.equal(result.suggested,false);});

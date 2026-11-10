@@ -73,11 +73,10 @@ export default function VenueEnquiryForm({
     return (
       <div className="rounded-2xl bg-white p-6 sm:p-8">
         <h3 className="font-serif text-2xl">
-          Keep your venue conversations together
+          Sign in to contact the venue
         </h3>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/60">
-          Create an account or sign in to send a request, receive the venue’s
-          reply and keep track of your plans.
+          Send requests and read replies in your account.
         </p>
         <Link
           href={`/login?next=${encodeURIComponent(`/venues/${slug}?request=${kind}${initialDate ? `&date=${initialDate}` : ""}${initialGuests ? `&guests=${initialGuests}` : ""}#enquire`)}`}
@@ -203,7 +202,7 @@ export default function VenueEnquiryForm({
           className={input}
         />
       </label>
-      <label>
+      {packages.length>0&&<label>
         Styling package
         <select name="packageId" className={input}>
           <option value="">I’m still deciding</option>
@@ -213,7 +212,7 @@ export default function VenueEnquiryForm({
             </option>
           ))}
         </select>
-      </label>
+      </label>}
       <label className="sm:col-span-2">
         Tell us about your plans (optional)
         <textarea name="message" maxLength={5000} rows={4} className={input} />
@@ -223,8 +222,7 @@ export default function VenueEnquiryForm({
         <input name="company" tabIndex={-1} autoComplete="off" />
       </label>
       <p className="text-sm text-ink/60 sm:col-span-2">
-        This is an enquiry. Your date and styling package are confirmed
-        separately. No payment is taken here.
+        Your date and suppliers need confirmation. No payment is taken.
       </p>
       {error && (
         <p role="alert" className="text-sm text-ink sm:col-span-2">

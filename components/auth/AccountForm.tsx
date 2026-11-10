@@ -180,7 +180,7 @@ export default function AccountForm({
           <p className="text-xs text-ink/70">
             {guest
               ? "Confirm your email first, then choose a password to keep your guest plans."
-              : "At least 6 characters. Email confirmation may be required."}
+              : "Use at least 6 characters."}
           </p>
         )}
         {error && (
@@ -223,20 +223,19 @@ export default function AccountForm({
         href={recovery}
         className="mt-3 block text-sm text-ink/80 underline"
       >
-        Forgot password or need a confirmation email?
+        Forgot password? / Confirm email
       </Link>
       <p className="mt-5 text-xs leading-relaxed text-ink/70">
-        Read our{" "}
         <Link href="/terms" className="underline">
           service terms
         </Link>{" "}
         and{" "}
         <Link href="/privacy" className="underline">
-          privacy information
+          privacy policy
         </Link>{" "}
-        before creating an account.{" "}
+        ·{" "}
         <Link href="/service-info#support" className="underline">
-          Get account help
+          Account help
         </Link>
         .
       </p>

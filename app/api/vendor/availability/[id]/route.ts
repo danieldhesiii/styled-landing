@@ -16,6 +16,8 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     .delete()
     .eq("id", id)
     .eq("supplier_id", supplierId)
+    .is("product_id", null)
+    .eq("source", "manual")
     .select("id");
   if (error) return NextResponse.json({ ok: false, error: "Couldn't remove that." }, { status: 500 });
   if (!data || data.length === 0) return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });

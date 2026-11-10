@@ -32,18 +32,17 @@ export default async function VenuesPage({
     error = "We could not load venues. Please try again.";
   }
   return (
-    <div className="py-10 sm:py-16">
+    <div className="py-6 sm:py-16">
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
-          <p className="text-xs uppercase tracking-widest text-clay">
-            The place it all begins
+          <p className="text-sm uppercase tracking-widest text-clay">
+            For couples & event planners
           </p>
-          <h1 className="mt-3 max-w-3xl font-serif text-5xl sm:text-6xl">
+          <h1 className="mt-3 max-w-3xl font-serif text-4xl sm:text-6xl">
             Find a venue
           </h1>
-          <p className="mt-5 max-w-xl leading-relaxed text-ink/60">
-            Discover spaces that suit your plans. Save a shortlist, explore your
-            favourites and keep your planned venue with your wedding.
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/60 sm:mt-5 sm:text-base">
+            Save your favourites or ask the venue about dates.
           </p>
         </div>
         <Link

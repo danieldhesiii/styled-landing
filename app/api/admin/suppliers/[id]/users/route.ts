@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
-import { randomBytes } from "node:crypto";
+import { supplierJson } from "@/lib/server/supplier-body";
+import { environmentMatches } from "@/lib/pilot-readiness";
+import { env } from "@/lib/server/env";
+import { sendEmail } from "@/lib/server/notify";
 import { requireStaff } from "@/lib/server/staff";
 
 export const dynamic = "force-dynamic";
 
-const fail = (status: number, error: string) => NextResponse.json({ ok: false, error }, { status });
+const fail = (status: number, error: string) => NextResponse.json({ ok: false, error }, { status,headers:{"Cache-Control":"no-store"} });
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // GET /api/admin/suppliers/[id]/users: the login accounts linked to this supplier.
@@ -14,72 +17,58 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { admin } = auth;
   const { id } = await params;
 
-  const { data: links } = await admin.from("supplier_users").select("user_id, created_at").eq("supplier_id", id);
+  const { data: links, error: linksError } = await admin.from("supplier_users").select("user_id, created_at").eq("supplier_id", id);
+  if (linksError) return fail(503,"Could not load linked accounts.");
   if (!links || links.length === 0) return NextResponse.json({ ok: true, users: [] });
 
-  // Resolve emails for the linked users.
-  const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  const emailById = new Map((list?.users ?? []).map((u) => [u.id, u.email ?? ""]));
+  // Resolve only this supplier's accounts, including those beyond the first auth page.
+  const accounts = await Promise.all(links.map(l=>admin.auth.admin.getUserById(l.user_id)));
+  if(accounts.some(r=>r.error))return fail(503,"Could not load linked accounts.");
+  const emailById = new Map(accounts.flatMap(r=>r.data.user?[[r.data.user.id,r.data.user.email||""]]:[]));
 
   return NextResponse.json({
     ok: true,
     users: links.map((l) => ({ userId: l.user_id, email: emailById.get(l.user_id as string) ?? "(unknown)", createdAt: l.created_at })),
-  });
+  },{headers:{"Cache-Control":"no-store"}});
 }
 
-// POST /api/admin/suppliers/[id]/users  { email }
-// Give someone a portal login for this supplier. Creates the auth account if it's
-// new (returning a one-time password to pass on), or links an existing account.
+// Invitations go to the approved recipient. No password or login token is returned to staff.
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireStaff(req);
   if (!auth.ok) return auth.response;
-  const { admin } = auth;
-  const { id } = await params;
-
-  let body: { email?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return fail(400, "Invalid request body.");
+  const { admin } = auth, { id } = await params;
+  let body:any;
+  try { body = await supplierJson(req, 3000); } catch { return fail(400, "Check the invitation form."); }
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  if (!EMAIL.test(email) || email.length > 160 || body.confirmAccess !== true) return fail(422, "Enter the supplier-approved email and confirm access.");
+  if(!environmentMatches(env.supabaseUrl,env.siteUrl))return fail(409,"Check the isolated development database and site URL before creating access.");
+  if (!env.brevoApiKeyIfSet && !env.resendApiKeyIfSet) return fail(409, "Connect development email first. No account or access was created.");
+  const limited = await admin.rpc("hit_rate_limit", {p_key:`supplier-invite:${auth.user.id}`,p_limit:5,p_window_seconds:3600});
+  if (limited.error || limited.data !== true) return fail(429, "Please wait before inviting more accounts.");
+  const supplier = await admin.from("suppliers").select("id,name").eq("id", id).maybeSingle();
+  if (supplier.error || !supplier.data) return fail(404, "Supplier not found.");
+  let user:any=null;
+  for (let page=1;page<=50;page++) {
+    const list=await admin.auth.admin.listUsers({page,perPage:200});
+    if (list.error) return fail(503,"Could not check existing accounts. No invitation was created.");
+    user=list.data.users.find(u=>u.email?.toLowerCase()===email);
+    if(user||list.data.users.length<200)break;
+    if(page===50)return fail(503,"Account lookup limit reached. Ask support to check this recipient.");
   }
-  const email = (typeof body.email === "string" ? body.email : "").trim().toLowerCase();
-  if (!EMAIL.test(email) || email.length > 160) return fail(422, "Enter a valid email address.");
-
-  // Supplier must exist.
-  const { data: supplier } = await admin.from("suppliers").select("id").eq("id", id).maybeSingle();
-  if (!supplier) return fail(404, "Supplier not found.");
-
-  // Find an existing auth user with this email.
-  let userId: string | null = null;
-  for (let page = 1; page < 10 && !userId; page++) {
-    const { data } = await admin.auth.admin.listUsers({ page, perPage: 200 });
-    const hit = (data?.users ?? []).find((u) => u.email?.toLowerCase() === email);
-    if (hit) userId = hit.id;
-    if (!data || data.users.length < 200) break;
+  if(user){
+    const [linked,staff]=await Promise.all([admin.from("supplier_users").select("supplier_id").eq("user_id",user.id).maybeSingle(),admin.from("staff").select("user_id").eq("user_id",user.id).maybeSingle()]);
+    if(linked.error||staff.error)return fail(503,"Could not check recipient access.");
+    if(staff.data)return fail(409,"Use a separate business account rather than a staff login.");
+    if(linked.data&&linked.data.supplier_id!==id)return fail(409,"This account already belongs to another supplier.");
   }
-
-  let password: string | null = null;
-  if (!userId) {
-    password = randomBytes(15).toString("base64url");
-    const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
-    if (error || !data.user) {
-      console.error("[admin/suppliers/users POST] createUser", error);
-      return fail(500, "Couldn't create that account.");
-    }
-    userId = data.user.id;
-  }
-
-  // Guard: this user mustn't already act for a different supplier.
-  const { data: existing } = await admin.from("supplier_users").select("supplier_id").eq("user_id", userId).maybeSingle();
-  if (existing && existing.supplier_id !== id) {
-    return fail(409, "That account already belongs to another supplier.");
-  }
-
-  const { error: linkError } = await admin.from("supplier_users").upsert({ user_id: userId, supplier_id: id }, { onConflict: "user_id" });
-  if (linkError) {
-    console.error("[admin/suppliers/users POST] link", linkError);
-    return fail(500, "Couldn't link that account.");
-  }
-
-  return NextResponse.json({ ok: true, email, password, created: password !== null });
+  const type=user?.email_confirmed_at?"magiclink":"invite";
+  const generated=await admin.auth.admin.generateLink({type,email});
+  if(generated.error||!generated.data.user||!generated.data.properties?.hashed_token)return fail(503,"Could not prepare a private invitation. No password has been changed.");
+  const userId=generated.data.user.id;
+  const linked=await admin.from("supplier_users").upsert({user_id:userId,supplier_id:id},{onConflict:"user_id",ignoreDuplicates:true});
+  const checked=await admin.from("supplier_users").select("supplier_id").eq("user_id",userId).maybeSingle();
+  if(linked.error||checked.error||checked.data?.supplier_id!==id)return fail(409,"Could not link this account safely. Review its supplier access.");
+  const link=new URL("/auth/invite",env.siteUrl);link.searchParams.set("token_hash",generated.data.properties.hashed_token);link.searchParams.set("type",type);
+  const delivered=await sendEmail({to:[email],subject:"Your Styled supplier workspace invitation",text:`You have been invited to manage your supplier workspace on Styled. This gives access only to the supplier profile linked by the Styled team. Open the private invitation below. New account holders choose their own password.\n\n${link.href}\n\nIf you were not expecting this, contact support@styleduk.com.`,html:`<p>You have been invited to your Styled supplier workspace.</p><p><a href="${link.href.replaceAll('&','&amp;')}">Open your private invitation</a></p><p>New account holders choose their own password. If this was unexpected, contact support@styleduk.com.</p>`});
+  return NextResponse.json({ok:true,email,invitationSent:delivered,message:delivered?"Invitation sent. The recipient signs in privately and new account holders choose their own password.":"Access was linked, but the invitation was not confirmed as sent. Check the provider before retrying. No password was created or shared."},{headers:{"Cache-Control":"no-store"}});
 }

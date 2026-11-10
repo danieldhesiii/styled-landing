@@ -1,11 +1,18 @@
 "use client";
+import { useEffect } from "react";
 import { SupportButton } from "@/components/support/SupportProvider";
 export default function ErrorPage({
-  reset,
+  reset, error,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    const first = window.location.pathname.split("/")[1];
+    const section = ["design","portal","admin","venues","login","auth"].includes(first) ? first : "public";
+    const digest = /^[a-zA-Z0-9_-]{1,80}$/.test(error.digest || "") ? error.digest : "";
+    void fetch("/api/client-errors", { method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({section,digest}) }).catch(()=>{});
+  }, [error.digest]);
   return (
     <main id="main-content" className="mx-auto max-w-2xl px-5 py-16">
       <h1 className="font-serif text-4xl">We couldn’t open this page</h1>

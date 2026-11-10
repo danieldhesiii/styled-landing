@@ -1,3 +1,7 @@
+> Current navigation and review workflow: [Usability and venue review update](usability-and-venue-review-2026-10-28.md).
+
+> Updated 28 October 2026: see [Venue-led supplier routes](venue-supplier-routing-2026-10-28.md) for venue-specific catalogue permissions, local sourcing and booking-system handoff.
+
 # Venue marketplace and owner workspace
 
 23 October 2026. Extends `studio-venues.md`.

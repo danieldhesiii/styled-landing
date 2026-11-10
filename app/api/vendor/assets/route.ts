@@ -1,3 +1,4 @@
+import {storePrivateSupplierImage} from "@/lib/server/private-supplier-image";
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { normaliseAssetImage } from "@/lib/server/asset-image";
@@ -46,6 +47,10 @@ export async function POST(req: Request) {
         .maybeSingle();
       if (error) return fail(503, "Could not check product ownership.");
       if (!data) return fail(404, "That product is not yours.");
+    }
+    if(body.kind==="product"){
+      const saved=await storePrivateSupplierImage(auth.admin,auth.supplierId,body.productId,body.image);
+      return NextResponse.json({ok:true,url:saved.url},{headers:{"Cache-Control":"private, no-store"}});
     }
     let image;
     try {

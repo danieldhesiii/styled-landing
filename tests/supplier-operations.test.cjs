@@ -313,6 +313,7 @@ test("profile counts remain vendor scoped and public visibility is checked throu
 test("calendar sync never stamps success after block-read, removal, or timestamp-write failures", async () => {
   const { syncSupplierCalendar } = load("lib/server/ical.ts", {
     "@/lib/availability": { todayUtc: () => "2026-10-23" },
+    "@/lib/server/calendar-feed": { fetchCalendarFeed: async () => "BEGIN:VCALENDAR\nEND:VCALENDAR" },
   });
   const original = global.fetch;
   global.fetch = async () => ({

@@ -45,36 +45,36 @@ export const SUPPORT_ANSWERS = [
   {
     question: "What is the difference between my plan and a booking?",
     answer:
-      "Your plan, Boards and Saved keep your ideas. Basket holds choices you have not sent. My bookings tracks submitted requests. Nothing is reserved until the supplier or venue confirms the arrangements.",
+      "Basket holds unsent choices. My bookings tracks submitted requests. Nothing is reserved until the supplier or venue confirms.",
   },
   {
     question: "Can I plan a ceremony and reception separately?",
     answer:
-      "Use Add event and switch with Currently planning. Each event has its own venue, dates, basket and latest preview. Boards and Saved are shared. Submit each event’s basket separately.",
+      "Use Add event, then switch with Currently planning. Venue, dates, basket and latest preview belong to each event. Saved items and Saved looks are shared. Submit each basket separately.",
   },
   {
     question: "Can different items arrive on different days?",
     answer:
-      "Yes. Open Basket and tick Different dates for this item. Choose its delivery or collection day and return day. Agree the timing and any extra costs with the supplier before booking.",
+      "In Basket, choose Change dates for an item. Set its delivery and return days, then agree timing and extra costs with the supplier.",
   },
   {
     question: "How do I change or cancel a request?",
     answer:
-      "Choose the request topic and include the reference shown in My bookings. Describe the change you need. Sending a support message does not itself change or cancel a booking. Agreed supplier or venue terms determine any charges or refunds.",
+      "Choose the request topic and include your My bookings reference and the change needed. Support messages do not change or cancel bookings. Agreed terms determine charges or refunds.",
   },
   {
     question: "Why can’t I see my supplier or venue workspace?",
     answer:
-      "Business access is linked separately from a customer account. Tell us your business or listing name and the email you use to sign in. Please ask us to check access before creating another listing.",
+      "Tell us your business name and sign-in email so we can check access. Ask us before creating another listing.",
   },
   {
-    question: "Are the images and Pinterest imports exact?",
+    question: "Are AI previews exact?",
     answer:
-      "AI previews are illustrative, so check actual products and dimensions. Pinterest links let you view inspiration; they do not import a whole board. Upload individual images you have permission to use. Google Photos also uses a download and upload flow.",
+      "AI previews are illustrative. Check actual product details, colours and dimensions before requesting.",
   },
   {
     question: "What should I include when something goes wrong?",
     answer:
-      "Tell us which section you were using, what you tried and what happened. Include the visible error message and request or listing reference if relevant. Do not include passwords, recovery links, payment details or one-time codes.",
+      "Include the section, what you tried, the error and any request reference. Never include passwords, recovery links, payment details or sign-in codes.",
   },
 ];

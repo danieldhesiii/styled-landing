@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { requireUser } from "@/lib/server/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+import { dispatchSupportNotifications, supportEmailEnabled } from "@/lib/server/support-notifications";
 import { supportDraft } from "@/lib/support";
 
 export const runtime = "nodejs";
@@ -93,6 +94,11 @@ export async function POST(req: Request) {
         503,
         "Your request could not be saved. Your draft is still here. Try again or use email below.",
       );
+    // The trigger already saved the outbox atomically. Sending never changes
+    // the saved receipt, and cron can recover if this background task is lost.
+    if (supportEmailEnabled()) after(async () => {
+      try { await dispatchSupportNotifications(createAdminClient()); } catch { /* Durable job remains queued. */ }
+    });
     return NextResponse.json(
       { ok: true, reference },
       { headers: { "Cache-Control": "no-store" } },

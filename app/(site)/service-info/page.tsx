@@ -1,28 +1,44 @@
 import Link from "next/link";
-export const metadata = { title: "Service information & support · Styled", description: "How Styled supplier requests, illustrative images, quotes and account support work." };
+import InformationPage from "../_components/InformationPage";
+
+export const metadata = {
+  title: "Service information & support · Styled",
+  description: "How product requests, venue enquiries, quotes, payment arrangements and support work in Styled.",
+  alternates: { canonical: "/service-info" },
+};
+
 export default function ServiceInfoPage() {
-  return <article className="mx-auto max-w-3xl space-y-8 py-12 text-ink/80">
-    <h1 className="font-serif text-4xl text-ink">Service information & support</h1>
-    <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Supplier requests and payment</h2>
-      <p>Build a selection, submit a request, receive manual supplier confirmation and a final quote, then agree payment and delivery or collection before booking. A submitted request does not reserve stock or take payment.</p>
-      <p>Catalogue totals are estimates. Delivery, collection, setup, hire duration, deposits and any damage arrangements need to be confirmed for the pieces and suppliers you choose. An estimated total in your bookings is not a receipt, invoice or payment deadline.</p>
-      <p>Check the written quote and agreed terms before paying. For changes, cancellations, refunds or a payment question, contact support with your reference so the relevant arrangements can be checked.</p>
+  return <InformationPage title="Service information & support" intro="Plan your event, explore venues and choose products. Availability and booking arrangements are checked manually before you rely on them."
+    links={[{ href: "#products", label: "Product requests" }, { href: "#venues", label: "Venue enquiries" }, { href: "#images", label: "AI previews" }, { href: "#support", label: "Contact & complaints" }]}>
+    <section id="products"><h2>From product selection to booking</h2>
+      <ol className="list-decimal space-y-3 pl-6">
+        <li>Choose products, quantities and the dates you need them. Submit your selection for supplier review.</li>
+        <li>Suppliers check availability manually. Review the written quote, including delivery, setup, collection, hire duration and any deposit or security arrangements.</li>
+        <li>If you accept a quote, booking confirmation is still a separate step. Agree who supplies the service, who receives payment and the booking terms in writing.</li>
+      </ol>
+      <p>A request does not reserve stock or take payment. Catalogue totals are estimates; Styled does not collect online payments through this request service.</p>
+      <p>For a change, cancellation or problem, contact the business named in your booking arrangements or ask support with your reference. A cancellation request does not automatically cancel a booking or issue a refund.</p>
     </section>
-    <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Images and catalogue information</h2>
-      <p>Generated wedding looks and styling examples are illustrative. They may change colours, proportions, quantities or product details. They do not guarantee an exact visual match or confirm that an item can be supplied.</p>
-      <p>Confirm dimensions, materials, hire units, quantities and what is included with your quote. Coverage and delivery options depend on the supplier, venue and date. Showcase imagery or sample content is not evidence of a verified customer review.</p>
+    <section id="venues"><h2>Venue enquiries are separate</h2>
+      <p>A viewing request asks for an appointment, not a reservation for your event. An event enquiry also needs the venue’s response and agreed booking arrangements. Check the venue’s inclusions, restrictions, price and cancellation terms.</p>
+      <p>Venue agreement does not confirm products from suppliers. Demo venues are examples and cannot be booked.</p>
+      <Link href="/venues" className="inline-flex min-h-11 items-center underline underline-offset-4">Find venues</Link>
     </section>
-    <section className="space-y-3"><h2 className="font-serif text-2xl text-ink">Venue requests</h2>
-      <p>A viewing request asks for an appointment; it does not reserve a wedding date. A wedding enquiry also needs venue confirmation. Check the request status and the venue’s response before making plans or agreeing payment.</p>
-      <p>Demo venues are examples for exploring the service and cannot be booked.</p>
+    <section id="images"><h2>AI previews and product details</h2>
+      <p>Generated looks help you explore ideas. They can change colours, proportions, quantities and room or product details. They do not confirm stock or guarantee an exact result.</p>
+      <p>Check actual dimensions, materials, hire units and supplier photographs. Upload only images you have permission to use. Showcase images are styling examples, not evidence of verified customer reviews.</p>
     </section>
-    <section id="support" className="scroll-mt-28 space-y-3"><h2 className="font-serif text-2xl text-ink">Contact support</h2>
-      <Link href="/support" className="inline-flex min-h-11 items-center rounded-full bg-ink px-5 text-sm text-cream">Ask a question or report a problem</Link>
-      <p>Email <a href="mailto:support@styleduk.com" className="underline">support@styleduk.com</a> for account access, supplier or venue access, request questions, corrections or privacy enquiries.</p>
-      <p>Include your account email, request reference or listing name, and a short description of what happened. Never send your password, recovery link, card details or a one-time code. Screenshots should hide private details.</p>
-      <p>Supplier and venue workspace access is linked separately from a customer account. If your business already has a listing, ask support to check the linked email before creating another listing.</p>
-      <div className="flex flex-wrap gap-4 text-sm"><Link href="/auth/recovery" className="underline">Recover account access</Link><Link href="/login?mode=login" className="underline">Log in</Link><Link href="/portal/login" className="underline">Supplier log in</Link></div>
+    <section id="support"><h2>Contact support or make a complaint</h2>
+      <Link href="/support" className="inline-flex min-h-11 items-center rounded-full bg-ink px-5 py-2 text-sm text-cream hover:bg-ink/90">Ask a question or report a problem</Link>
+      <p>Use a confirmed account to send a message and check staff replies in Your requests. A saved reference confirms receipt in Styled; it does not confirm email delivery.</p>
+      <p>If you cannot sign in or prefer email, contact <a href="mailto:support@styleduk.com" className="underline">support@styleduk.com</a>. Include your account email, request reference or listing name, and what you need help with. For a complaint, explain what happened and the outcome you are seeking.</p>
+      <p>If a page or form is difficult to use, tell us which page and what help or format you need. You can use email instead of the form.</p>
+      <p>Never send passwords, recovery links, card details or sign-in codes. Hide private details in screenshots.</p>
+      <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+        <Link href="/auth/recovery" className="inline-flex min-h-11 items-center underline">Recover account access</Link>
+        <Link href="/login?mode=login" className="inline-flex min-h-11 items-center underline">Log in</Link>
+        <Link href="/business" className="inline-flex min-h-11 items-center underline">Supplier & venue access</Link>
+      </div>
     </section>
-    <p className="text-sm"><Link href="/privacy" className="underline">Privacy information</Link> · <Link href="/terms" className="underline">Service terms</Link></p>
-  </article>;
+  </InformationPage>;
 }

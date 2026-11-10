@@ -6,7 +6,7 @@ import { adminApi } from "@/lib/admin-client";
 import type { AttentionItem, AttentionKind } from "@/lib/staff-attention";
 
 const LABELS: Record<AttentionKind, string> = {
-  venue_request: "Customer questions",
+  venue_request: "Venue questions",
   application: "Applications",
   venue_draft: "Venue drafts",
   supplier_reply: "Supplier replies",
@@ -64,17 +64,9 @@ export default function AttentionQueue() {
           {busy ? "Checking…" : error ? "Retry queue" : "Refresh queue"}
         </button>
       </div>
-      <p className="mt-2 text-sm text-ink/70">
-        Review applications and venue drafts, follow up customer questions and
-        supplier replies, and check calendar freshness. Reply and sync flags use
-        48 hours as an attention threshold, not a promised response or sync
-        schedule.
-      </p>
-      <p className="mt-2 text-xs text-ink/60">
-        Reply age starts when the item was requested; reminders do not reset
-        that clock. Calendar flags cover active suppliers with a connected feed;
-        failures are not stored separately.
-      </p>
+      <p className="mt-2 text-sm text-ink/70">Review open work, supplier replies and calendar checks.</p>
+      <Link href="/admin/support" className="mt-2 inline-flex min-h-11 items-center text-sm underline">Open customer support questions →</Link>
+      <details className="mt-2 text-xs text-ink/60"><summary className="min-h-11 cursor-pointer py-3">How attention flags work</summary><p>Reply and sync flags use 48 hours as an attention threshold, not a promised response or sync schedule. Reply age starts when requested; reminders do not reset it. Calendar flags cover active suppliers with a connected feed; failures are not stored separately.</p></details>
       {error && (
         <p role="alert" className="mt-3 text-sm text-red-800">
           {error} {data && "The queue below is from the previous check."}

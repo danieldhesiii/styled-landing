@@ -48,3 +48,34 @@ test("bookmarkable booking views preserve context and remove stale render intent
     false,
   );
 });
+
+test("explicit catalogue browse clears product handoff details while retaining useful filters and venue context", () => {
+  const url = studioDestination("https://development.test/design?tab=visualiser&product=selected-chair&preview=selected-chair&supplier=florist&category=furniture&q=oak&styleFilter=rustic_barn&min=5&max=500&sort=price-asc&venue=restricted-venue&render=true#product", "catalogue");
+  assert.equal(url.searchParams.get("tab"), "catalogue");
+  for (const key of ["product", "preview", "render"]) assert.equal(url.searchParams.has(key), false);
+  for (const [key, value] of Object.entries({ supplier: "florist", category: "furniture", q: "oak", styleFilter: "rustic_barn", min: "5", max: "500", sort: "price-asc", venue: "restricted-venue" })) assert.equal(url.searchParams.get(key), value);
+  assert.equal(url.hash, "");
+  const direct = new URL("https://development.test/design?tab=catalogue&product=chair&preview=chair");
+  assert.equal(studioRoute(direct.searchParams).tab, "catalogue");
+  assert.equal(direct.searchParams.get("product"), "chair");
+});
+
+test("visualiser browse callback and primary navigation both use the clean catalogue destination", () => {
+  const page = fs.readFileSync("app/design/page.tsx", "utf8");
+  const ast = ts.createSourceFile("page.tsx", page, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let switcher, browse;
+  function visit(node) {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === "switchStudioTab") switcher = node.getText(ast);
+    if (ts.isJsxAttribute(node) && node.name.getText(ast) === "onBrowseProducts") browse = node.initializer.expression.getText(ast);
+    ts.forEachChild(node, visit);
+  }
+  visit(ast); assert.ok(switcher); assert.ok(browse);
+  let destination, step;
+  const vm = require("node:vm");
+  const context = { studioDestination, setStep: value => { step = value; }, window: { location: { href: "https://development.test/design?tab=visualiser&product=chair&preview=chair&q=oak" }, history: { pushState(_data, _title, url) { destination = url; } }, scrollTo() {} } };
+  vm.runInNewContext(ts.transpileModule(`${switcher}; (${browse})();`, { compilerOptions: { target: ts.ScriptTarget.ES2020 } }).outputText, context);
+  assert.equal(step, "studio");
+  assert.equal(destination.searchParams.get("q"), "oak");
+  assert.equal(destination.searchParams.has("product"), false);
+  assert.equal(destination.searchParams.has("preview"), false);
+});

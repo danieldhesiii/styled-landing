@@ -57,7 +57,7 @@ export default function VenueShortlist({ id }: { id: string }) {
             setNotice("Your browser could not save the shortlist.");
           }
         }}
-        className="rounded-full border border-sand px-4 py-2 text-xs transition-colors hover:border-clay"
+        className="rounded-full border border-sand px-4 py-2 text-sm transition-colors hover:border-clay"
       >
         {saved ? "♥ Shortlisted" : "♡ Save venue"}
       </button>

@@ -17,6 +17,8 @@ interface InboxOrder {
   venueLabel: string | null;
   guestCount: number | null;
   subtotalPence: number;
+  hasUnpricedLines?: boolean;
+  requestOnly?: boolean;
   depositPence: number;
   lines: { total: number; confirmed: number; declined: number; pending: number };
   suppliers: string[];
@@ -153,7 +155,7 @@ export default function InboxPage() {
                   </div>
                   <div className="flex items-center gap-4 md:justify-end">
                     <div className="text-right">
-                      <p className="font-serif text-lg text-ink">{money(o.subtotalPence)}</p>
+                      <p className="font-serif text-lg text-ink">{o.hasUnpricedLines ? o.subtotalPence > 0 ? `${money(o.subtotalPence)} + quote pending` : "Awaiting quote" : money(o.subtotalPence)}</p>
                       <p className={`text-xs ${o.status === "requested" && waitedDays >= 1 ? "font-medium text-clay" : "text-ink/45"}`}>
                         {o.status === "requested" ? `waiting ${ago(o.createdAt).replace(" ago", "")}` : ago(o.createdAt)}
                       </p>

@@ -1,6 +1,8 @@
+import {supplierMinimumShortfalls} from "@/lib/supplier-minimum";
 import { loadCatalogue, type ServerCatalogueItem } from "@/lib/server/catalogue";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { quotePence, toPence, COMMISSION_RATE, type PenceQuote } from "@/lib/quote";
+import { developmentRequestCatalogue } from "@/lib/server/development-request-catalogue";
 
 // The authoritative quote. The browser's basket is only a request ("these items,
 // these quantities"); prices, availability and totals are all decided here from
@@ -61,11 +63,11 @@ export interface PricedBasket {
 // Validate a basket and price it from the live catalogue. Fails (400) on any
 // item that doesn't exist or has been withdrawn, and (409) if the couple was
 // shown a price that has since changed, so nobody is charged more than they saw.
-export async function priceBasket(raw: unknown): Promise<PricedBasket | Failure> {
+export async function priceBasket(raw: unknown, req?: Request): Promise<PricedBasket | Failure> {
   const valid = validateBasket(raw);
   if (!valid.ok) return valid;
 
-  const catalogue = await loadCatalogue();
+  const catalogue = [...await loadCatalogue(), ...developmentRequestCatalogue(req)];
   const items = new Map(catalogue.map((i) => [i.id, i]));
 
   const unavailable = valid.lines.filter((l) => !items.has(l.itemId)).map((l) => l.itemId);
@@ -78,17 +80,20 @@ export async function priceBasket(raw: unknown): Promise<PricedBasket | Failure>
     };
   }
 
+  const quote = quotePence(valid.lines, id => items.get(id));
+  const currentPrices = new Map(quote.lines.map(l => [l.item.id, l.unitPricePence]));
   const changed = valid.lines
-    .filter((l) => l.seenUnitPricePence !== undefined && l.seenUnitPricePence !== toPence(items.get(l.itemId)!.unitPrice))
+    .filter((l) => currentPrices.get(l.itemId) !== null && l.seenUnitPricePence !== undefined && l.seenUnitPricePence !== currentPrices.get(l.itemId))
     .map((l) => {
       const item = items.get(l.itemId)!;
-      return { itemId: l.itemId, name: item.name, seenUnitPricePence: l.seenUnitPricePence, unitPricePence: toPence(item.unitPrice) };
+      return { itemId: l.itemId, name: item.name, seenUnitPricePence: l.seenUnitPricePence, unitPricePence: currentPrices.get(l.itemId) };
     });
   if (changed.length > 0) {
     return { ok: false, status: 409, error: "Some prices have changed since you added them. Please review your basket.", extra: { changed } };
   }
 
-  const quote = quotePence(valid.lines, (id) => items.get(id));
+  const minimums=supplierMinimumShortfalls(valid.lines,id=>items.get(id));
+  if(minimums.length)return {ok:false,status:422,error:minimums.map(m=>`Add £${(m.shortfallPence/100).toFixed(2)} more in hire items with ${m.supplier} to meet their minimum.`).join(" "),extra:{minimums}};
   if (quote.subtotalPence > MAX_SUBTOTAL_PENCE) {
     return { ok: false, status: 400, error: "That basket is larger than we can take online. Please contact us." };
   }
@@ -102,7 +107,8 @@ export async function priceBasket(raw: unknown): Promise<PricedBasket | Failure>
 // catalogue. This overrides the flat rate quotePence applies for the browser.
 async function applySupplierCommission(quote: PenceQuote, items: Map<string, ServerCatalogueItem>): Promise<void> {
   if (quote.lines.length === 0) return;
-  const supplierIds = [...new Set(quote.lines.map((l) => items.get(l.item.id)!.supplierId))];
+  const supplierIds = [...new Set(quote.lines.filter(l => !l.item.requestOnly).map((l) => items.get(l.item.id)!.supplierId))];
+  if (!supplierIds.length) { quote.commissionPence = 0; return; }
 
   const { data } = await createAdminClient().from("suppliers").select("id, commission_rate").in("id", supplierIds);
   const rateById = new Map<string, number>();
@@ -112,6 +118,7 @@ async function applySupplierCommission(quote: PenceQuote, items: Map<string, Ser
 
   let commissionPence = 0;
   for (const line of quote.lines) {
+    if (line.item.requestOnly || line.item.priceOnRequest || line.lineTotalPence === null) continue;
     const supplierId = items.get(line.item.id)!.supplierId;
     const rate = rateById.get(supplierId) ?? COMMISSION_RATE;
     commissionPence += Math.round(line.lineTotalPence * rate);
@@ -121,23 +128,30 @@ async function applySupplierCommission(quote: PenceQuote, items: Map<string, Ser
 
 // What couples are shown. Commission is Styled's margin and stays server-side.
 export function publicQuote(quote: PenceQuote) {
+  const hasUnpricedLines = quote.lines.some(l => l.lineTotalPence === null);
   return {
+    hasUnpricedLines,
+    requestOnly: quote.lines.some(l => l.item.requestOnly),
+    knownSubtotalPence: quote.subtotalPence,
     lines: quote.lines.map((l) => ({
       itemId: l.item.id,
       name: l.item.name,
       supplier: l.item.supplier,
-      unit: l.item.unit,
+      unit: l.item.requestOnly && l.item.demoPricing ? "one-day package estimate" : l.item.unit,
       quantity: l.quantity,
-      unitPricePence: l.unitPricePence,
-      lineTotalPence: l.lineTotalPence,
+      unitPricePence: l.item.priceOnRequest ? null : l.unitPricePence,
+      lineTotalPence: l.item.priceOnRequest ? null : l.lineTotalPence,
+      requestOnly: !!l.item.requestOnly,
+      priceOnRequest: !!l.item.priceOnRequest,
     })),
     subtotalPence: quote.subtotalPence,
-    depositPence: quote.depositPence,
-    balancePence: quote.subtotalPence - quote.depositPence,
+    depositPence: hasUnpricedLines ? null : quote.depositPence,
+    balancePence: hasUnpricedLines ? null : quote.subtotalPence - quote.depositPence,
     bySupplier: quote.bySupplier.map((g) => ({
       supplier: g.supplier,
       area: g.area,
       totalPence: g.totalPence,
+      hasUnpricedLines: g.lines.some(l => l.lineTotalPence === null),
     })),
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
 import { SAMPLE_VENUES, STYLES } from "@/lib/styles";
 import { formatGBP } from "@/lib/quote";
@@ -36,6 +36,7 @@ interface Props {
 }
 
 export default function BriefStep({ brief, onChange, onStart }: Props) {
+  const fieldId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -59,22 +60,21 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-4xl py-10">
-      <h1 className="font-serif text-4xl text-ink sm:text-5xl">
-        Let's design your day.
+    <div className="mx-auto max-w-4xl py-8 motion-reduce:[&_*]:transition-none sm:py-12">
+      <h1 className="font-serif text-4xl leading-tight tracking-tight text-ink sm:text-5xl">
+        Visualise your event.
       </h1>
       <p className="mt-3 max-w-xl text-ink/60">
-        Start with your venue and the look you love. You'll see it come together
-        and can shop every piece as you go.
+        Choose your venue and products, or let us suggest a setup.
       </p>
 
       {/* Venue */}
-      <section className="mt-10">
-        <h2 className="font-serif text-xl text-ink">Your venue</h2>
+      <section className="mt-8 border-t border-sand/80 pt-7">
+        <h2 className="flex items-center gap-3 font-serif text-2xl text-ink"><span aria-hidden="true" className="flex h-7 w-7 items-center justify-center rounded-full border border-clay/35 font-sans text-[10px] font-medium tabular-nums text-clay">01</span>Your venue</h2>
         <p className="mt-1 text-sm text-ink/50">
           Pick a sample room or upload a photo of yours.
         </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {SAMPLE_VENUES.map((v) => {
             const active =
               brief.venueId === v.id && brief.uploadedImages.length === 0;
@@ -83,14 +83,15 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
                 key={v.id}
                 type="button"
                 onClick={() => onChange({ venueId: v.id, uploadedImages: [] })}
-                className={`overflow-hidden rounded-2xl border text-left transition-colors ${
+                aria-pressed={active}
+                className={`group overflow-hidden rounded-2xl border text-left transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clay/50 motion-reduce:transition-none ${
                   active
-                    ? "border-clay ring-2 ring-clay/30"
-                    : "border-sand hover:border-clay/50"
+                    ? "border-clay/60 bg-cream ring-1 ring-clay/20"
+                    : "border-sand/80 hover:border-clay/50"
                 }`}
               >
                 <div
-                  className="aspect-[4/3] bg-sand"
+                  className="aspect-[3/2] bg-sand"
                   style={{ background: v.gradient }}
                 >
                   {v.image && (
@@ -98,7 +99,7 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
                     <img
                       src={v.image}
                       alt={v.name}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-[1.025] motion-reduce:transition-none"
                     />
                   )}
                 </div>
@@ -115,10 +116,11 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
+            aria-label={brief.uploadedImages.length ? "Change venue photo" : "Upload your venue"}
             className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed p-3 text-center transition-colors ${
               brief.uploadedImages.length > 0
-                ? "border-clay ring-2 ring-clay/30"
-                : "border-sand hover:border-clay/50"
+                ? "border-clay/60 bg-cream ring-1 ring-clay/20"
+                : "border-sand/80 hover:border-clay/50"
             }`}
           >
             {brief.uploadedImages.length > 0 ? (
@@ -126,7 +128,7 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
               <img
                 src={brief.uploadedImages[0].url}
                 alt="Your venue"
-                className="aspect-[4/3] w-full rounded-lg object-cover"
+                className="aspect-[3/2] w-full rounded-lg object-cover"
               />
             ) : (
               <>
@@ -150,27 +152,28 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
       </section>
 
       {/* Style */}
-      <section className="mt-10">
-        <h2 className="font-serif text-xl text-ink">Your style</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-4">
+      <section className="mt-8 border-t border-sand/80 pt-7">
+        <h2 className="flex items-center gap-3 font-serif text-2xl text-ink"><span aria-hidden="true" className="flex h-7 w-7 items-center justify-center rounded-full border border-clay/35 font-sans text-[10px] font-medium tabular-nums text-clay">02</span>Your style</h2>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {STYLES.map((s) => (
             <button
               key={s.id}
               type="button"
               onClick={() => onChange({ styleId: s.id })}
-              className={`overflow-hidden rounded-2xl border text-left transition-colors ${
+              aria-pressed={brief.styleId === s.id}
+              className={`group overflow-hidden rounded-2xl border text-left transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clay/50 motion-reduce:transition-none ${
                 brief.styleId === s.id
-                  ? "border-clay ring-2 ring-clay/30"
-                  : "border-sand hover:border-clay/50"
+                  ? "border-clay/60 bg-cream ring-1 ring-clay/20"
+                  : "border-sand/80 hover:border-clay/50"
               }`}
             >
-              <div className="aspect-[4/3]">
+              <div className="aspect-[3/2]">
                 {s.render && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={s.render}
                     alt={s.name}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover transition-transform duration-500 motion-safe:group-hover:scale-[1.025] motion-reduce:transition-none"
                   />
                 )}
               </div>
@@ -186,10 +189,11 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
       </section>
 
       {/* Details */}
-      <section className="mt-10 grid gap-5 sm:grid-cols-3">
+      <section className="mt-8 grid gap-5 border-t border-sand/80 pt-7 sm:grid-cols-3">
         <div>
-          <label className="text-sm font-medium text-ink">Guest count</label>
+          <label htmlFor={`${fieldId}-guests`} className="text-sm font-medium text-ink">Guest count</label>
           <input
+            id={`${fieldId}-guests`}
             type="number"
             min={10}
             max={400}
@@ -201,8 +205,9 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-ink">Wedding date</label>
+          <label htmlFor={`${fieldId}-date`} className="text-sm font-medium text-ink">Wedding date</label>
           <input
+            id={`${fieldId}-date`}
             type="date"
             value={brief.weddingDate}
             onChange={(e) => onChange({ weddingDate: e.target.value })}
@@ -210,11 +215,12 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-ink">
-            Budget{" "}
+          <label htmlFor={`${fieldId}-budget`} className="text-sm font-medium text-ink">
+            Product budget{" "}
             <span className="text-ink/40">{formatGBP(brief.budget)}</span>
           </label>
           <input
+            id={`${fieldId}-budget`}
             type="range"
             min={2000}
             max={20000}
@@ -229,9 +235,9 @@ export default function BriefStep({ brief, onChange, onStart }: Props) {
       <button
         type="button"
         onClick={onStart}
-        className="mt-10 rounded-full bg-ink px-8 py-3.5 text-cream hover:bg-ink/90"
+        className="mt-8 min-h-12 rounded-full bg-ink px-8 py-3.5 text-sm font-medium text-cream transition-colors duration-200 hover:bg-ink/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clay/50 focus-visible:ring-offset-2 motion-reduce:transition-none"
       >
-        Start designing →
+        Choose products →
       </button>
     </div>
   );

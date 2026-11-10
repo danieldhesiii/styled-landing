@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { IMPORT_COLUMNS, MAX_IMPORT_ROWS, TEMPLATE_CSV } from "@/lib/stock-import";
 import { formatGBP } from "@/lib/quote";
 
@@ -34,7 +34,7 @@ const BADGE: Record<PlanRow["action"], { label: string; cls: string }> = {
 };
 
 function show(field: string, v: unknown): string {
-  if (v === null || v === undefined || v === "") return field === "capacity" ? "made to order" : "none";
+  if (v === null || v === undefined || v === "") return field === "capacity" ? "no stock limit recorded" : "none";
   if (field === "price" && typeof v === "number") return formatGBP(v / 100);
   if (Array.isArray(v)) return v.length ? v.join(", ") : "none";
   if (typeof v === "boolean") return v ? "shown" : "hidden";
@@ -62,8 +62,23 @@ export default function StockImportPanel({
   const [showAll, setShowAll] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const requestVersion = useRef(0);
+
+  // A preview belongs to one supplier and endpoint. Ignore late responses from
+  // the previous scope and require a fresh file/check after switching suppliers.
+  useEffect(() => {
+    requestVersion.current++;
+    setCsv("");
+    setFilename(null);
+    setPlan(null);
+    setApplied(null);
+    setError(null);
+    setBusy(null);
+    if (fileRef.current) fileRef.current.value = "";
+  }, [endpoint, supplierId]);
 
   function reset() {
+    requestVersion.current++;
     setCsv("");
     setFilename(null);
     setPlan(null);
@@ -74,6 +89,7 @@ export default function StockImportPanel({
   }
 
   async function call(apply: boolean) {
+    const version = ++requestVersion.current;
     setBusy(apply ? "apply" : "check");
     setError(null);
     try {
@@ -83,6 +99,7 @@ export default function StockImportPanel({
         body: JSON.stringify({ ...(supplierId ? { supplierId } : {}), csv, filename, apply }),
       });
       const data = await res.json().catch(() => null);
+      if (version !== requestVersion.current) return;
       if (!res.ok || !data?.ok) {
         setError(data?.error ?? "That didn't work. Nothing was changed.");
         return;
@@ -93,24 +110,36 @@ export default function StockImportPanel({
         onApplied?.();
       }
     } catch {
-      setError("Couldn't reach the server. Nothing was changed.");
+      if (version === requestVersion.current) setError("Couldn't reach the server. Check the current products before retrying an import.");
     } finally {
-      setBusy(null);
+      if (version === requestVersion.current) setBusy(null);
     }
   }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const version = ++requestVersion.current;
+    setCsv("");
+    setPlan(null);
+    setApplied(null);
+    setFilename(null);
+    setError(null);
     if (file.size > 600_000) {
       setError("That file is too large. Please split it into smaller lists.");
       return;
     }
-    setCsv(await file.text());
-    setFilename(file.name);
-    setPlan(null);
-    setApplied(null);
-    setError(null);
+    setBusy("check");
+    try {
+      const text = await file.text();
+      if (version !== requestVersion.current) return;
+      setCsv(text);
+      setFilename(file.name);
+    } catch {
+      if (version === requestVersion.current) setError("Couldn't read that file. Choose it again.");
+    } finally {
+      if (version === requestVersion.current) setBusy(null);
+    }
   }
 
   function downloadTemplate() {
@@ -123,16 +152,19 @@ export default function StockImportPanel({
   }
 
   const writable = plan ? plan.counts.create + plan.counts.update : 0;
-  const visible = plan ? plan.rows.filter((r) => showAll || r.action !== "unchanged") : [];
+  const visible = plan ? plan.rows.filter((r) => showAll || r.action !== "unchanged" || r.warnings.length > 0) : [];
 
   return (
     <section aria-label="Import a stock list" className="rounded-3xl border border-sand bg-white p-6 shadow-sm">
       <h2 className="font-serif text-xl text-ink">Import a stock list</h2>
       <p className="mt-1 max-w-2xl text-sm text-ink/55">
         {vendor
-          ? "Upload your stock list as a spreadsheet (CSV) to add products and update your prices and stock in one go. You'll see exactly what changes before anything is saved."
-          : "Upload this supplier's stock list as a CSV to add products and update prices and stock in bulk. You'll see exactly what changes before anything is saved."}
+          ? "Upload your CSV to preview changes before saving."
+          : "Upload the supplier’s CSV to preview changes before saving."}
       </p>
+
+      <p className="mt-2 max-w-2xl text-sm text-ink/65">New and changed listings need review before publication.</p>
+      <details className="mt-2 text-sm text-ink/65"><summary className="min-h-11 cursor-pointer py-3">Import and stock checks</summary><p className="max-w-2xl pb-3">Stock checks cover recorded hire periods and buffers. Confirm external bookings, date overrides and availability separately.</p></details>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button type="button" onClick={downloadTemplate} className="rounded-full border border-ink/20 px-4 py-2 text-sm text-ink hover:border-ink/50">
@@ -140,7 +172,7 @@ export default function StockImportPanel({
         </button>
         <label className="cursor-pointer rounded-full bg-ink px-5 py-2 text-sm text-cream hover:bg-ink/90">
           Choose a file
-          <input ref={fileRef} type="file" accept=".csv,.txt,text/csv" onChange={onFile} className="sr-only" />
+          <input ref={fileRef} disabled={busy !== null} type="file" accept=".csv,.txt,text/csv" onChange={onFile} className="sr-only" />
         </label>
         <button type="button" onClick={() => setPasteOpen((o) => !o)} className="text-sm text-ink/55 underline-offset-2 hover:text-ink hover:underline">
           {pasteOpen ? "Hide paste box" : "or paste it in"}
@@ -168,6 +200,7 @@ export default function StockImportPanel({
       {pasteOpen && (
         <textarea
           aria-label="Paste your stock list"
+          disabled={busy !== null}
           value={csv}
           onChange={(e) => {
             setCsv(e.target.value);
@@ -195,7 +228,7 @@ export default function StockImportPanel({
           >
             {busy === "check" ? "Checking…" : plan ? "Check again" : "Check this file"}
           </button>
-          <button type="button" onClick={reset} className="text-ink/50 hover:text-ink">
+          <button type="button" disabled={busy !== null} onClick={reset} className="text-ink/50 hover:text-ink">
             Clear
           </button>
         </div>
@@ -222,8 +255,15 @@ export default function StockImportPanel({
             {applied.created} added · {applied.updated} updated · {applied.unchanged} unchanged
             {plan && plan.counts.error > 0 ? ` · ${plan.counts.error} skipped (fix those lines and upload again)` : ""}
           </p>
-          {vendor && applied.created > 0 && (
-            <p className="mt-1 text-xs text-ink/55">New products are hidden until Styled has reviewed them.</p>
+          {plan && plan.rows.some((r) => r.warnings.length > 0) && (
+            <ul className="mt-2 space-y-1 text-xs text-clay">
+              {plan.rows.flatMap((r) => r.warnings.map((warning) => (
+                <li key={`${r.line}:${warning}`}>{r.name}: {warning}</li>
+              )))}
+            </ul>
+          )}
+          {(applied.created > 0 || applied.updated > 0) && (
+            <p className="mt-1 text-xs text-ink/55">New products and changed catalogue details need range review before publication. Stock-only updates keep the current visibility.</p>
           )}
         </div>
       )}

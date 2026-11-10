@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SupplierRules from "@/components/vendor/SupplierRules";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { loadPublicSupplier } from "@/lib/server/suppliers";
@@ -86,6 +87,7 @@ export default async function SupplierProfilePage({
           {supplier.bio}
         </p>
       )}
+      <SupplierRules services={supplier.services}/>
       {/* Products */}
       <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {supplier.products.map((p) => (
@@ -98,7 +100,7 @@ export default async function SupplierProfilePage({
               <img
                 src={p.image}
                 alt={p.name}
-                className="aspect-[4/3] w-full object-cover"
+                className={p.demoOnly ? "aspect-[4/3] w-full bg-cream object-contain p-3" : "aspect-[4/3] w-full object-cover"}
               />
             ) : (
               <div
@@ -109,19 +111,19 @@ export default async function SupplierProfilePage({
               </div>
             )}
             <div className="p-5">
-              <p className="text-xs font-medium text-clay">
+              <p className="text-sm font-medium text-clay">
                 {vendorCategoryLabel(p.category)}
               </p>
               <h2 className="mt-1 font-serif text-xl text-ink">{p.name}</h2>
               <p className="mt-2 text-sm text-ink/60">
-                {formatGBP(p.unitPrice)}{" "}
-                <span className="text-ink/40">{p.unit}</span>
+                {p.priceOnRequest ? "Price on request" : formatGBP(p.unitPrice)}{" "}
+                <span className="text-ink/40">{!p.priceOnRequest && p.unit}</span>
               </p>
               <Link
-                href={`/design?tab=catalogue&supplier=${encodeURIComponent(supplier.id)}&add=${encodeURIComponent(p.id)}`}
+                href={`/design?tab=catalogue&product=${encodeURIComponent(p.id)}`}
                 className="mt-4 inline-block rounded-full bg-ink px-4 py-2 text-sm text-cream"
               >
-                Add in the studio
+                View product
               </Link>
             </div>
           </article>
@@ -134,18 +136,18 @@ export default async function SupplierProfilePage({
           Design with {supplier.name}&apos;s pieces
         </h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-ink/60">
-          Explore these pieces in the catalogue and build a selection. Submit a request for supplier confirmation and a final quote before agreeing payment and delivery or collection.
+          Choose products and request a quote.
         </p>
         <Link
-          href={`/design?tab=catalogue&supplier=${encodeURIComponent(supplier.id)}`}
+          href={`/design?tab=catalogue&supplier=${encodeURIComponent(id === "crescent-moon" ? supplier.name : supplier.id)}`}
           className="mt-5 inline-block rounded-full bg-ink px-6 py-3 text-sm text-cream hover:bg-ink/90"
         >
           Open the design studio
         </Link>
       </div>
 
-      <p className="mt-6 text-center text-xs text-ink/40">
-        Prices and images are illustrative. Submit a request for manual availability checks and a final quote. No payment is taken on request.
+      <p className="mt-6 text-center text-sm text-ink/40">
+        Request a quote to confirm prices and availability. No payment is taken.
       </p>
     </div>
   );

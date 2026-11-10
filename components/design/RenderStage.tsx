@@ -1,8 +1,9 @@
 "use client";
+import {useCatalogue} from "@/components/catalogue/CatalogueProvider";
 
 import { useEffect, useId, useRef, useState } from "react";
 import type { SampleVenue, StylePreset } from "@/lib/types";
-import { STYLES, getStyle } from "@/lib/styles";
+import { SAMPLE_VENUES, STYLES, getStyle } from "@/lib/styles";
 import { SCENES, DEFAULT_SCENE, type SceneId } from "@/lib/scenes";
 import { uploadVenuePhoto } from "@/lib/upload-venue-photo";
 import type { LookReport } from "@/lib/look";
@@ -12,6 +13,7 @@ import LookReportPanel from "@/components/design/LookReportPanel";
 export interface RenderRef {
   id: string;
   url: string;
+  originalUrl?: string;
   /** Catalogue item ids that make up this render — the "what's in the picture" list. */
   itemIds?: string[];
   demoStyleId?: string;
@@ -34,6 +36,10 @@ interface Props {
   renderId: string | null;
   versions: RenderRef[];
   itemIds: string[];
+  selectionMode?: "manual" | "auto";
+  onSelectionMode?: (mode: "manual" | "auto") => void;
+  onBrowseProducts?: () => void;
+  onRemoveItem?: (id: string) => void;
   guestCount: number;
   /** The couple's wedding date (YYYY-MM-DD or ""), so a render only uses what's free on it. */
   weddingDate: string;
@@ -52,7 +58,7 @@ interface Props {
   /** Remove an uploaded venue photo (and its stored file). */
   onRemoveAngle: (id: string) => void;
   /** Reveal the "Shop this look" list of pieces that make up this render. */
-  onShopLook: () => void;
+  onShopLook: (itemId?:string) => void;
   onToggleSave: () => void;
 }
 
@@ -100,6 +106,10 @@ export default function RenderStage({
   renderId,
   versions,
   itemIds,
+  selectionMode = "manual",
+  onSelectionMode,
+  onBrowseProducts,
+  onRemoveItem,
   guestCount,
   weddingDate,
   deliveryDate,
@@ -118,6 +128,14 @@ export default function RenderStage({
   initialScene = DEFAULT_SCENE,
   onGeneratingChange,
 }: Props) {
+  const catalogueState=useCatalogue();
+  const selectionError = selectionMode === "manual" && [...new Set(itemIds)].filter(id => id.startsWith("demo-crescent-moon-")).length > 1
+    ? "Use one reference lighting design per preview."
+    : selectionMode === "manual" && new Set(itemIds).size > 12 ? "Use up to 12 products per preview." : "";
+  const venueOnly=catalogueState.scope?.policy.mode==="venue_only";
+  const currentLook=versions.find(v=>v.id===renderId)?.look;
+  const inheritedSupplier=currentLook?.supplierId;
+
   const fieldId = useId();
   const descriptionId = `${fieldId}-description`;
   const changeId = `${fieldId}-change`;
@@ -150,11 +168,23 @@ export default function RenderStage({
   // party, drinks, proposal).
   const [setting, setSetting] = useState<SceneId>(initialScene);
   const [improving, setImproving] = useState(false);
+  const [descriptionBeforeImprove, setDescriptionBeforeImprove] = useState<string | null>(null);
+  const descriptionRef = useRef(description);
+  descriptionRef.current = description;
   const [improveError, setImproveError] = useState<string | null>(null);
-  const [activeExample, setActiveExample] = useState<
-    (typeof EXAMPLE_VENUES)[number] | null
-  >(null);
+  // Restore the saved sample from the authoritative event venue, never local
+  // example state left behind by a different room or event.
+  const activeExample = uploadedImages.length === 0
+    ? EXAMPLE_VENUES.find(example => example.id === venue.id) ?? null
+    : null;
   const fileRef = useRef<HTMLInputElement>(null);
+  const venueStageRef = useRef<HTMLDivElement>(null);
+  const selectionStageRef = useRef<HTMLElement>(null);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   const primary = Math.min(
     primaryPhoto,
@@ -164,14 +194,13 @@ export default function RenderStage({
   live.current = { styleId: style.id, venueId: venue.id };
 
   const uploadedPreview = uploadedImages[primary]?.url ?? null;
-  // When an example venue is active and no real upload exists, use the example
-  // image as the stage background so the experience mirrors having uploaded a photo.
-  const activeExampleUrl =
-    uploadedImages.length === 0 ? (activeExample?.image ?? null) : null;
+  const samplePreview = uploadedImages.length === 0
+    ? SAMPLE_VENUES.find(sample => sample.id === venue.id)?.image ?? null
+    : null;
   const partnerPreview = venue.id.startsWith("listing:")
     ? (venue.image ?? null)
     : null;
-  const originalImage = uploadedPreview ?? activeExampleUrl ?? partnerPreview;
+  const originalImage = uploadedPreview ?? partnerPreview ?? samplePreview;
   const previewImage = renderUrl ?? originalImage;
 
   // Keep the draft style in sync with the committed style (e.g. after a render
@@ -180,19 +209,9 @@ export default function RenderStage({
     setDraftStyleId(style.id);
   }, [style.id]);
 
-  // Expand the panel when a photo is uploaded (but no render yet).
   useEffect(() => {
-    if (uploadedImages.length > 0 && !renderUrl) setShowGenPanel(true);
-  }, [uploadedImages.length, renderUrl]);
-
-  useEffect(() => {
-    if (partnerPreview && !renderUrl) setShowGenPanel(true);
-  }, [partnerPreview, renderUrl]);
-
-  // Once a real upload lands, the example is no longer needed.
-  useEffect(() => {
-    if (uploadedImages.length > 0) setActiveExample(null);
-  }, [uploadedImages.length]);
+    if (originalImage && !renderUrl) setShowGenPanel(true);
+  }, [originalImage, renderUrl]);
 
   // Collapse the panel and reset compare when a render arrives.
   useEffect(() => {
@@ -202,10 +221,21 @@ export default function RenderStage({
     }
   }, [renderUrl]);
 
+  const selectionSignature = JSON.stringify([selectionMode, [...new Set(itemIds)].sort()]);
+  const previousSelection = useRef(selectionSignature);
+  useEffect(() => {
+    if (previousSelection.current === selectionSignature) return;
+    previousSelection.current = selectionSignature;
+    setPanelMode("new");
+    setGenError(null);
+    setShowGenPanel(true);
+  }, [selectionSignature]);
+
   // Ask the server to rewrite the couple's rough note into a fuller styling
   // brief, then drop it back into the box for them to tweak before generating.
   async function improveDescription() {
-    const current = description.trim();
+    const original = description;
+    const current = original.trim();
     if (!current || improving) return;
     setImproving(true);
     setImproveError(null);
@@ -224,7 +254,12 @@ export default function RenderStage({
           data?.error ?? "Couldn't improve that just now. Try again.",
         );
       } else if (typeof data.prompt === "string" && data.prompt.trim()) {
-        setDescription(data.prompt.trim());
+        // A slow helper response must not overwrite edits made while it ran.
+        if (descriptionRef.current !== original) return;
+        if (data.prompt.trim() !== current) {
+          setDescriptionBeforeImprove(original);
+          setDescription(data.prompt.trim());
+        }
         if (data.changed === false) {
           setImproveError(
             "That already reads well. Tweak it or generate when ready.",
@@ -245,6 +280,7 @@ export default function RenderStage({
   function openPanel(mode: "new" | "tweak") {
     setPanelMode(mode);
     setDescription("");
+    setDescriptionBeforeImprove(null);
     setGenError(null);
     setImproveError(null);
     setShowGenPanel(true);
@@ -256,14 +292,19 @@ export default function RenderStage({
   // fresh look from the venue photo, which replaces the current render.
   async function generate(
     useStyleId: string,
-    opts?: { parentRenderId?: string },
+    opts?: { parentRenderId?: string; promptOverride?: string },
   ) {
-    if (sending) return;
+    if (sending || improving) return;
+    if (selectionError && !venueOnly) {
+      setGenError(selectionError);
+      return;
+    }
+    if (selectionMode === "manual" && !itemIds.length && !venueOnly) {
+      setGenError("Choose products or select Choose for me.");
+      return;
+    }
     const refining = !!opts?.parentRenderId;
-    // A new look commits the chosen style (this clears the old render, which is
-    // correct — a render only represents the style it was made from). A tweak
-    // keeps the current render and style; we're editing it, not restyling.
-    if (!refining) onStyle(useStyleId);
+    // Commit style only after success, so a failed request keeps the current look.
     setSending(true);
     setGenError(null);
     const sentFor = { styleId: useStyleId, venueId: venue.id };
@@ -274,7 +315,7 @@ export default function RenderStage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: [
-            description.trim(),
+            opts?.promptOverride ?? description.trim(),
             !refining && boardInspiration?.notes
               ? `Board mood notes: ${boardInspiration.notes}`
               : "",
@@ -286,7 +327,9 @@ export default function RenderStage({
           images: uploadedImages.map((p) => p.url),
           photoIds: uploadedImages.map((p) => p.id),
           inspirationPhotoIds: refining ? [] : boardInspiration?.photoIds || [],
-          itemIds,
+          itemIds: selectionMode === "manual" ? itemIds : [],
+          selectionMode: venueOnly ? "auto" : selectionMode,
+          supplierId: refining ? inheritedSupplier : null,
           guestCount,
           weddingDate: weddingDate || undefined,
           deliveryDate: deliveryDate || undefined,
@@ -301,9 +344,11 @@ export default function RenderStage({
 
       if (res.status === 202 && data?.renderId) {
         const done = await waitForRender(data.renderId);
+        if (!mounted.current) return;
         if (live.current.venueId !== sentFor.venueId) {
           setShowGenPanel(true);
         } else {
+          if (!refining) onStyle(useStyleId);
           onRender({
             id: data.renderId,
             url: done.imageUrl,
@@ -312,7 +357,8 @@ export default function RenderStage({
           });
           setShowShopPrompt(true);
         }
-      } else if (data?.imageUrl) {
+      } else if (mounted.current && res.ok && data?.imageUrl && live.current.venueId === sentFor.venueId) {
+        if (!refining) onStyle(useStyleId);
         onRender({
           id: data.renderId ?? "placeholder", url: data.imageUrl,
           itemIds: data.itemIds, look: data.look,
@@ -434,7 +480,7 @@ export default function RenderStage({
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium text-ink">Your look is ready</p>
           <p className="text-[11px] leading-snug text-ink/55">
-            Review the catalogue references below and add your favourites to your basket.
+            {venueOnly?"Your venue coordinates its own suppliers. Use this image as inspiration to discuss with its team.":"Review the catalogue references below and add your favourites to your basket."}
           </p>
         </div>
         <button
@@ -445,7 +491,7 @@ export default function RenderStage({
           }}
           className="shrink-0 rounded-full bg-ink px-3 py-1.5 text-[11px] font-medium text-cream hover:bg-ink/90 transition-colors"
         >
-          Shop this look →
+          {venueOnly?"Venue suppliers →":"Shop this look →"}
         </button>
         <button
           type="button"
@@ -461,26 +507,26 @@ export default function RenderStage({
 
   // The gradient action bar (Shop / Save / Download) that sits on the styled render.
   const actionBar = (
-    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/55 to-transparent px-4 pb-3 pt-8">
-      <div className="flex items-center gap-3">
-        <span className="rounded-full border border-white/40 bg-white/15 px-3 py-1 text-[11px] text-white backdrop-blur-sm">
+    <div className="border-t border-sand bg-white p-2 sm:absolute sm:inset-x-0 sm:bottom-0 sm:border-0 sm:bg-transparent sm:bg-gradient-to-t sm:from-ink/55 sm:to-transparent sm:px-4 sm:pb-3 sm:pt-8">
+      <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:gap-3">
+        <span className="hidden rounded-full border border-white/40 bg-white/15 px-3 py-1 text-[11px] text-white backdrop-blur-sm sm:inline">
           {styleName}
         </span>
         <button
           type="button"
           onClick={() => onRender(null)}
-          className="text-[11px] text-white/55 underline-offset-2 hover:text-white hover:underline transition-colors"
+          className="order-2 min-h-11 px-2 text-xs text-ink/65 underline-offset-2 hover:underline sm:order-none sm:min-h-0 sm:px-0 sm:text-[11px] sm:text-white/70"
         >
           Start over
         </button>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="grid w-full grid-cols-3 items-stretch gap-2 sm:ml-auto sm:flex sm:w-auto sm:items-center">
           <button
             type="button"
-            onClick={onShopLook}
-            title="See the pieces that make up this look"
-            className="flex items-center gap-1.5 rounded-full border border-clay bg-clay px-3.5 py-1 text-[11px] font-medium text-cream shadow-sm hover:bg-clay/90 transition-colors"
+            onClick={()=>onShopLook()}
+            title={venueOnly?"View your venue’s supplier guidance":"See the pieces that make up this look"}
+            className="flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-clay bg-clay px-2 py-2 text-xs font-medium text-cream shadow-sm hover:bg-clay/90 sm:min-h-0 sm:px-3.5 sm:py-1 sm:text-[11px]"
           >
-            <span>🛍</span> Shop this look
+            <span aria-hidden="true">🛍</span> {venueOnly?"Venue suppliers":"Shop this look"}
           </button>
           <button
             type="button"
@@ -490,7 +536,7 @@ export default function RenderStage({
             aria-describedby={saveError ? saveErrorId : undefined}
             aria-pressed={isSaved}
             title={saveBusy ? "Saving your change…" : isSaved ? "Remove from your saved looks" : "Save to your looks"}
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] backdrop-blur-sm transition-colors disabled:cursor-wait disabled:opacity-60 ${isSaved ? "border-clay bg-clay text-cream" : "border-white/40 bg-white/15 text-white hover:bg-white/25"}`}
+            className={`flex min-h-11 items-center justify-center gap-1.5 rounded-full border px-2 py-2 text-xs transition-colors disabled:cursor-wait disabled:opacity-60 sm:min-h-0 sm:px-3 sm:py-1 sm:text-[11px] sm:backdrop-blur-sm ${isSaved ? "border-clay bg-clay text-cream" : "border-sand text-ink sm:border-white/40 sm:bg-white/15 sm:text-white sm:hover:bg-white/25"}`}
           >
             <span aria-hidden>{isSaved ? "♥" : "♡"}</span> {saveBusy ? "Saving…" : isSaved ? "Saved" : "Save"}
           </button>
@@ -499,7 +545,7 @@ export default function RenderStage({
             onClick={downloadRender}
             disabled={downloading}
             title="Download image"
-            className="flex items-center gap-1.5 rounded-full border border-white/40 bg-white/15 px-3 py-1 text-[11px] text-white backdrop-blur-sm hover:bg-white/25 transition-colors disabled:opacity-60"
+            className="flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-sand px-2 py-2 text-xs text-ink disabled:opacity-60 sm:min-h-0 sm:border-white/40 sm:bg-white/15 sm:px-3 sm:py-1 sm:text-[11px] sm:text-white sm:backdrop-blur-sm sm:hover:bg-white/25"
           >
             <span>⤓</span> {downloading ? "Saving…" : "Download"}
           </button>
@@ -508,26 +554,62 @@ export default function RenderStage({
     </div>
   );
 
+  const selectedIds = [...new Set(itemIds)];
+
   const currentStep = sending || showGenPanel ? 2 : renderUrl ? 3 : originalImage ? 2 : 1;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-sand bg-white">
-      <div className="border-b border-sand px-4 py-3">
-        <ol aria-label="Visualise progress" className="grid grid-cols-3 gap-3 text-xs sm:text-sm">
-          {["Venue photo", "Describe", "Review & shop"].map((label, index) => (
-            <li key={label} aria-current={currentStep === index + 1 ? "step" : undefined}
-              className={currentStep === index + 1 ? "font-medium text-ink" : "text-ink/60"}>
-              {index + 1}. {label}
-            </li>
-          ))}
+    <div className="overflow-hidden rounded-3xl border border-sand/80 bg-white motion-reduce:[&_*]:animate-none motion-reduce:[&_*]:transition-none">
+      <div className="border-b border-sand/70 px-5 pb-3 pt-5 sm:px-7 sm:pt-6">
+        <ol aria-label="Visualise progress" className="mx-auto flex max-w-lg">
+          {["Venue", "Your selection", "Preview"].map((label, index) => {
+            const step = index + 1;
+            const active = currentStep === step;
+            const complete = step < currentStep;
+            return <li key={label} aria-current={active ? "step" : undefined} data-state={active ? "active" : complete ? "complete" : "upcoming"}
+              className={`relative min-w-0 flex-1 after:absolute after:left-[calc(50%+1.25rem)] after:top-4 after:h-px after:w-[calc(100%-2.5rem)] last:after:hidden ${complete ? "after:bg-clay/60" : "after:bg-sand"}`}>
+              <button type="button" disabled={sending || (step === 3 && !renderUrl)} aria-label={`${label}${complete ? ", complete" : ""}`}
+                onClick={() => {
+                  if (step === 1) venueStageRef.current?.scrollIntoView({ block: "center" });
+                  if (step === 2) { openPanel("new"); selectionStageRef.current?.scrollIntoView({ block: "start" }); }
+                  if (step === 3) setShowGenPanel(false);
+                }}
+                className="group relative z-10 flex min-h-16 w-full flex-col items-center gap-2 rounded-lg pb-2 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clay/50 disabled:cursor-default">
+                <span aria-hidden="true" className={`flex h-8 w-8 items-center justify-center rounded-full border text-[11px] font-medium tabular-nums transition-colors duration-300 motion-reduce:transition-none ${active ? "border-ink bg-ink text-cream" : complete ? "border-clay/40 bg-cream text-clay" : "border-sand bg-white text-ink/40"}`}>
+                  {complete ? <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5"><path d="m4 8 2.5 2.5L12 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg> : `0${step}`}
+                </span>
+                <span className={`text-xs tracking-wide transition-colors duration-300 motion-reduce:transition-none ${active ? "font-medium text-ink" : complete ? "text-ink/70" : "text-ink/40"}`}>{label}</span>
+              </button>
+            </li>;
+          })}
         </ol>
-        <p id={illustrationId} className="mt-2 text-xs leading-relaxed text-ink/60">
-          AI preview only. Actual items, colours and proportions may differ.
-        </p>
-        <ContextHelp title="About AI previews">
-          <p>Generated images are inspiration, not exact product photographs or a guaranteed result. Scale, layout, quantities and details can differ. Check catalogue listings, dimensions and supplier photographs before booking. Confirm suitability, availability and delivery with suppliers in writing.</p>
-        </ContextHelp>
+        <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-4">
+          <p id={illustrationId} className="text-xs text-ink/50">AI preview</p>
+          <ContextHelp title="Preview details" className="max-w-xl">
+            <p>Generated images are inspiration, not exact product photographs or a guaranteed result. Scale, layout, quantities and details can differ. Check catalogue listings, dimensions and supplier photographs before booking. Confirm suitability, availability and delivery with suppliers in writing.</p>
+          </ContextHelp>
+        </div>
       </div>
+      {!venueOnly && <section ref={selectionStageRef} aria-label="Selected products" className="scroll-mt-24 border-b border-sand/70 px-5 py-4 sm:px-7">
+        <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">
+          <div role="group" aria-label="Product selection" className="inline-flex max-w-full rounded-full bg-cream p-1">
+            {([['manual', 'Choose products'], ['auto', 'Choose for me']] as const).map(([mode, label]) => <button key={mode} type="button" aria-pressed={selectionMode === mode} disabled={sending || !onSelectionMode} onClick={() => onSelectionMode?.(mode)} className={`min-h-10 rounded-full px-3 text-xs font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clay/50 disabled:opacity-50 motion-reduce:transition-none sm:px-4 ${selectionMode === mode ? "bg-white text-ink shadow-[0_1px_4px_rgba(43,38,34,0.06)]" : "text-ink/55 hover:text-ink"}`}>{label}</button>)}
+          </div>
+          {selectionMode === "manual" && onBrowseProducts && <button type="button" onClick={onBrowseProducts} className="inline-flex min-h-11 items-center gap-2 text-xs font-medium text-clay underline-offset-4 transition-colors hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clay/50 motion-reduce:transition-none">Browse products <span aria-hidden="true">↗</span></button>}
+        </div>
+        {selectionMode === "auto" ? <p className="mt-3 text-sm text-ink/60">We’ll choose catalogue products from your description and style.</p> : selectedIds.length ? <ul aria-label={`${selectedIds.length} selected products`} className="mt-3 flex flex-wrap gap-2">
+          {selectedIds.map(id => {
+            const item = catalogueState.getItem(id);
+            const name = item?.name || (catalogueState.loading ? "Loading product…" : "Product no longer listed");
+            return <li key={id} className="inline-flex max-w-full items-center gap-2 rounded-full border border-sand/90 bg-white py-1 pl-1.5 pr-1 motion-safe:animate-fade-in">
+              {item?.image ? <img src={item.image} alt="" className="h-8 w-8 shrink-0 rounded-full bg-cream object-contain p-1"/> : <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cream text-xs text-clay">{item?.icon || "·"}</span>}
+              <span className="min-w-0 max-w-[10rem] truncate text-xs font-medium text-ink sm:max-w-[14rem]" title={name}>{name}{item && <span className="sr-only"> · {item.supplier}</span>}</span>
+              {onRemoveItem && <button type="button" disabled={sending} onClick={() => onRemoveItem(id)} aria-label={`Remove ${name}`} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink/45 transition-colors hover:bg-cream hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clay/50 disabled:opacity-40 motion-reduce:transition-none"><span aria-hidden="true" className="text-lg">×</span><span className="sr-only">Remove</span></button>}
+            </li>;
+          })}
+        </ul> : <p className="mt-3 text-sm text-ink/55">Choose the pieces you’d like to see in your room.</p>}
+        {selectionError && <p role="alert" className="mt-3 text-sm text-clay">{selectionError}</p>}
+      </section>}
       {saveError && <p id={saveErrorId} role="alert" className="border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{saveError}</p>}
       {/* ── ERROR BANNER ───────────────────────────────────────────── */}
       {genError && (
@@ -546,7 +628,7 @@ export default function RenderStage({
       )}
 
       {/* ── IMAGE ──────────────────────────────────────────────────── */}
-      <div className="relative mx-3 my-3 overflow-hidden rounded-xl bg-cream sm:mx-4 sm:my-4">
+      <div ref={venueStageRef} className="relative mx-4 my-5 scroll-mt-24 overflow-hidden rounded-2xl bg-cream sm:mx-6 sm:my-6">
         {splitView ? (
           /* ── SIDE-BY-SIDE COMPARE: original left, styled right ─────── */
           <>
@@ -556,7 +638,7 @@ export default function RenderStage({
                 <img
                   src={originalImage!}
                   alt="Your original venue"
-                  className="aspect-video w-full animate-fade-in object-contain"
+                  className="aspect-video w-full motion-safe:animate-fade-in object-contain"
                 />
                 <div className="absolute left-3 top-3 rounded-full bg-ink/55 px-3 py-1 text-[11px] text-cream backdrop-blur-sm">
                   Original
@@ -567,7 +649,7 @@ export default function RenderStage({
                 <img
                   src={previewImage!}
                   alt="Illustrative AI preview of your venue"
-                  className="aspect-video w-full animate-fade-in object-contain"
+                  className="aspect-video w-full motion-safe:animate-fade-in object-contain"
                 />
                 <div className="absolute right-3 top-3 rounded-full bg-ink/55 px-3 py-1 text-[11px] text-cream backdrop-blur-sm">
                   Styled · {styleName}
@@ -584,7 +666,7 @@ export default function RenderStage({
               key={displayImage}
               src={displayImage}
               alt={showOriginal || !renderUrl ? "Original venue photo" : "Illustrative AI preview of your venue"}
-              className="block h-auto w-full animate-fade-in"
+              className="block h-auto max-h-[45svh] w-full motion-safe:animate-fade-in object-contain sm:max-h-none"
             />
 
             {/* Top-left label */}
@@ -592,7 +674,7 @@ export default function RenderStage({
               {showOriginal
                 ? "Your venue · before"
                 : renderUrl
-                  ? `${styleName} · AI render`
+                  ? styleName
                   : activeExample
                     ? `Example · ${activeExample.label}`
                     : venue.id.startsWith("listing:")
@@ -615,7 +697,6 @@ export default function RenderStage({
                       type="button"
                       title={`Switch to ${ex.label}`}
                       onClick={() => {
-                        setActiveExample(ex);
                         _onVenue(ex.id);
                         setDescription(ex.description);
                         setPanelMode("new");
@@ -637,8 +718,7 @@ export default function RenderStage({
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveExample(null);
-                    setShowGenPanel(false);
+                    fileRef.current?.click();
                   }}
                   className="text-[10px] text-white/70 hover:text-white transition-colors"
                   title="Use your own photo"
@@ -685,12 +765,10 @@ export default function RenderStage({
                 </div>
                 <div>
                   <p className="font-serif text-2xl text-ink">
-                    Add your venue &amp; generate your look
+                    Add a venue photo
                   </p>
                   <p className="mt-2 max-w-sm text-sm text-ink/50">
-                    Upload a photo of your room, then just describe the look you
-                    want, or try an example. Generate an illustrative AI preview,
-                    then review the look and explore the catalogue pieces.
+                    Upload your room or try an example, then choose products and a style.
                   </p>
                 </div>
                 <button
@@ -711,7 +789,6 @@ export default function RenderStage({
                       type="button"
                       title={ex.label}
                       onClick={() => {
-                        setActiveExample(ex);
                         _onVenue(ex.id);
                         setDescription(ex.description);
                         setPanelMode("new");
@@ -739,10 +816,11 @@ export default function RenderStage({
 
       {shopPromptCard}
       {/* ── WHAT'S IN THIS PICTURE ─────────────────────────────────── */}
-      {renderUrl &&
+      {selectionMode === "auto" && renderUrl &&
         !showOriginal &&
         versions.find((v) => v.id === renderId)?.look && (
           <LookReportPanel
+            onOpenProduct={onShopLook}
             look={versions.find((v) => v.id === renderId)!.look!}
             weddingDate={weddingDate}
             onWeddingDate={onWeddingDate}
@@ -937,14 +1015,14 @@ export default function RenderStage({
           </button>
         </div>
       ) : showGenPanel ? (
-        <div className="border-t border-sand px-5 py-5">
+        <div className="border-t border-sand/70 px-5 py-6 motion-safe:animate-fade-in sm:px-7">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="font-serif text-lg text-ink">
+            <h3 className="font-serif text-2xl tracking-tight text-ink">
               {!renderUrl
-                ? "Generate your look"
+                ? "Preview your setup"
                 : panelMode === "tweak"
                   ? "Tweak this look"
-                  : "Generate new style"}
+                  : "New style"}
             </h3>
             {/* Cancel back to the render (when a render exists), but don't show
                 a close button when an example is active — mirrors the uploaded-photo
@@ -987,9 +1065,7 @@ export default function RenderStage({
             /* ── TWEAK: a small change to the render that's showing ───────── */
             <>
               <p className="mb-4 text-xs leading-relaxed text-ink/50">
-                Describe the changes you want to explore. AI may also change
-                room details, angle or lighting. Compare the new version with
-                your original photo and earlier looks.
+                Describe your changes. Compare versions with your original photo.
               </p>
               <div className="mb-4">
                 <label htmlFor={changeId} className="mb-2 block text-xs font-medium text-ink/60">
@@ -1018,7 +1094,7 @@ export default function RenderStage({
                   if (renderId)
                     generate(style.id, { parentRenderId: renderId });
                 }}
-                disabled={sending || !description.trim() || !renderId}
+                disabled={sending || !!selectionError || !description.trim() || !renderId}
                 className="w-full rounded-full bg-ink py-3 text-sm font-medium text-cream hover:bg-ink/90 disabled:bg-ink/30 disabled:cursor-not-allowed transition-colors"
               >
                 {sending ? "Applying your changes…" : "Apply changes →"}
@@ -1035,7 +1111,7 @@ export default function RenderStage({
                 <p className="mb-2 text-xs text-ink/50">
                   What are we setting up?
                 </p>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div className="flex flex-wrap gap-2">
                   {SCENES.map((s) => {
                     const active = setting === s.id;
                     return (
@@ -1045,15 +1121,12 @@ export default function RenderStage({
                         onClick={() => setSetting(s.id)}
                         aria-pressed={active}
                         title={s.blurb}
-                        className={`rounded-xl border px-3 py-2 text-left transition-colors ${active ? "border-clay bg-clay/10" : "border-sand hover:border-clay/50"}`}
+                        className={`min-h-11 rounded-full border px-4 py-2 text-left text-xs transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clay/50 motion-reduce:transition-none ${active ? "border-clay/50 bg-cream text-ink" : "border-sand/80 text-ink/60 hover:border-clay/50"}`}
                       >
                         <span
                           className={`block text-xs font-medium ${active ? "text-ink" : "text-ink/70"}`}
                         >
-                          {s.icon} {s.label}
-                        </span>
-                        <span className="mt-0.5 block text-[11px] leading-snug text-ink/45">
-                          {s.blurb}
+                          {s.label}
                         </span>
                       </button>
                     );
@@ -1074,7 +1147,6 @@ export default function RenderStage({
                     className="flex items-center gap-1 rounded-full border border-sand px-2.5 py-1 text-[11px] text-clay hover:border-clay/60 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
                     title="Let us expand your description into a clearer brief"
                   >
-                    <span>✨</span>{" "}
                     {improving ? "Improving…" : "Improve my description"}
                   </button>
                 </div>
@@ -1083,10 +1155,11 @@ export default function RenderStage({
                   aria-describedby={`${descriptionId}-help ${illustrationId}`}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  rows={4}
-                  placeholder="e.g. blush and ivory roses with lots of trailing greenery, round tables down the middle, warm fairy lights across the ceiling, gold candlesticks and a floral arch at the entrance…"
+                  rows={3}
+                  placeholder="Name catalogue products you want, or describe your style. For example: blush and ivory roses with lots of trailing greenery, round tables down the middle, warm fairy lights across the ceiling, gold candlesticks and a floral arch at the entrance…"
                   className="w-full resize-none rounded-xl border border-sand bg-cream/50 px-3 py-2.5 text-sm text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-clay/30"
                 />
+                {descriptionBeforeImprove !== null && <button type="button" onClick={() => { setDescription(descriptionBeforeImprove); setDescriptionBeforeImprove(null); setImproveError(null); }} className="mt-2 min-h-11 text-sm underline">Undo improvement</button>}
                 <p id={`${descriptionId}-help`} className="mt-1.5 text-[11px] text-ink/60">
                   {improveError ? (
                     <span className="text-clay">{improveError}</span>
@@ -1139,14 +1212,14 @@ export default function RenderStage({
                 type="button"
                 onClick={() => generate(draftStyleId || "none")}
                 disabled={
-                  sending || (draftStyleId === "" && !description.trim())
+                  sending || improving || !!selectionError || (!venueOnly && selectionMode === "manual" && !itemIds.length) || (selectionMode === "auto" && draftStyleId === "" && !description.trim())
                 }
                 className="w-full rounded-full bg-ink py-3 text-sm font-medium text-cream hover:bg-ink/90 disabled:bg-ink/30 disabled:cursor-not-allowed transition-colors"
               >
                 {sending
                   ? "Generating…"
                   : draftStyleId === ""
-                    ? "Generate from my description →"
+                    ? itemIds.length && !description.trim() ? "Preview selected products →" : "Generate from my description →"
                     : renderUrl
                       ? `Generate ${getStyle(draftStyleId).name} →`
                       : "Generate →"}

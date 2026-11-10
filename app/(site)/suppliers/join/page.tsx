@@ -1,19 +1,18 @@
 import Link from "next/link";
-import VendorApplication from "../../vendors/page";
+import VendorApplication from "@/components/vendor/VendorApplication";
 export const metadata = { title: "Join Styled as a supplier" };
 export default function SupplierJoinPage() {
   return (
     <>
       <section className="max-w-3xl pt-16">
-        <p className="text-xs uppercase tracking-widest text-clay">
+        <p className="text-sm uppercase tracking-widest text-clay">
           For independent wedding suppliers
         </p>
         <h1 className="mt-4 font-serif text-5xl">
           Your pieces, part of their day
         </h1>
         <p className="mt-5 text-ink/60">
-          Reach couples bringing their wedding ideas together with real
-          products.
+          Share your range with couples planning their wedding.
         </p>
         <ol className="mt-8 grid gap-6 sm:grid-cols-3">
           <li>
@@ -25,15 +24,13 @@ export default function SupplierJoinPage() {
           <li>
             <h2 className="font-serif text-2xl">2. Help couples explore</h2>
             <p className="mt-2 text-sm text-ink/60">
-              Your catalogue can be browsed independently and used as
-              inspiration in the visualiser.
+              Show your products in the catalogue and visualiser.
             </p>
           </li>
           <li>
             <h2 className="font-serif text-2xl">3. Manage your orders</h2>
             <p className="mt-2 text-sm text-ink/60">
-              Review incoming orders and keep products and availability up to
-              date through your portal.
+              Review requests and update products and availability.
             </p>
           </li>
         </ol>
@@ -44,9 +41,7 @@ export default function SupplierJoinPage() {
             joining and applies to confirmed bookings.
           </p>
           <p className="mt-3 text-sm text-ink/60">
-            We’re looking for UK suppliers with clear product photography,
-            accurate availability and reliable delivery or collection
-            arrangements.
+            Have product photos, stock details and delivery or collection options ready.
           </p>
         </div>
         <Link
@@ -56,7 +51,7 @@ export default function SupplierJoinPage() {
           Already a supplier? Sign in
         </Link>
       </section>
-      <VendorApplication />
+      <VendorApplication embedded />
     </>
   );
 }

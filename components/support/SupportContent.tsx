@@ -79,8 +79,7 @@ export default function SupportContent() {
           >
             <h3 className="font-serif text-2xl">Your request is saved</h3>
             <p className="mt-3 text-sm leading-relaxed">
-              You can check replies in Your requests. Keep reference{" "}
-              <strong>{sent}</strong> when following up.
+              Check Your requests for replies. Reference: <strong>{sent}</strong>.
             </p>
             <p className="mt-3 text-sm text-ink/70">
               A support message does not change or cancel a booking.
@@ -137,8 +136,7 @@ export default function SupportContent() {
             }}
           >
             <p className="text-sm leading-relaxed text-ink/70">
-              Ask about your plans, a request or your business workspace. Send
-              directly to the Styled team and check replies in Your requests.
+              Ask the Styled team. Replies appear in Your requests.
             </p>
             <label className="block text-sm" htmlFor={`${id}-topic`}>
               What can we help with?
@@ -184,7 +182,7 @@ export default function SupportContent() {
                 placeholder="Tell us what you need help with, or what you expected to happen."
               />
             </label>
-            <p className="text-xs leading-relaxed text-ink/70">
+            <p className="text-sm leading-relaxed text-ink/70">
               Do not include passwords, card details or sign-in codes.
             </p>
             {error && (
@@ -202,10 +200,8 @@ export default function SupportContent() {
             >
               {busy ? "Saving your request…" : "Send to Styled support"}
             </button>
-            <p className="text-xs leading-relaxed text-ink/60">
-              A confirmed account is needed to send here. Your request stays in
-              Styled. Closing Support keeps this draft while the page stays
-              open.
+            <p className="text-sm leading-relaxed text-ink/60">
+              Sign in with a confirmed account to send.
             </p>
           </form>
         )}
