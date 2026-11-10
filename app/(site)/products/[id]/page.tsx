@@ -1,3 +1,4 @@
+import { demoPreviewAllowed } from "@/lib/server/development-request-catalogue";
 import { cache } from "react";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
 // supplier information never enter this route. Cache within one request only.
 const productById = cache(async (id: string) => {
   const host = (await headers()).get("host")?.split(":")[0].toLowerCase();
-  const previewsAllowed = process.env.NODE_ENV === "development" || host === "styledukprodprogress.vercel.app";
+  const previewsAllowed = demoPreviewAllowed(host ? new Request("https://" + host) : undefined);
   const preview = previewsAllowed ? crescentMoonDemoCatalogue().find((item) => item.id === id) : undefined;
   if (preview) return preview;
   return (await loadCatalogue()).find((item) => item.id === id);

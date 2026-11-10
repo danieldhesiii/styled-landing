@@ -28,8 +28,8 @@ export interface PublicSupplierProfile extends PublicSupplier {
 
 async function previewChandeliers() {
   const host = (await headers()).get("host");
-  if (host !== "styledukprodprogress.vercel.app") return [];
-  return developmentRequestCatalogue(new Request("https://styledukprodprogress.vercel.app"));
+  if (!host) return [];
+  return developmentRequestCatalogue(new Request("https://" + host));
 }
 
 // Every supplier with at least one shoppable product, alphabetical.
