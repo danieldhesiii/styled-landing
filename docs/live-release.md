@@ -1,6 +1,6 @@
 # Releasing styleduk.com
 
-Daniel's private styled-landing repository, branch main, feeds the styled-landing Vercel project. Both styleduk.com and www.styleduk.com use this project. The production database is Wedding Planner (yfwqcidkfjzpwbylgnug). Feature development continues in styledukprodprogress with its own database.
+Daniel's public styled-landing repository, branch main, feeds the styled-landing Vercel project. Both styleduk.com and www.styleduk.com use this project. The production database is Wedding Planner (yfwqcidkfjzpwbylgnug). Feature development continues in styledukprodprogress with its own database.
 
 1. Bring only the approved change across on a branch. Open a pull request. Record the previous Ready deployment URL and the commit being replaced.
 2. Review the diff and the GitHub Live release checks, including the isolated SQL fixtures, TypeScript, build and both sign-in forms. Inspect the Vercel preview. Keep private keys in the relevant provider settings.
@@ -10,7 +10,7 @@ Daniel's private styled-landing repository, branch main, feeds the styled-landin
 
 ## Operating limits
 
-GitHub Free on a private personal repo cannot enforce required reviewers and checks. Review is currently a team procedure. A build failure blocks that deployment, but repository administrators can change the build configuration. Move to a company-controlled plan with enforceable required checks before commercial launch. Run an intentional failing pull request to verify enforcement once configured.
+Require a pull request and the GitHub Actions verify check on main, including for administrators. Keep the branch up to date before merging. Ask another founder to review; assign a mandatory independent reviewer once a second maintainer has accepted write access. Repository owners can edit protections. Before changing repository visibility or ownership, verify both the GitHub protection plan and Vercel integration. This repository and its history are public.
 
 Assign a primary and backup incident owner. Before relying on supplier bookings, test external downtime alerts, an actual supplier inbox delivery, and recovery of both a hosted database backup and its associated Storage images in isolation. Record the evidence and the last drill date. Keep a known working deployment and review support/email queue delays after each release.
 
