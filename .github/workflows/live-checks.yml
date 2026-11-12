@@ -41,8 +41,4 @@ jobs:
           npm start -- --port 3100 > "$RUNNER_TEMP/styled-start.log" 2>&1 &
           trap 'kill $! 2>/dev/null || true' EXIT
           curl -fsS --retry 12 --retry-connrefused --retry-delay 1 http://localhost:3100/api/health | jq -e '.status == "ok"'
-          for route in /login /portal/login; do
-            google-chrome --headless --no-sandbox --disable-gpu --dump-dom "http://localhost:3100$route" > "$RUNNER_TEMP/styled-login.html"
-            grep -q 'type="email"' "$RUNNER_TEMP/styled-login.html"
-            grep -q 'type="password"' "$RUNNER_TEMP/styled-login.html"
-          done
+          node scripts/check-login-pages.mjs
