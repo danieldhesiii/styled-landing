@@ -1,0 +1,48 @@
+name: Live release checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: live-checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      ENABLE_BOOKING_EMAILS: 'false'
+      # Fictional build-only values. CI has no hosted database/provider secrets.
+      NEXT_PUBLIC_SUPABASE_URL: https://live-check.invalid
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-public-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-server-key
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: Behaviour and isolated database tests
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Check public entry points on the built app
+        run: |
+          npm start -- --port 3100 > "$RUNNER_TEMP/styled-start.log" 2>&1 &
+          trap 'kill $! 2>/dev/null || true' EXIT
+          curl -fsS --retry 12 --retry-connrefused --retry-delay 1 http://localhost:3100/api/health | jq -e '.status == "ok"'
+          for route in /login /portal/login; do
+            google-chrome --headless --no-sandbox --disable-gpu --dump-dom "http://localhost:3100$route" > "$RUNNER_TEMP/styled-login.html"
+            grep -q 'type="email"' "$RUNNER_TEMP/styled-login.html"
+            grep -q 'type="password"' "$RUNNER_TEMP/styled-login.html"
+          done
