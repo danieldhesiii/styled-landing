@@ -1,0 +1,19 @@
+name: Domain health
+on:
+  schedule:
+    - cron: '17 7,19 * * *'
+  workflow_dispatch:
+  deployment_status:
+permissions: {}
+jobs:
+  check:
+    if: github.event_name != 'deployment_status' || (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify the customer domain responds
+        run: |
+          set -eo pipefail
+          for hostname in styleduk.com www.styleduk.com; do
+            curl --proto '=https' --proto-redir '=https' --location --max-redirs 2 --max-time 15 --retry 2 --fail --silent --show-error "https://$hostname/api/health" | jq -e '.status == "ok"'
+          done
