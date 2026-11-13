@@ -7,8 +7,9 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 const NAV_LINKS = [
-  { href: "/venues", label: "Venues" },
-  { href: "/suppliers", label: "Suppliers" },
+  { href: "/#wedding-looks", label: "Explore looks" },
+  { href: "/venues", label: "Find a venue" },
+  { href: "/suppliers", label: "Browse suppliers" },
 ];
 const linkStyle = "inline-flex min-h-11 items-center text-sm underline-offset-8 hover:underline motion-safe:transition-colors motion-safe:duration-200";
 
@@ -33,18 +34,18 @@ export default function SiteHeader() {
         toggle.current?.focus();
       }
     }} className="sticky top-0 z-30 border-b border-sand bg-cream/95 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-5 px-5 py-3 sm:py-4">
-        <Link href="/" aria-label="Styled home" className="inline-flex min-h-11 shrink-0 items-center font-serif text-3xl tracking-tight text-ink">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:gap-6 px-5 py-3 sm:py-4">
+        <Link href="/" aria-label="Styled home" className="inline-flex w-fit min-h-11 shrink-0 items-center font-serif text-3xl tracking-tight text-ink">
           Styled<span className="text-clay">.</span>
         </Link>
-        <nav aria-label="Primary" className="hidden items-center gap-7 lg:flex">
+        <nav aria-label="Explore Styled" className="hidden items-center gap-7 lg:flex">
           {!supplierEntry && NAV_LINKS.map(link => <Link key={link.href} href={link.href} aria-current={current(link.href) ? "page" : undefined}
             className={`${linkStyle} ${current(link.href) ? "text-ink underline decoration-clay" : "text-ink/70"}`}>{link.label}</Link>)}
         </nav>
-        <div className="ml-auto flex items-center gap-2 sm:gap-5">
+        <div className="ml-auto flex items-center gap-2 sm:gap-4">
           {!supplierEntry && <CustomerInboxLink />}
-          <Link href={supplierEntry ? "/portal/login" : planningCustomer ? "/design?tab=wedding" : "/login?mode=login"} className={`${linkStyle} ${planningCustomer && !supplierEntry ? "hidden sm:inline-flex" : ""} text-ink/70`}>{supplierEntry ? "Supplier log in" : planningCustomer ? "Wedding plan" : "Log in"}</Link>
-          {!supplierEntry && !signedIn && <Link href="/design?tab=wedding" className="hidden min-h-11 items-center rounded-full bg-ink px-5 text-sm text-cream hover:bg-ink/90 motion-safe:transition-colors motion-safe:duration-200 lg:inline-flex">Start planning</Link>}
+          {(supplierEntry || !planningCustomer) && <Link href={supplierEntry ? "/portal/login" : "/login?mode=login"} className={linkStyle}>{supplierEntry ? "Supplier log in" : "Log in"}</Link>}
+          {!supplierEntry && <Link href="/design?tab=wedding" className="hidden min-h-11 items-center whitespace-nowrap rounded-full bg-ink px-5 text-sm text-cream hover:bg-ink/90 motion-safe:transition-colors lg:inline-flex">{planningCustomer ? "My wedding plan" : "Start planning"}</Link>}
           <button ref={toggle} type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} aria-controls="mobile-menu"
             aria-label={open ? "Close menu" : "Open menu"} className="inline-flex min-h-11 items-center gap-2 text-sm text-ink lg:hidden">
             {open ? "Close" : "Menu"}<span aria-hidden="true" className="text-lg">{open ? "−" : "+"}</span>
@@ -57,7 +58,7 @@ export default function SiteHeader() {
             aria-current={current(link.href) ? "page" : undefined} className="flex min-h-12 items-center justify-between border-b border-sand py-3 text-base text-ink">
             {link.label}<span aria-hidden="true">→</span>
           </Link>)}
-          {supplierEntry ? <Link href="/" className={linkStyle}>Back to Styled</Link> : <Link href="/design?tab=wedding" onClick={() => setOpen(false)} className="mt-3 inline-flex min-h-12 items-center justify-center rounded-full bg-ink px-5 py-3 text-sm text-cream">{signedIn ? "Wedding plan" : "Start planning"}</Link>}
+          {supplierEntry ? <Link href="/" className={linkStyle}>Back to Styled</Link> : <Link href="/design?tab=wedding" onClick={() => setOpen(false)} className="mt-3 inline-flex min-h-12 items-center justify-center rounded-full bg-ink px-5 py-3 text-sm text-cream">{planningCustomer ? "My wedding plan" : "Start planning"}</Link>}
         </div>
       </nav>
     </header>

@@ -127,7 +127,7 @@ export default function Page() {
       </section>
 
       {/* ------------------------------------------------- Style demo */}
-      <section className="mt-14 py-6 sm:mt-20">
+      <section id="wedding-looks" className="mt-14 scroll-mt-24 py-6 sm:mt-20">
         <div className="mb-8 max-w-2xl">
           <h2 className="font-serif text-4xl text-ink sm:text-5xl">
             Try every style before you commit.
