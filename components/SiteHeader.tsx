@@ -18,8 +18,7 @@ export default function SiteHeader() {
   const toggle = useRef<HTMLButtonElement>(null);
   const header = useOutsideClick<HTMLElement>(open, () => setOpen(false));
   const pathname = usePathname();
-  const { signedIn } = useCustomerInbox();
-  const planningCustomer = signedIn || pathname === "/messages";
+  const { signedIn, unread } = useCustomerInbox();
   const supplierEntry = pathname === "/suppliers/join" || pathname === "/vendors";
   useEffect(() => setOpen(false), [pathname]);
   const current = (href: string) => {
@@ -43,9 +42,9 @@ export default function SiteHeader() {
             className={`${linkStyle} ${current(link.href) ? "text-ink underline decoration-clay" : "text-ink/70"}`}>{link.label}</Link>)}
         </nav>
         <div className="ml-auto flex items-center gap-2 sm:gap-4">
-          {!supplierEntry && <CustomerInboxLink />}
-          {(supplierEntry || !planningCustomer) && <Link href={supplierEntry ? "/portal/login" : "/login?mode=login"} className={linkStyle}>{supplierEntry ? "Supplier log in" : "Log in"}</Link>}
-          {!supplierEntry && <Link href="/design?tab=wedding" className="hidden min-h-11 items-center whitespace-nowrap rounded-full bg-ink px-5 text-sm text-cream hover:bg-ink/90 motion-safe:transition-colors lg:inline-flex">{planningCustomer ? "My wedding plan" : "Start planning"}</Link>}
+          {!supplierEntry && unread > 0 && <CustomerInboxLink />}
+          {(supplierEntry || !signedIn) && <Link href={supplierEntry ? "/portal/login" : "/login?mode=login"} className={linkStyle}>{supplierEntry ? "Supplier log in" : "Log in"}</Link>}
+          {!supplierEntry && <Link href="/design?tab=wedding" className="hidden min-h-11 items-center whitespace-nowrap rounded-full bg-ink px-5 text-sm text-cream hover:bg-ink/90 motion-safe:transition-colors lg:inline-flex">{signedIn ? "My wedding plan" : "Start planning"}</Link>}
           <button ref={toggle} type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} aria-controls="mobile-menu"
             aria-label={open ? "Close menu" : "Open menu"} className="inline-flex min-h-11 items-center gap-2 text-sm text-ink lg:hidden">
             {open ? "Close" : "Menu"}<span aria-hidden="true" className="text-lg">{open ? "−" : "+"}</span>
@@ -58,7 +57,7 @@ export default function SiteHeader() {
             aria-current={current(link.href) ? "page" : undefined} className="flex min-h-12 items-center justify-between border-b border-sand py-3 text-base text-ink">
             {link.label}<span aria-hidden="true">→</span>
           </Link>)}
-          {supplierEntry ? <Link href="/" className={linkStyle}>Back to Styled</Link> : <Link href="/design?tab=wedding" onClick={() => setOpen(false)} className="mt-3 inline-flex min-h-12 items-center justify-center rounded-full bg-ink px-5 py-3 text-sm text-cream">{planningCustomer ? "My wedding plan" : "Start planning"}</Link>}
+          {supplierEntry ? <Link href="/" className={linkStyle}>Back to Styled</Link> : <Link href="/design?tab=wedding" onClick={() => setOpen(false)} className="mt-3 inline-flex min-h-12 items-center justify-center rounded-full bg-ink px-5 py-3 text-sm text-cream">{signedIn ? "My wedding plan" : "Start planning"}</Link>}
         </div>
       </nav>
     </header>
