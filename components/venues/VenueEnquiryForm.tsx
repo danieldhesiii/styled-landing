@@ -1,4 +1,5 @@
 "use client";
+import FormExit from "@/components/ui/FormExit";
 import { hireDateError } from "@/lib/booking-dates";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
@@ -239,6 +240,7 @@ export default function VenueEnquiryForm({
             ? "Send viewing request"
             : "Send booking request"}
       </button>
+      <FormExit href={`/venues/${slug}#venue-overview`}>Back to venue details</FormExit>
     </form>
   );
 }

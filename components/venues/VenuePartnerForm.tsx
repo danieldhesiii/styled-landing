@@ -1,4 +1,5 @@
 "use client";
+import FormExit from "@/components/ui/FormExit";
 import { useState, type FormEvent } from "react";
 export default function VenuePartnerForm() {
   const [path, setPath] = useState("new");
@@ -109,6 +110,7 @@ export default function VenuePartnerForm() {
           >
             {busy ? "Sending…" : "Send venue application"}
           </button>
+          <FormExit href="/venues">Back to venues</FormExit>
         </form>
       )}
     </div>

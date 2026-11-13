@@ -1,5 +1,6 @@
 "use client";
 
+import FormExit from "@/components/ui/FormExit";
 import { useEffect, useState } from "react";
 import OrderStatusCard, { type OrderView } from "@/components/order/OrderStatusCard";
 
@@ -47,6 +48,7 @@ export default function OrderPage() {
 
   return (
     <div className="mx-auto max-w-2xl py-12">
+      <FormExit />
       <h1 className="font-serif text-4xl text-ink sm:text-5xl">Track your order</h1>
       <p className="mt-3 text-ink/60">
         Check supplier replies and request status.
