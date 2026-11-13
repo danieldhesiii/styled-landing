@@ -8,9 +8,10 @@ export async function middleware(request: NextRequest) {
   return updateSession(request);
 }
 
-// Only routes that use the guest session. The marketing site is untouched.
+// The homepage also checks the session so returning customers resume their plan.
 export const config = {
   matcher: [
+    "/",
     "/design/:path*",
     "/api/:path*",
     "/admin/:path*",

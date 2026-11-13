@@ -18,7 +18,10 @@ export default function SiteHeader() {
   const toggle = useRef<HTMLButtonElement>(null);
   const header = useOutsideClick<HTMLElement>(open, () => setOpen(false));
   const pathname = usePathname();
-  const { signedIn, unread } = useCustomerInbox();
+  const { signedIn } = useCustomerInbox();
+  const links = signedIn
+    ? [{ href: "/design?tab=visualiser", label: "Visualise" }, ...NAV_LINKS.slice(1)]
+    : NAV_LINKS;
   const supplierEntry = pathname === "/suppliers/join" || pathname === "/vendors";
   useEffect(() => setOpen(false), [pathname]);
   const current = (href: string) => {
@@ -38,11 +41,11 @@ export default function SiteHeader() {
           Styled<span className="text-clay">.</span>
         </Link>
         <nav aria-label="Explore Styled" className="hidden items-center gap-7 lg:flex">
-          {!supplierEntry && NAV_LINKS.map(link => <Link key={link.href} href={link.href} aria-current={current(link.href) ? "page" : undefined}
+          {!supplierEntry && links.map(link => <Link key={link.href} href={link.href} aria-current={current(link.href) ? "page" : undefined}
             className={`${linkStyle} ${current(link.href) ? "text-ink underline decoration-clay" : "text-ink/70"}`}>{link.label}</Link>)}
         </nav>
         <div className="ml-auto flex items-center gap-2 sm:gap-4">
-          {!supplierEntry && unread > 0 && <CustomerInboxLink />}
+          {!supplierEntry && <CustomerInboxLink />}
           {(supplierEntry || !signedIn) && <Link href={supplierEntry ? "/portal/login" : "/login?mode=login"} className={linkStyle}>{supplierEntry ? "Supplier log in" : "Log in"}</Link>}
           {!supplierEntry && <Link href="/design?tab=wedding" className="hidden min-h-11 items-center whitespace-nowrap rounded-full bg-ink px-5 text-sm text-cream hover:bg-ink/90 motion-safe:transition-colors lg:inline-flex">{signedIn ? "My wedding plan" : "Start planning"}</Link>}
           <button ref={toggle} type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} aria-controls="mobile-menu"
@@ -53,7 +56,7 @@ export default function SiteHeader() {
       </div>
       <nav id="mobile-menu" hidden={!open} aria-label="Mobile" className="border-t border-sand bg-cream px-5 pb-6 pt-2 motion-safe:animate-fade-in lg:hidden">
         <div className="mx-auto flex max-w-6xl flex-col">
-          {!supplierEntry && NAV_LINKS.map(link => <Link key={link.href} href={link.href} onClick={() => setOpen(false)}
+          {!supplierEntry && links.map(link => <Link key={link.href} href={link.href} onClick={() => setOpen(false)}
             aria-current={current(link.href) ? "page" : undefined} className="flex min-h-12 items-center justify-between border-b border-sand py-3 text-base text-ink">
             {link.label}<span aria-hidden="true">→</span>
           </Link>)}

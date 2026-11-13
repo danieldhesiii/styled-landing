@@ -34,6 +34,14 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+  if (pathname === "/" && user?.email_confirmed_at && !user.is_anonymous) {
+    // The planner applies its existing supplier membership check on arrival.
+    const redirect = NextResponse.redirect(new URL("/design?tab=wedding", request.url));
+    redirect.headers.set("Cache-Control", "private, no-store");
+    response.cookies.getAll().forEach(cookie => redirect.cookies.set(cookie));
+    return redirect;
+  }
+
   const needsAuth = PROTECTED.some(
     (p) => pathname === p || pathname.startsWith(p + "/"),
   );
