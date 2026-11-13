@@ -20,6 +20,14 @@ import ProductDetails from "./ProductDetails";
 import ProductPurchase from "./ProductPurchase";
 import type { BoardPickerProps } from "@/components/wedding/BoardPicker";
 import ProductPreviewSelection from "./ProductPreviewSelection";
+// Keep each product's position for the lifetime of this browser page, including
+// catalogue refetches and trips between the catalogue and the visualiser.
+const featuredRanks = new Map<string, number>();
+function featuredRank(id: string) {
+  if (!featuredRanks.has(id)) featuredRanks.set(id, Math.random());
+  return featuredRanks.get(id)!;
+}
+
 interface Props extends PlanningDetails, BoardPickerProps {
   matches?: Record<string, DiscoveryMatch>;
   placeMatches?: Record<string, string>;
@@ -201,7 +209,14 @@ export default function ProductBrowser({
     return [s.name, s.area, categoryNames].join(" ").toLowerCase().includes(supplierSearch.trim().toLowerCase());
   }).sort((a, b) => (matches?.[a.id]?.miles ?? Infinity) - (matches?.[b.id]?.miles ?? Infinity));
 
-  let items = catalogue.filter(
+  const [pageReady, setPageReady] = useState(false);
+  useEffect(() => setPageReady(true), []);
+  const featuredCatalogue = useMemo(() => {
+    if (!pageReady || sort !== "featured" || savedOnly || view !== "browse") return catalogue;
+    return [...catalogue].sort((a, b) => featuredRank(a.id) - featuredRank(b.id));
+  }, [catalogue, pageReady, sort, savedOnly, view]);
+
+  let items = featuredCatalogue.filter(
     (i) =>
       (!category || i.category === category) &&
       (!supplier || (i.supplierId || i.supplier) === supplier) &&
