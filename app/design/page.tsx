@@ -989,7 +989,7 @@ function DesignStudio() {
       <SkipLink target="studio-content" />
       <header className="sticky top-0 z-30 border-b border-sand bg-cream/95 backdrop-blur">
         <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center gap-x-2 px-3 py-1 sm:gap-x-3 sm:px-5 lg:gap-x-6">
-          <Link href="/" className="shrink-0 font-serif text-2xl tracking-tight text-ink">Styled<span className="text-clay">.</span></Link>
+          <Link href="/design?tab=wedding" aria-label="Styled wedding plan" className="shrink-0 font-serif text-2xl tracking-tight text-ink">Styled<span className="text-clay">.</span></Link>
           {workspaceLoaded && restored && <button type="button" title="Edit event dates" disabled={workspaceSaving || generationBusy || step !== "studio"} onClick={() => { setDateEditorRequest(n => n + 1); switchStudioTab("wedding"); }} className="inline-flex min-h-11 shrink-0 items-center rounded-sm px-1 focus-visible:outline-clay"><EventCountdown name={activeEventName} date={brief.weddingDate} /></button>}
           {step === "studio" && <div className="hidden min-w-0 md:order-last md:block md:w-full lg:order-none lg:w-auto lg:flex-1"><StudioNavigation venueSuppliers={venueScope?.policy.mode === "venue_only" || venueScope?.policy.mode === "venue_partners"} active={studioTab} onSelect={switchStudioTab} /></div>}
           <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
