@@ -105,7 +105,7 @@ export default async function VenuePage({
       </p>
       <div className="mt-3 flex flex-wrap items-end justify-between gap-5">
         <div>
-          <h1 className="font-serif text-4xl sm:text-6xl">{venue.name}</h1>
+          <h1 id="venue-overview" className="scroll-mt-24 font-serif text-4xl sm:text-6xl">{venue.name}</h1>
           <p className="mt-4 text-ink/60">
             {venue.location}
             {venue.capacity_max

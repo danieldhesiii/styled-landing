@@ -1,5 +1,6 @@
 "use client";
 
+import FormExit from "@/components/ui/FormExit";
 import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -32,6 +33,7 @@ function LoginForm() {
         Styled.
       </Link>
       <div className="w-full max-w-sm rounded-3xl border border-sand bg-white p-8 shadow-sm">
+        <FormExit href={next.startsWith("/venue-portal") ? "/venues/partner" : "/"}>{next.startsWith("/venue-portal") ? "Back to venue information" : "Back to home"}</FormExit>
         <h1 className="font-serif text-2xl text-ink">Your Styled account</h1>
         {next.startsWith("/venue-portal") && (
           <p className="mt-2 text-sm text-ink/70">

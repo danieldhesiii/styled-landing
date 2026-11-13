@@ -1,3 +1,4 @@
+import FormExit from "@/components/ui/FormExit";
 import SupportContent from "@/components/support/SupportContent";
 import Link from "next/link";
 export const metadata = {
@@ -11,6 +12,7 @@ export default async function SupportPage({searchParams}:{searchParams:Promise<{
   const initialReference=typeof conversation==="string"&&/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(conversation)?"Supplier conversation "+conversation:"";
   return (
     <section className="mx-auto max-w-2xl py-10 sm:py-14">
+      <FormExit href={initialReference ? "/messages" : "/"}>{initialReference ? "Back to inbox" : "Back to home"}</FormExit>
       <h1 className="font-serif text-4xl">Help & support</h1>
       <p className="mb-6 mt-3 text-sm text-ink/70">
         Get help with your plans, requests or business workspace.

@@ -1,5 +1,6 @@
 "use client";
 
+import FormExit from "@/components/ui/FormExit";
 import { useState } from "react";
 import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
 
@@ -61,6 +62,7 @@ export default function VendorApplication({ embedded = false }: { embedded?: boo
         Share your business details. Applying does not create an account.
       </p>
 
+      <FormExit />
       <form onSubmit={submit} className="mt-10 grid gap-5">
         {/* Honeypot — hidden from people, tempting to bots. */}
         <input
@@ -133,6 +135,7 @@ export default function VendorApplication({ embedded = false }: { embedded?: boo
         >
           {busy ? "Sending…" : "Apply to join"}
         </button>
+        <FormExit />
       </form>
     </div>
   );

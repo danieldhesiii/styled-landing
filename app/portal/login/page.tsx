@@ -1,4 +1,5 @@
 "use client";
+import FormExit from "@/components/ui/FormExit";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -90,6 +91,7 @@ export default function PortalLoginPage() {
         <Link href="/portal/login" className="font-serif text-2xl">
           Styled. <span className="font-sans text-sm">Supplier</span>
         </Link>
+        <div><FormExit /></div>
         <h1 className="mt-6 font-serif text-3xl">Supplier log in</h1>
         <p className="mt-2 text-sm text-ink/70">
           Sign in to upload products and manage your supplier inbox.

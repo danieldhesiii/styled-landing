@@ -1,3 +1,4 @@
+import FormExit from "@/components/ui/FormExit";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { safeLocalRedirect } from "@/lib/auth/navigation";
@@ -11,5 +12,5 @@ export default async function ResetPage({ searchParams }: { searchParams: Promis
   const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user || user.is_anonymous) redirect(`/auth/recovery?${new URLSearchParams({ next, error: "link" })}`);
-  return <main className="mx-auto min-h-screen max-w-md px-5 py-16"><div className="rounded-3xl border border-sand bg-white p-7"><ResetPasswordForm next={next} supplierSetup={supplierSetup} /></div></main>;
+  return <main className="mx-auto min-h-screen max-w-md px-5 py-16"><div className="rounded-3xl border border-sand bg-white p-7"><FormExit href={supplierSetup ? "/portal/login" : "/"}>{supplierSetup ? "Back to supplier login" : "Back to home"}</FormExit><ResetPasswordForm next={next} supplierSetup={supplierSetup} /></div></main>;
 }
