@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { UUID } from "@/lib/pilot-readiness";
 import { requireStaff } from "@/lib/server/staff";
 
 // PATCH /api/admin/vendor-applications/[id]  { status }
@@ -16,6 +17,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!auth.ok) return auth.response;
   const { id } = await params;
 
+  if (!UUID.test(id)) return fail(400, "Invalid application.");
   let body: { status?: unknown };
   try {
     body = await req.json();
@@ -27,10 +29,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return fail(400, `status must be one of: ${STATUSES.join(", ")}.`);
   }
 
+  if (body.status === "accepted") return fail(422, "Use Approve and create workspace after reviewing this supplier.");
+  const current = await auth.admin.from("vendor_applications").select("supplier_id").eq("id", id).maybeSingle();
+  if (current.error) return fail(503, "Could not check the application.");
+  if (current.data?.supplier_id) return fail(409, "This application has a supplier workspace. Manage its access from the supplier page.");
   const { data, error } = await auth.admin
     .from("vendor_applications")
-    .update({ status: body.status })
-    .eq("id", id)
+    .update({ status: body.status, reviewed_by: auth.user.id, reviewed_at: new Date().toISOString() })
+    .eq("id", id).is("supplier_id", null)
     .select("id, status");
   if (error) {
     console.error("[admin/vendor-applications PATCH]", error);

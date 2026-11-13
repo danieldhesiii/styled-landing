@@ -4,7 +4,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { safeLocalRedirect } from "@/lib/auth/navigation";
 import { authError } from "@/lib/auth/messages";
-export default function ResetPasswordForm({ next }: { next: string }) {
+export default function ResetPasswordForm({ next, supplierSetup = false }: { next: string; supplierSetup?: boolean }) {
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -31,6 +32,7 @@ export default function ResetPasswordForm({ next }: { next: string }) {
       }
       const { error: updateError } = await supabase.auth.updateUser({
         password,
+        ...(supplierSetup ? { data: { display_name: name.trim() } } : {}),
       });
       if (updateError) throw updateError;
       setPassword("");
@@ -60,8 +62,10 @@ export default function ResetPasswordForm({ next }: { next: string }) {
     );
   return (
     <>
-      <h1 className="font-serif text-3xl">Choose a new password</h1>
+      <h1 className="font-serif text-3xl">{supplierSetup ? "Set up your supplier account" : "Choose a new password"}</h1>
+      {supplierSetup && <p className="mt-3 text-sm text-ink/65">Your invitation email is your login. Choose your name and a private password below.</p>}
       <form onSubmit={submit} className="mt-6 space-y-4">
+        {supplierSetup && <><label htmlFor="supplier-display-name" className="block text-sm">Your name</label><input id="supplier-display-name" autoComplete="name" required maxLength={100} value={name} onChange={e=>setName(e.target.value)} className="w-full rounded-xl border border-sand px-4 py-3" /></>}
         <label htmlFor="reset-password" className="block text-sm">
           New password (at least 6 characters)
         </label>
@@ -97,7 +101,7 @@ export default function ResetPasswordForm({ next }: { next: string }) {
           disabled={busy}
           className="w-full rounded-full bg-ink px-6 py-3 text-cream disabled:opacity-50"
         >
-          {busy ? "Updating password…" : "Update password"}
+          {busy ? "Saving…" : supplierSetup ? "Save and open supplier workspace" : "Update password"}
         </button>
       </form>
       <Link

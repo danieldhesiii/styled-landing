@@ -1,3 +1,6 @@
+import { after } from "next/server";
+import { supplierJson } from "@/lib/server/supplier-body";
+import { dispatchApplicationNotifications } from "@/lib/server/application-notifications";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { VENDOR_CATEGORY_VALUES } from "@/lib/vendor-categories";
@@ -27,7 +30,7 @@ export async function POST(req: Request) {
 
   let body: Record<string, unknown>;
   try {
-    body = await req.json();
+    body = await supplierJson(req, 10000);
   } catch {
     return fail(400, "Invalid request body.");
   }
@@ -36,8 +39,7 @@ export async function POST(req: Request) {
 
   // Honeypot: a real person leaves this blank. Pretend it worked so bots don't
   // learn anything.
-  if (str(body.company))
-    return NextResponse.json({ ok: true }, { status: 201 });
+  if (str(body.company)) return NextResponse.json({ ok: true }, { status: 201 });
 
   const businessName = str(body.businessName);
   const email = str(body.email).toLowerCase();
@@ -52,12 +54,12 @@ export async function POST(req: Request) {
     return fail(422, "Please enter your business name.");
   if (!EMAIL.test(email) || email.length > 160)
     return fail(422, "Please enter a valid email address.");
-  if (contactName.length > 120)
-    return fail(422, "That contact name is too long.");
+  if (contactName.length < 2 || contactName.length > 120)
+    return fail(422, "Please enter your contact name.");
   if (phone.length > 40) return fail(422, "That phone number is too long.");
-  if (category && category !== "venue" && !VENDOR_CATEGORY_VALUES.has(category))
+  if (!category || (category !== "venue" && !VENDOR_CATEGORY_VALUES.has(category)))
     return fail(422, "Please choose a category from the list.");
-  if (area.length > 120) return fail(422, "That area is too long.");
+  if (area.length < 2 || area.length > 120) return fail(422, "Please enter the area you cover.");
   if (website.length > 200)
     return fail(422, "That website address is too long.");
   if (message.length > 2000)
@@ -66,8 +68,8 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
 
   // Cap submissions per network so the form can't be flooded. Uses the existing
-  // fixed-window counter (same as order lookup). Fail open if the check errors —
-  // a genuine application shouldn't be lost to a limiter hiccup.
+  // fixed-window counter (same as order lookup).
+  // refuse a submission if its abuse limit cannot be verified.
   const { data: allowed, error: limitError } = await admin.rpc(
     "hit_rate_limit",
     {
@@ -76,7 +78,7 @@ export async function POST(req: Request) {
       p_window_seconds: 3600,
     },
   );
-  if (!limitError && allowed === false) {
+  if (limitError || allowed !== true) {
     return fail(
       429,
       "We've had a few applications from your network. Please try again later.",
@@ -86,12 +88,13 @@ export async function POST(req: Request) {
   // If this email already has an application we haven't finished reviewing, don't
   // create a duplicate — tell them it's already with us. (A declined applicant is
   // free to apply again.)
-  const { data: existing } = await admin
+  const { data: existing, error: lookupError } = await admin
     .from("vendor_applications")
     .select("id")
     .eq("email", email)
-    .in("status", ["new", "reviewing", "accepted"])
+    .in("status", ["new", "reviewing", "accepted"]).limit(1)
     .maybeSingle();
+  if (lookupError) return fail(503, "Applications are temporarily unavailable. Please try again.");
   if (existing) {
     return NextResponse.json(
       {
@@ -118,5 +121,6 @@ export async function POST(req: Request) {
     return fail(500, "Couldn't send your application. Please try again.");
   }
 
-  return NextResponse.json({ ok: true }, { status: 201 });
+  after(async () => { await dispatchApplicationNotifications(admin); });
+  return NextResponse.json({ ok: true, message: "Your application is with the Styled team. If approved, we will email you a private invitation to set up your supplier account." }, { status: 201 });
 }

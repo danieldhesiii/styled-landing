@@ -15,7 +15,9 @@ export default function SupplierBusiness() {
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
-    [loaded, setLoaded] = useState(false);
+    [loaded, setLoaded] = useState(false),
+    [replyNotice,setReplyNotice]=useState(""),
+    [replyError,setReplyError]=useState("");
   async function load() {
     setError("");
     try {
@@ -43,8 +45,8 @@ export default function SupplierBusiness() {
   if (!loaded)
     return (
       <>
-        <h1 className="font-serif text-4xl">Business setup</h1>
-      <SupplierRangeReview/>
+        <h1 className="font-serif text-4xl">Business settings</h1>
+      <div className="my-5 flex flex-wrap gap-5 text-sm"><Link href="/portal/availability" className="underline">Manage availability</Link><Link href="/portal/import" className="underline">Import a stock list</Link></div><SupplierRangeReview/>
         <p role={error ? "alert" : "status"} className="mt-4">
           {error || "Loading your business…"}
         </p>
@@ -60,12 +62,24 @@ export default function SupplierBusiness() {
     );
   return (
     <>
-      <h1 className="font-serif text-4xl">Business setup</h1>
-      <SupplierRangeReview/>
+      <h1 className="font-serif text-4xl">Business settings</h1>
+      <div className="my-5 flex flex-wrap gap-5 text-sm"><Link href="/portal/availability" className="underline">Manage availability</Link><Link href="/portal/import" className="underline">Import a stock list</Link></div><SupplierRangeReview/>
       <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/65">
-        Tell customers how you work. Leave optional policies blank until they
-        are agreed; nothing here charges a customer automatically.
+        Your business details, delivery areas and hire policies.
       </p>
+      <form className="mt-8 max-w-3xl border-b border-sand pb-8" onSubmit={async e=>{
+        e.preventDefault();if(busy)return;setBusy(true);setReplyNotice("");setReplyError("");
+        try{const response=await fetch("/api/vendor/profile",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messageReplyHours:profile.message_reply_hours??null})});const data=await response.json();if(!response.ok)throw Error(data.error);setReplyNotice("Reply target saved for new conversations.");}
+        catch(e){setReplyError(e instanceof Error?e.message:"Could not save your reply target.");}finally{setBusy(false);}
+      }}>
+        <h2 className="font-serif text-2xl">Customer messages</h2>
+        <div className="mt-4 flex flex-wrap items-end gap-4"><label className="block text-sm" htmlFor="message-reply-hours">Reply target
+          <select aria-label="Reply target" id="message-reply-hours" disabled={busy} className={field} value={profile.message_reply_hours??""} onChange={e=>{setProfile({...profile,message_reply_hours:e.target.value?Number(e.target.value):null});setReplyNotice("");}}>
+            <option value="">Not set</option>{Array.from(new Set([24,48,72,120,168,profile.message_reply_hours].filter(Boolean))).map(hours=><option key={hours} value={hours}>{hours%24===0?`${hours/24} ${hours===24?"day":"days"}`:`${hours} hours`}</option>)}
+          </select></label><button disabled={busy} className="min-h-11 rounded-full border border-sand bg-white px-5 text-sm disabled:opacity-50">Save reply target</button></div>
+        <p className="mt-3 text-xs leading-relaxed text-ink/60">Calendar hours. Existing conversations keep the target they started with.</p>
+        {replyNotice&&<p role="status" className="mt-3 text-sm text-ink/70">{replyNotice}</p>}{replyError&&<p role="alert" className="mt-3 text-sm text-clay">{replyError}</p>}
+      </form>
       <form
         className="mt-8 max-w-3xl space-y-8"
         onSubmit={async (e) => {

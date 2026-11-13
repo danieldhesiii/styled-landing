@@ -1,3 +1,4 @@
+import DemoSupplierPreview from "@/components/DemoSupplierPreview";
 import Image from "next/image";
 import Link from "next/link";
 import CtaEmailForm from "@/components/CtaEmailForm";
@@ -181,6 +182,8 @@ export default function Page() {
         </div>
       </section>
 
+      <DemoSupplierPreview />
+
       {/* ------------------------------------------------- FAQ */}
       <section id="faq" className="py-20">
         <h2 className="font-serif text-4xl text-ink sm:text-5xl">
@@ -209,6 +212,10 @@ export default function Page() {
       <section id="cta" className="my-10 flex flex-wrap items-center justify-between gap-6 border-t border-sand pt-8">
         <div><h2 className="font-serif text-3xl">Ready to start planning?</h2><p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/70">Create a free account to save your plans.</p></div>
         <CtaEmailForm />
+      </section>
+      <section aria-labelledby="supplier-entry" className="my-12 grid gap-6 border-t border-sand py-10 sm:grid-cols-[1fr_auto] sm:items-center">
+        <div><p className="text-xs uppercase tracking-[0.18em] text-clay">For wedding suppliers</p><h2 id="supplier-entry" className="mt-3 font-serif text-3xl">Bring your collection to Styled</h2><p className="mt-3 max-w-lg text-sm leading-relaxed text-ink/65">Apply to join, or open your existing supplier workspace.</p></div>
+        <div className="flex flex-wrap items-center gap-4"><Link href="/suppliers/join" className="inline-flex min-h-12 items-center justify-center rounded-full bg-ink px-6 text-sm text-cream hover:bg-ink/90">Become a supplier</Link><Link href="/portal/login" className="inline-flex min-h-12 items-center justify-center rounded-full border border-clay/40 px-6 text-sm text-ink hover:bg-clay/10">Supplier log in</Link></div>
       </section>
     </>
   );

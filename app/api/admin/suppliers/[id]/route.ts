@@ -49,7 +49,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     supplier: supplierView(supplier),
     publication: { reviewState: review?.state || "unreviewed", canReactivate,
       reason: canReactivate ? null : "Review and approve the current range and photo permissions before reactivating." },
-    products: (products ?? []).map((p) => ({
+    products: (products ?? []).filter(p => p.category !== "stationery").map((p) => ({
       id: p.id,
       name: p.name,
       category: p.category,

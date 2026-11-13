@@ -6,7 +6,7 @@ import {emailProvider} from '@/lib/email-provider';
 import {UUID} from '@/lib/pilot-readiness';
 export const recipientHash=(email:string)=>createHash('sha256').update(email.trim().toLowerCase()).digest('hex');
 export function authorisedWebhook(header:string|null,secret:string|undefined){if(!secret||secret.length<32||!header)return false;const a=Buffer.from(header),b=Buffer.from(`Bearer ${secret}`);return a.length===b.length&&timingSafeEqual(a,b);}
-export async function trackedDelivery(admin:SupabaseClient,email:{to:string[];subject:string;text:string;html:string},link:{jobId:string;venueJobId?:never;supportJobId?:never;checkUserId?:never}|{venueJobId:string;jobId?:never;supportJobId?:never;checkUserId?:never}|{supportJobId:string;jobId?:never;venueJobId?:never;checkUserId?:never}|{checkUserId:string;jobId?:never;venueJobId?:never;supportJobId?:never}){
+export async function trackedDelivery(admin:SupabaseClient,email:{to:string[];subject:string;text:string;html:string},link:{jobId:string;venueJobId?:never;supportJobId?:never;applicationJobId?:never;checkUserId?:never}|{venueJobId:string;jobId?:never;supportJobId?:never;applicationJobId?:never;checkUserId?:never}|{supportJobId:string;jobId?:never;venueJobId?:never;applicationJobId?:never;checkUserId?:never}|{applicationJobId:string;jobId?:never;venueJobId?:never;supportJobId?:never;checkUserId?:never}|{checkUserId:string;jobId?:never;venueJobId?:never;supportJobId?:never;applicationJobId?:never}){
  const provider=emailProvider(env);
  const to=[...new Set(email.to.map(v=>v.trim().toLowerCase()).filter(Boolean))];
  if(!provider||!to.length)return {accepted:false,outcome:'disabled' as const};
@@ -14,7 +14,7 @@ export async function trackedDelivery(admin:SupabaseClient,email:{to:string[];su
  // Save all rows before sending anything so a ledger failure cannot leave a
  // partially sent audience eligible for a whole-job retry.
  const groups=(provider==='resend'?to.map(e=>[e]):[to]).map(recipients=>({run:randomUUID(),recipients}));
- const rows=groups.flatMap(({run,recipients})=>recipients.map(e=>({run_id:run,job_id:link.jobId??null,...(link.venueJobId?{venue_job_id:link.venueJobId}:{}),...(link.supportJobId?{support_job_id:link.supportJobId}:{}),check_user_id:'checkUserId' in link?link.checkUserId:null,provider,recipient_hash:recipientHash(e)})));
+ const rows=groups.flatMap(({run,recipients})=>recipients.map(e=>({run_id:run,job_id:link.jobId??null,...(link.venueJobId?{venue_job_id:link.venueJobId}:{}),...(link.supportJobId?{support_job_id:link.supportJobId}:{}),...(link.applicationJobId?{application_job_id:link.applicationJobId}:{}),check_user_id:'checkUserId' in link?link.checkUserId:null,provider,recipient_hash:recipientHash(e)})));
  try{
   const saved=await admin.from('booking_email_deliveries').insert(rows);
   if(saved.error)return {accepted:false,outcome:'disabled' as const};

@@ -35,7 +35,7 @@ export default function LookReportPanel({
       {!look.checked && (
         <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-clay/10 px-3 py-2 text-[11px] text-ink/70">
           <span className="flex-1">
-            Add your event date to check stock when generating. Availability and delivery still need supplier confirmation before booking.
+            {look.structureId ? "Tent availability, site suitability and delivery need supplier confirmation." : "Add your event date to check stock when generating. Availability and delivery still need supplier confirmation before booking."}
           </span>
           <input
             type="date"

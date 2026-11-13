@@ -1,15 +1,10 @@
-import { demoPreviewAllowed } from "@/lib/server/development-request-catalogue";
+import { supplierPreviewCatalogue } from "@/lib/server/development-request-catalogue";
 import {venueCatalogue} from "@/lib/server/venue-catalogue";
 import { NextResponse } from "next/server";
 import { loadCatalogue } from "@/lib/server/catalogue";
-import { crescentMoonDemoCatalogue } from "@/lib/crescent-moon-demo-catalogue";
 
 // Never prerendered at build time: the catalogue changes when suppliers do.
 export const dynamic = "force-dynamic";
-
-function isProdprogressDemoHost(req: Request) {
-  return demoPreviewAllowed(req);
-}
 
 // The live catalogue, in the shape the design studio already uses. Public (it's
 // the shop window). Briefly cached at the edge; quotes and orders never use this
@@ -20,7 +15,7 @@ export async function GET(req:Request) {
     const slug=new URL(req.url).searchParams.get("venue");
     if(slug){const scoped=await venueCatalogue(slug,items);return NextResponse.json({ok:true,...scoped},{headers:{"Cache-Control":"no-store"}});}
     return NextResponse.json(
-      { ok: true, items, demoItems: isProdprogressDemoHost(req) ? crescentMoonDemoCatalogue() : [] },
+      { ok: true, items, demoItems: supplierPreviewCatalogue(req) },
       { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
     );
   } catch (err) {

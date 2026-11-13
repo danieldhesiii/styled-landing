@@ -17,6 +17,7 @@ import { deliveryDay } from "@/lib/wedding";
 import { isValidDay } from "@/lib/availability";
 import type { DiscoveryMatch } from "@/lib/location";
 import ProductDetails from "./ProductDetails";
+import ProductPurchase from "./ProductPurchase";
 import type { BoardPickerProps } from "@/components/wedding/BoardPicker";
 import ProductPreviewSelection from "./ProductPreviewSelection";
 interface Props extends PlanningDetails, BoardPickerProps {
@@ -657,7 +658,8 @@ export default function ProductBrowser({
                       )}
                     </div>
                     <div className="mt-auto pt-4">
-                      <button type="button" onClick={() => setDetailId(item.id)} className="min-h-11 w-full rounded-lg bg-ink px-3 py-2 text-sm text-cream transition-colors hover:bg-ink/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">
+                      <ProductPurchase compact item={item} line={basket.find(line=>line.itemId===item.id)} availability={availability.items?.[item.id]} onAdd={onAdd} onRemove={onRemove} onQty={onQty} onAlternatives={()=>alternatives(item)} />
+                      <button type="button" onClick={() => setDetailId(item.id)} className="mt-2 min-h-11 w-full px-3 py-2 text-sm text-ink underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">
                         View product
                       </button>
                       <div className="mt-2">

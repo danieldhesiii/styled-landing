@@ -60,3 +60,13 @@ export function accountMode(
 ): "login" | "signup" {
   return value === "signup" ? "signup" : "login";
 }
+
+/** Keep linked suppliers in their workspace when a general sign-in is used. */
+export async function accountDestination(next: string): Promise<string> {
+  const destination = safeLocalRedirect(next);
+  if (/^\/(?:portal|admin|venue-portal)(?:\/|$)/.test(destination)) return destination;
+  const response = await fetch("/auth/supplier-access", {cache:"no-store"});
+  if (response.ok) return "/portal/products";
+  if (response.status === 403) return destination;
+  throw new Error("We could not verify your account access. Please retry signing in.");
+}

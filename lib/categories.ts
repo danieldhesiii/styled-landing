@@ -5,6 +5,7 @@ import type { Category, CategoryMeta } from "./types";
 // database; see lib/catalogue.ts for the seed data and README note there.
 
 export const CATEGORY_META: CategoryMeta[] = [
+  { category: "tents", label: "Tents & marquees", blurb: "Outdoor wedding packages with installation.", icon: "⛺" },
   { category: "backdrops", label: "Backdrops & arches", blurb: "The focal point you'll say 'I do' in front of.", icon: "⛩️" },
   { category: "florals", label: "Florals", blurb: "Bouquets, ceremony arrangements and table flowers.", icon: "💐" },
   { category: "centrepieces", label: "Centrepieces", blurb: "What sits on each guest table.", icon: "🕯️" },
@@ -14,7 +15,6 @@ export const CATEGORY_META: CategoryMeta[] = [
   { category: "signage", label: "Signage", blurb: "Welcome signs and personal touches.", icon: "🪞" },
   { category: "bar", label: "Bar & drinks", blurb: "A statement bar for drinks and cocktails.", icon: "🍸" },
   { category: "attire", label: "Attire", blurb: "Gowns, suits and dresses for the whole party.", icon: "👰" },
-  { category: "stationery", label: "Stationery", blurb: "Invitations, place cards and table plans.", icon: "✉️" },
   { category: "cake_favours", label: "Cake & favours", blurb: "The centrepiece cake and gifts for your guests.", icon: "🎂" },
 ];
 

@@ -16,7 +16,7 @@ const { helpTopicForPage, helpTopicsFor, HELP_GUIDES } = loaded.exports;
 test("customer help follows the current task and unifies the Saved collections", () => {
   for (const [section, topic] of [
     ["wedding", "wedding"],
-    ["boards", "saved"],
+    ["boards", "boards"],
     ["saved", "saved"],
     ["looks", "saved"],
     ["visualiser", "visualiser"],
@@ -75,4 +75,4 @@ test("customer guides stay separate from business workspaces", () => {
   for (const topic of topics) assert.ok(HELP_GUIDES[topic]);
 });
 
-test("retired Boards is absent from customer help", () => { assert.ok(!helpTopicsFor("overview").includes("boards")); });
+test("Boards is available from customer help", () => { assert.ok(helpTopicsFor("overview").includes("boards")); });

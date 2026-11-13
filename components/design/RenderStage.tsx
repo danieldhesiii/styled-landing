@@ -1,4 +1,5 @@
 "use client";
+import {isAlexTent, type VisualiserEnvironment, type TentColour} from "@/lib/visualiser-environment";
 import {useCatalogue} from "@/components/catalogue/CatalogueProvider";
 
 import { useEffect, useId, useRef, useState } from "react";
@@ -14,6 +15,7 @@ export interface RenderRef {
   id: string;
   url: string;
   originalUrl?: string;
+  styleName?: string;
   /** Catalogue item ids that make up this render — the "what's in the picture" list. */
   itemIds?: string[];
   demoStyleId?: string;
@@ -24,6 +26,10 @@ export interface RenderRef {
 import type { BoardInspiration } from "@/lib/board-inspiration";
 
 interface Props {
+  environment?: VisualiserEnvironment;
+  tentColour?: TentColour;
+  onEnvironment?: (environment:VisualiserEnvironment)=>void;
+  onTentColour?: (colour:TentColour)=>void;
   initialScene?: SceneId;
   onGeneratingChange?: (busy: boolean) => void;
   boardInspiration?: BoardInspiration | null;
@@ -106,6 +112,10 @@ export default function RenderStage({
   renderId,
   versions,
   itemIds,
+  environment: selectedEnvironment,
+  tentColour: selectedTentColour,
+  onEnvironment,
+  onTentColour,
   selectionMode = "manual",
   onSelectionMode,
   onBrowseProducts,
@@ -129,12 +139,21 @@ export default function RenderStage({
   onGeneratingChange,
 }: Props) {
   const catalogueState=useCatalogue();
-  const selectionError = selectionMode === "manual" && [...new Set(itemIds)].filter(id => id.startsWith("demo-crescent-moon-")).length > 1
+  const selectionError = new Set(itemIds.filter(isAlexTent)).size > 1 ? "Choose one tent size per preview." : selectionMode === "manual" && [...new Set(itemIds)].filter(id => id.startsWith("demo-crescent-moon-")).length > 1
     ? "Use one reference lighting design per preview."
     : selectionMode === "manual" && new Set(itemIds).size > 12 ? "Use up to 12 products per preview." : "";
   const venueOnly=catalogueState.scope?.policy.mode==="venue_only";
-  const currentLook=versions.find(v=>v.id===renderId)?.look;
+  const currentVersion=versions.find(v=>v.id===renderId);
+  const currentLook=currentVersion?.look;
+  const currentStyleName=currentVersion?.styleName ?? styleName;
   const inheritedSupplier=currentLook?.supplierId;
+  const [environmentChoice,setEnvironmentChoice]=useState<{id:string|null;value:VisualiserEnvironment}|null>(null);
+  const [colourChoice,setColourChoice]=useState<{id:string|null;value:TentColour}|null>(null);
+  const environment=environmentChoice?.id===renderId ? environmentChoice.value : currentLook?.environment ?? selectedEnvironment ?? "indoor";
+  const tentColour=colourChoice?.id===renderId ? colourChoice.value : currentLook?.tentColour ?? selectedTentColour ?? "white";
+  const hasTent=itemIds.some(isAlexTent);
+  function chooseEnvironment(value:VisualiserEnvironment){setEnvironmentChoice({id:renderId,value});onEnvironment?.(value);}
+  function chooseTentColour(value:TentColour){setColourChoice({id:renderId,value});onTentColour?.(value);}
 
   const fieldId = useId();
   const descriptionId = `${fieldId}-description`;
@@ -200,7 +219,8 @@ export default function RenderStage({
   const partnerPreview = venue.id.startsWith("listing:")
     ? (venue.image ?? null)
     : null;
-  const originalImage = uploadedPreview ?? partnerPreview ?? samplePreview;
+  const siteImage = uploadedPreview ?? partnerPreview ?? samplePreview;
+  const originalImage = renderUrl ? currentVersion?.originalUrl ?? siteImage : siteImage;
   const previewImage = renderUrl ?? originalImage;
 
   // Keep the draft style in sync with the committed style (e.g. after a render
@@ -221,15 +241,16 @@ export default function RenderStage({
     }
   }, [renderUrl]);
 
-  const selectionSignature = JSON.stringify([selectionMode, [...new Set(itemIds)].sort()]);
-  const previousSelection = useRef(selectionSignature);
+  const selectionSignature = JSON.stringify([selectionMode, environment, tentColour, [...new Set(itemIds)].sort()]);
+  const previousSelection = useRef({id:renderId,url:renderUrl,signature:selectionSignature});
   useEffect(() => {
-    if (previousSelection.current === selectionSignature) return;
-    previousSelection.current = selectionSignature;
+    const previous=previousSelection.current;
+    previousSelection.current={id:renderId,url:renderUrl,signature:selectionSignature};
+    if (previous.id!==renderId || previous.url!==renderUrl || previous.signature===selectionSignature) return;
     setPanelMode("new");
     setGenError(null);
     setShowGenPanel(true);
-  }, [selectionSignature]);
+  }, [selectionSignature,renderId,renderUrl]);
 
   // Ask the server to rewrite the couple's rough note into a fuller styling
   // brief, then drop it back into the box for them to tweak before generating.
@@ -335,6 +356,8 @@ export default function RenderStage({
           deliveryDate: deliveryDate || undefined,
           primaryIndex: primary,
           setting,
+          environment,
+          tentColour,
           ...(opts?.parentRenderId
             ? { parentRenderId: opts.parentRenderId }
             : {}),
@@ -354,6 +377,8 @@ export default function RenderStage({
             url: done.imageUrl,
             itemIds: done.itemIds,
             look: done.look,
+            originalUrl: done.originalUrl,
+            styleName: refining ? currentStyleName : useStyleId && useStyleId!=="none" ? getStyle(useStyleId).name : "Your design",
           });
           setShowShopPrompt(true);
         }
@@ -389,7 +414,7 @@ export default function RenderStage({
 
   async function waitForRender(
     id: string,
-  ): Promise<{ imageUrl: string; itemIds?: string[]; look?: LookReport }> {
+  ): Promise<{ imageUrl: string; originalUrl?: string; itemIds?: string[]; look?: LookReport }> {
     const deadline = Date.now() + 7 * 60 * 1000;
     let failures = 0;
     while (Date.now() < deadline) {
@@ -405,6 +430,7 @@ export default function RenderStage({
       if (data?.status === "succeeded" && data.imageUrl)
         return {
           imageUrl: data.imageUrl,
+          originalUrl: data.originalUrl ?? undefined,
           itemIds: data.itemIds,
           look: data.look ?? undefined,
         };
@@ -510,7 +536,7 @@ export default function RenderStage({
     <div className="border-t border-sand bg-white p-2 sm:absolute sm:inset-x-0 sm:bottom-0 sm:border-0 sm:bg-transparent sm:bg-gradient-to-t sm:from-ink/55 sm:to-transparent sm:px-4 sm:pb-3 sm:pt-8">
       <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:gap-3">
         <span className="hidden rounded-full border border-white/40 bg-white/15 px-3 py-1 text-[11px] text-white backdrop-blur-sm sm:inline">
-          {styleName}
+          {currentStyleName}
         </span>
         <button
           type="button"
@@ -610,6 +636,9 @@ export default function RenderStage({
         </ul> : <p className="mt-3 text-sm text-ink/55">Choose the pieces you’d like to see in your room.</p>}
         {selectionError && <p role="alert" className="mt-3 text-sm text-clay">{selectionError}</p>}
       </section>}
+      <section aria-label="Preview setting" className="border-b border-sand px-4 py-4 sm:px-6"><div className="flex flex-wrap items-center gap-2"><span className="mr-2 text-xs text-ink/55">Your space</span>{([["indoor","Inside a venue"],["outdoor","Outdoor space"],["tent-interior","Inside a tent"]] as const).map(([value,label])=><button key={value} type="button" disabled={sending} aria-pressed={environment===value} onClick={()=>chooseEnvironment(value)} className={`min-h-11 rounded-full border px-4 text-xs transition-colors ${environment===value?"border-ink bg-ink text-cream":"border-sand bg-white text-ink/70 hover:border-clay"}`}>{label}</button>)}{hasTent&&environment==="outdoor"&&<label className="ml-auto text-xs text-ink/60">Tent fabric <select aria-label="Tent fabric" disabled={sending} value={tentColour} onChange={e=>chooseTentColour(e.target.value as TentColour)} className="ml-2 min-h-11 rounded-lg border border-sand bg-white px-3"><option value="white">White</option><option value="sand">Sand</option></select></label>}</div>
+      {(!renderUrl||showGenPanel)&&environment!=="indoor"&&uploadedImages.length===0&&venue.id!=="outdoor_garden"&&<p className="mt-3 text-xs text-ink/65">Choose a photo of {environment==="tent-interior"?"the inside of your tent":"your outdoor space"}.{environment==="outdoor"&&<> <button type="button" className="min-h-11 underline underline-offset-4" onClick={()=>_onVenue("outdoor_garden")}>Try an outdoor example</button></>}</p>}
+      </section>
       {saveError && <p id={saveErrorId} role="alert" className="border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{saveError}</p>}
       {/* ── ERROR BANNER ───────────────────────────────────────────── */}
       {genError && (
@@ -652,7 +681,7 @@ export default function RenderStage({
                   className="aspect-video w-full motion-safe:animate-fade-in object-contain"
                 />
                 <div className="absolute right-3 top-3 rounded-full bg-ink/55 px-3 py-1 text-[11px] text-cream backdrop-blur-sm">
-                  Styled · {styleName}
+                  Styled · {currentStyleName}
                 </div>
               </div>
             </div>
@@ -674,7 +703,7 @@ export default function RenderStage({
               {showOriginal
                 ? "Your venue · before"
                 : renderUrl
-                  ? styleName
+                  ? currentStyleName
                   : activeExample
                     ? `Example · ${activeExample.label}`
                     : venue.id.startsWith("listing:")

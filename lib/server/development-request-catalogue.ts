@@ -1,5 +1,8 @@
+import { earthVillageCatalogue } from "@/lib/earth-village-catalogue";
 import { crescentMoonDemoCatalogue } from "@/lib/crescent-moon-demo-catalogue";
 import type { ServerCatalogueItem } from "@/lib/server/catalogue";
+
+import {linkedCrescentProduct} from "./crescent-call-demo";
 
 // Server-owned sidecar only. Browser flags, names and prices are never trusted.
 export function demoPreviewAllowed(req?: Request): boolean {
@@ -19,9 +22,18 @@ export function developmentRequestsAllowed(req?: Request): boolean {
     : /^https:\/\/qkyeitvwscrxbiwamxan\.supabase\.co\/?$/.test(database);
 }
 
+export function supplierPreviewCatalogue(req?: Request) {
+  const items = demoPreviewAllowed(req) ? crescentMoonDemoCatalogue() : [];
+  const host = req ? new URL(req.url).hostname : "";
+  if (process.env.NODE_ENV === "development" || ["styledukprodprogress.vercel.app", "localhost", "127.0.0.1"].includes(host)) {
+    items.push(...earthVillageCatalogue());
+  }
+  return items.filter(item => !linkedCrescentProduct(item.id));
+}
+
 export function developmentRequestCatalogue(req?: Request): ServerCatalogueItem[] {
   if (!developmentRequestsAllowed(req)) return [];
-  return crescentMoonDemoCatalogue().map(item => ({ ...item, requestOnly: true, capacity: null, supplierId: "", updatedAt: "development-sidecar" }));
+  return supplierPreviewCatalogue(req).map(item => ({ ...item, requestOnly: true, capacity: null, supplierId: "", updatedAt: "development-sidecar" }));
 }
 
 export function requestSnapshot(item: ServerCatalogueItem) {

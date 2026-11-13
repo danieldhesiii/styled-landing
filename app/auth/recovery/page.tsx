@@ -4,8 +4,10 @@ import { safeLocalRedirect } from "@/lib/auth/navigation";
 export const metadata = { title: "Recover account access · Styled" };
 export default async function RecoveryPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
   const params = await searchParams;
+  const destination = safeLocalRedirect(params.next);
+  const supplier = destination === "/portal" || destination.startsWith("/portal/");
   return <main className="mx-auto min-h-screen max-w-md px-5 py-16">
-    <Link href="/" className="mb-8 block font-serif text-2xl">Styled.</Link>
-    <div className="rounded-3xl border border-sand bg-white p-7"><RecoveryForm next={safeLocalRedirect(params.next)} invalidLink={!!params.error} /></div>
+    <Link href={supplier ? "/portal/login" : "/"} className="mb-8 block font-serif text-2xl">Styled.{supplier && " Suppliers"}</Link>
+    <div className="rounded-3xl border border-sand bg-white p-7"><RecoveryForm next={destination} invalidLink={!!params.error} /></div>
   </main>;
 }

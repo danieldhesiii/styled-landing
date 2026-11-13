@@ -1,7 +1,6 @@
 import type { CatalogueItem } from "@/lib/types";
 import type { StylePreset } from "@/lib/types";
 import type { SceneId } from "@/lib/scenes";
-import { tablesFor } from "@/lib/quote";
 
 // Builds the instruction sent to the image-edit model. The model sees the venue
 // photo itself, so the prompt only has to say what to keep and what to add.
@@ -39,28 +38,28 @@ export type RenderSetting = SceneId;
 // woven in where it helps the model judge scale.
 const SCENE_OPENING: Record<SceneId, (subject: string) => string> = {
   reception: (s) =>
-    `Restyle ${s} as a finished wedding reception, set and ready for the day.`,
+    `Preview the selected catalogue pieces in ${s} for a wedding reception.`,
   ceremony: (s) =>
-    `Set up ${s} for a wedding CEREMONY: a finished, photorealistic scene, ready for the couple to marry.`,
+    `Preview the selected catalogue pieces in ${s} for a wedding ceremony.`,
   party: (s) =>
-    `Restyle ${s} as an evening wedding reception party, set for dancing and celebrating after dark.`,
+    `Preview the selected catalogue pieces in ${s} for an evening wedding party.`,
   drinks: (s) =>
-    `Restyle ${s} as a wedding drinks reception, set for guests to mingle with drinks and canapés.`,
+    `Preview the selected catalogue pieces in ${s} for a wedding drinks reception.`,
   proposal: (s) =>
-    `Restyle ${s} as an intimate, romantic marriage-proposal setting for just two people.`,
+    `Preview the selected catalogue pieces in ${s} for an intimate marriage proposal.`,
 };
 
 const SCENE_LAYOUT: Record<SceneId, (guests: number) => string> = {
   reception: (g) =>
-    `The wedding is for about ${g} guests, which is roughly ${tablesFor(g)} tables. Show as many dining tables as fit the room naturally with sensible spacing and a clear walkway; do not cram the room.`,
+    `Reception context for about ${g} guests. Arrange only the listed pieces with sensible spacing and a clear walkway. Guest count is context, not permission to add furniture or place settings.`,
   ceremony: (g) =>
-    `Lay the room out for the ceremony: neat rows of chairs all facing forward towards the front of the room, in two blocks with a clear central aisle running down the middle for the couple to walk down. Seat about ${g} guests. At the front, at the head of the aisle, place the ceremony focal point: an arch or floral backdrop where the couple will stand. Do NOT use any dining or banquet tables; this is the ceremony, not the meal.`,
+    `Ceremony context for about ${g} guests. Keep a clear central aisle. Position any listed seating towards the ceremony front and any listed backdrop at that focal point. If neither is listed, leave those spaces as photographed. This is not a dining layout.`,
   party: (g) =>
-    `Lay the room out for the evening party, for about ${g} guests: a clear central dancefloor, a stage or DJ booth at one end, a statement bar to one side, and relaxed lounge seating with a few small cocktail tables around the edges. Warm, atmospheric evening lighting: festoon lights, uplighting and candles. Energetic but elegant; no formal dining tables down the middle.`,
+    `Evening party context for about ${g} guests. Keep the centre open for movement and arrange only the listed pieces around usable circulation space. Do not invent entertainment equipment or extra lighting.`,
   drinks: (g) =>
-    `Lay the room out for a standing drinks reception, for about ${g} guests: a stylish bar, scattered tall poseur / cocktail tables for guests to gather around, a few lounge seating clusters and plenty of room to mingle. No formal seated dining tables.`,
+    `Standing drinks reception context for about ${g} guests. Arrange only the listed pieces with plenty of room to mingle. Do not invent a bar, seating or serving furniture to complete the scene.`,
   proposal: () =>
-    `Set the room for an intimate marriage proposal: a single romantic focal set-up for two, centred in the space, with soft candlelight, lush florals, perhaps rose petals and fairy lights. No rows of guest chairs and no dining tables; this is a private, romantic moment, not an event for guests.`,
+    `Private marriage proposal context for two people. Arrange only the listed pieces into an intimate focal point. A romantic mood does not authorise extra flowers, candles or props.`,
 };
 
 // The couple's free text goes into a prompt, so keep it plain and bounded.
@@ -140,10 +139,11 @@ export function buildRenderPrompt(opts: {
     );
   } else {
     parts.push(
-      "There is no preset style. Design the decor entirely from the couple's own description below: follow its colours, flowers, materials, lighting and overall mood exactly, and fill in tasteful, cohesive wedding styling for anything they don't specify.",
+      "There is no preset style. Use the couple's description for mood and placement of the listed pieces. Preserve each product's actual colours, materials and construction. Leave unspecified styling unchanged.",
     );
   }
   parts.push(SCENE_LAYOUT[setting](guestCount));
+  parts.push("SELECTION-ONLY EDIT. Preserve existing background objects in the venue photograph. Add only the catalogue inventory below. If the inventory contains only a chandelier, add that chandelier to the otherwise unchanged room. An empty room must stay empty apart from selected pieces. Do not dress it with unselected tables, chairs, flowers, candles or tableware, even to make a complete wedding scene.");
 
   // The complete inventory. Everything in the picture that the couple could buy
   // must be one of these pieces: these are in stock for their date.

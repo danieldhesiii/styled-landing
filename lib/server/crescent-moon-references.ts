@@ -26,6 +26,8 @@ export function chandelierIdentityInstruction(id:string, firstReferenceImage:num
   if(!product) throw new Error('Unknown chandelier reference.');
   return `PRODUCT IDENTITY PRIORITY: The selected product is ${product.name}. Image ${firstReferenceImage} is its PRIMARY identity photograph. Reproduce that specific physical object, not a generic chandelier or a new design inspired by it.
 Required appearance: ${product.description}
+Construction details: ${product.appearance}
+Primary photograph subject: ${product.primaryReferenceInstruction}
 Physical proportions: ${product.dropCm} cm fixture drop, ${product.diameterCm} cm diameter; height-to-width ratio ${(product.dropCm/product.diameterCm).toFixed(2)}. These describe the fixture, not the suspension chain. The brochure specifies ${product.bulbs} bulbs in total; do not invent visible arms for bulbs hidden inside crystal or on the far side.
 Preserve the photographed outline, crown, body, basket, tier arrangement, visible arms, crystal draping, metal finish and relative proportions. Do not recolour the metal to suit the wedding palette. Do not hybridise Empire basket construction with Marie Therese arms or necklace swags from another model.
 Place ONE complete selected chandelier visibly inside the room, suspended naturally from the ceiling with believable perspective and scale. Replace any different decorative chandelier in the base image; preserve the building itself. Keep the entire fixture visible wherever the room framing allows; do not enlarge the room or crop the product to disguise a mismatch. Do not copy a reference room, people, text, flowers or other fixtures.

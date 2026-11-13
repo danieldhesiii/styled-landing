@@ -1,270 +1,63 @@
 "use client";
-import { useState } from "react";
-import { VENDOR_CATEGORIES } from "@/lib/vendor-categories";
-import { QTY_RULES } from "@/lib/product-options";
-import { STYLES } from "@/lib/styles";
-import { productInput, type ProductDraft } from "@/lib/supplier-workspace";
-export default function ProductEditor({
-  initial,
-  isNew,
-  onSave,
-  onCancel,
-}: {
-  initial: ProductDraft;
-  isNew: boolean;
-  onSave: (draft: ProductDraft) => Promise<void>;
-  onCancel: () => void;
+import {useState} from "react";
+import {VENDOR_CATEGORIES} from "@/lib/vendor-categories";
+import {productInput,type ProductDraft} from "@/lib/supplier-workspace";
+
+export default function ProductEditor({initial,isNew,onSave,onCancel,initialPhoto}:{
+  initial:ProductDraft;isNew:boolean;onSave:(draft:ProductDraft,photo?:string)=>Promise<void>;onCancel:()=>void;initialPhoto?:string|null;
 }) {
-  const [draft, setDraft] = useState(initial),
-    [limited, setLimited] = useState(isNew || initial.capacity !== ""),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
-  const field =
-    "mt-2 min-h-11 w-full rounded-xl border border-sand bg-white px-3 py-2.5 text-base";
-  function set(k: keyof ProductDraft, v: unknown) {
-    setDraft((d) => ({ ...d, [k]: v }));
-  }
-  return (
-    <form
-      className="my-7 rounded-2xl border border-clay/30 bg-cream p-5 sm:p-7"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        setError("");
-        const b = { ...draft, capacity: limited ? draft.capacity : "" };
-        if (limited && b.capacity === "") {
-          setError(
-            "Enter how many units you can supply, or choose Made to order.",
-          );
-          return;
-        }
-        if (!productInput(b)) {
-          setError(
-            "Check the name, price, stock quantity and optional details.",
-          );
-          return;
-        }
-        setBusy(true);
-        try {
-          await onSave(b);
-        } catch (e) {
-          setError(
-            e instanceof Error
-              ? e.message
-              : "Could not save. Your changes are still here.",
-          );
-        } finally {
-          setBusy(false);
-        }
-      }}
-    >
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="font-serif text-2xl">
-          {isNew ? "Add a product" : "Edit product"}
-        </h2>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onCancel}
-          className="min-h-11 text-sm underline"
-        >
-          Cancel
-        </button>
-      </div>
-      <fieldset disabled={busy} className="mt-5 space-y-5">
-        <div className="grid gap-5 sm:grid-cols-2">
-          <label className="text-sm">
-            Product name
-            <input
-              autoFocus
-              required
-              maxLength={160}
-              className={field}
-              value={draft.name}
-              onChange={(e) => set("name", e.target.value)}
-            />
-          </label>
-          <label className="text-sm">
-            Category
-            <select
-              className={field}
-              value={draft.category}
-              onChange={(e) => set("category", e.target.value)}
-            >
-              {VENDOR_CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm">
-            Price (£)
-            <input
-              inputMode="decimal"
-              required
-              className={field}
-              value={draft.unitPrice}
-              onChange={(e) =>
-                set("unitPrice", e.target.value.replace(/^0+(?=\d)/, ""))
-              }
-              placeholder="For example, 12.50"
-            />
-          </label>
-          <label className="text-sm">
-            Price is for
-            <input
-              required
-              maxLength={40}
-              className={field}
-              value={draft.unit}
-              onChange={(e) => set("unit", e.target.value)}
-              placeholder="For example, each or per table"
-            />
-          </label>
-          <label className="text-sm">
-            Suggested quantity
-            <select
-              className={field}
-              value={draft.qtyRule}
-              onChange={(e) => set("qtyRule", e.target.value)}
-            >
-              {QTY_RULES.map((q) => (
-                <option key={q.value} value={q.value}>
-                  {q.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm">
-            Notice needed (days)
-            <input
-              inputMode="numeric"
-              className={field}
-              value={draft.leadTimeDays}
-              onChange={(e) =>
-                set("leadTimeDays", e.target.value.replace(/^0+(?=\d)/, ""))
-              }
-              placeholder="No minimum set"
-            />
-          </label>
-          <label className="text-sm">
-            Stock type
-            <select
-              className={field}
-              value={limited ? "limited" : "made"}
-              onChange={(e) => setLimited(e.target.value === "limited")}
-            >
-              <option value="limited">Limited daily stock</option>
-              <option value="made">Made to order / not stock limited</option>
-            </select>
-          </label>
-          {limited && (
-            <label className="text-sm">
-              Units available per day
-              <input
-                required
-                inputMode="numeric"
-                className={field}
-                value={draft.capacity}
-                onChange={(e) =>
-                  set("capacity", e.target.value.replace(/^0+(?=\d)/, ""))
-                }
-                placeholder="For example, 120"
-              />
-            </label>
-          )}
-        </div>
-        <label className="block text-sm">
-          Description (up to 500 characters)
-          <textarea
-            className={field}
-            maxLength={500}
-            rows={3}
-            value={draft.note}
-            onChange={(e) => set("note", e.target.value)}
-          />
+  const [draft,setDraft]=useState(initial);
+  const [photo,setPhoto]=useState<string>();
+  const [busy,setBusy]=useState(false);
+  const [reading,setReading]=useState(false);
+  const [error,setError]=useState("");
+  const field="mt-2 min-h-12 w-full rounded-xl border border-sand bg-white px-4 py-3 text-base focus:outline-clay";
+  function set(key:keyof ProductDraft,value:unknown){setDraft(d=>({...d,[key]:value}));}
+  return <form className="my-7 rounded-2xl border border-sand bg-white p-5 sm:p-8" onSubmit={async e=>{
+    e.preventDefault();setError("");
+    if(!productInput(draft)){setError("Check the product name, price and quantity.");return;}
+    setBusy(true);
+    try {await onSave(draft,photo);}catch(e){setError(e instanceof Error?e.message:"Could not save. Please retry.");}
+    finally{setBusy(false);}
+  }}>
+    <div className="mb-7 flex items-center justify-between gap-4"><h2 className="font-serif text-3xl">{isNew?"Add a product":"Edit product"}</h2><button type="button" disabled={busy} onClick={onCancel} className="min-h-11 text-sm underline">Cancel</button></div>
+    <fieldset disabled={busy} className="grid gap-7 md:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
+      <div>
+        <label className="flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-ink/25 bg-cream/50 p-5 text-center">
+          {photo||initialPhoto?<img src={photo||initialPhoto||""} alt="Product preview" className="mb-4 h-52 w-full object-contain"/>:<span aria-hidden="true" className="mb-4 font-serif text-5xl text-clay">+</span>}
+          <span className="text-sm font-medium">{reading?"Reading photo…":photo||initialPhoto?"Change photo":"Choose product photo"}</span>
+          <span className="mt-2 text-xs text-ink/50">JPEG, PNG or WebP, up to 5 MB</span>
+          <input type="file" aria-label="Product photo" accept="image/jpeg,image/png,image/webp" disabled={reading} className="sr-only" onChange={async e=>{
+            const file=e.target.files?.[0];if(!file)return;
+            if(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>5*1024*1024){setError("Choose a JPEG, PNG or WebP photo up to 5 MB.");return;}
+            setReading(true);setError("");
+            try {setPhoto(await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(Error("Could not read this photo."));reader.readAsDataURL(file);}));}
+            catch(e){setError(e instanceof Error?e.message:"Could not read photo.");}
+            finally{setReading(false);}
+          }}/>
         </label>
-        <details className="border-t border-sand pt-4">
-          <summary className="cursor-pointer text-sm font-medium">
-            Dimensions, hire conditions and styles (optional)
-          </summary>
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
-            {[
-              ["dimensions", "Dimensions"],
-              ["material", "Material / finish"],
-              ["hireUnits", "What the hire includes"],
-              ["deliveryTerms", "Delivery or setup notes for this product"],
-              ["damageTerms", "Damage or return notes for this product"],
-            ].map(([key, label]) => (
-              <label key={key} className="text-sm">
-                {label}
-                <textarea
-                  maxLength={
-                    ["deliveryTerms", "damageTerms"].includes(key) ? 1500 : 200
-                  }
-                  rows={2}
-                  className={field}
-                  value={draft.details[key as keyof typeof draft.details]}
-                  onChange={(e) =>
-                    set("details", { ...draft.details, [key]: e.target.value })
-                  }
-                />
-              </label>
-            ))}
-          </div>
-          <fieldset className="mt-5">
-            <legend className="text-sm">Suited to these styles</legend>
-            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
-              {STYLES.map((s) => (
-                <label
-                  key={s.id}
-                  className="flex min-h-11 items-center gap-2 text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    checked={draft.styles.includes(s.id)}
-                    onChange={(e) =>
-                      set(
-                        "styles",
-                        e.target.checked
-                          ? [...draft.styles, s.id]
-                          : draft.styles.filter((x) => x !== s.id),
-                      )
-                    }
-                  />
-                  {s.name}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-        </details>
-      </fieldset>
-      {error && (
-        <p role="alert" className="mt-4 rounded-xl bg-blush/30 p-4 text-sm">
-          {error}
-        </p>
-      )}
-      <div className="mt-6 flex flex-wrap items-center gap-5">
-        <button
-          disabled={busy}
-          className="min-h-11 rounded-full bg-ink px-6 py-3 text-sm text-cream disabled:opacity-50"
-        >
-          {busy ? "Saving…" : isNew ? "Save draft product" : "Save changes"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={busy}
-          className="min-h-11 text-sm underline"
-        >
-          Cancel
-        </button>
+        <p className="mt-3 text-xs leading-relaxed text-ink/55">Use a clear photo of the product. You can save a draft and add its photo later.</p>
       </div>
-      <p className="mt-3 text-sm text-ink/60">
-        {isNew
-          ? "Saved as a private draft. Add photos, then submit your range for review."
-          : "Product changes need review. Submitted requests keep their recorded prices."}
-      </p>
-    </form>
-  );
+      <div className="space-y-5">
+        <label className="block text-sm">Product name<input autoFocus required maxLength={160} className={field} value={draft.name} onChange={e=>set("name",e.target.value)} placeholder="For example, Rustic trestle table"/></label>
+        <label className="block text-sm">Category<select aria-label="Category" className={field} value={draft.category} onChange={e=>set("category",e.target.value)}>{VENDOR_CATEGORIES.map(c=><option key={c.value} value={c.value}>{c.label}</option>)}</select></label>
+        <label className="block text-sm">Description<textarea maxLength={500} rows={4} className={field} value={draft.note} onChange={e=>set("note",e.target.value)} placeholder="What is included, and what makes this product special?"/></label>
+        <div className="grid grid-cols-2 gap-4">
+          <label className="block text-sm">Price (£)<input inputMode="decimal" required className={field} value={draft.unitPrice} onChange={e=>set("unitPrice",e.target.value.replace(/^0+(?=\d)/,""))} placeholder="125.00"/></label>
+          <label className="block text-sm">Price is for<input required maxLength={40} className={field} value={draft.unit} onChange={e=>set("unit",e.target.value)} placeholder="Each or package"/></label>
+        </div>
+      </div>
+    </fieldset>
+    <details className="mt-7 border-t border-sand pt-5">
+      <summary className="min-h-11 cursor-pointer text-sm font-medium">Stock, delivery and product details</summary>
+      <fieldset disabled={busy} className="mt-4 grid gap-5 sm:grid-cols-2">
+        <label className="text-sm">Units available<input inputMode="numeric" className={field} value={draft.capacity} onChange={e=>set("capacity",e.target.value.replace(/^0+(?=\d)/,""))} placeholder="Leave blank for made to order"/></label>
+        <label className="text-sm">Notice needed (days)<input inputMode="numeric" className={field} value={draft.leadTimeDays} onChange={e=>set("leadTimeDays",e.target.value)} placeholder="No minimum set"/></label>
+        <label className="text-sm">Suggested quantity<select aria-label="Suggested quantity" className={field} value={draft.qtyRule} onChange={e=>set("qtyRule",e.target.value)}><option value="fixed">One item or package</option><option value="per_guest">One per guest</option><option value="per_table">One per table</option><option value="per_venue">One per venue</option></select></label>
+        {Object.entries({dimensions:"Dimensions",material:"Material / finish",hireUnits:"What is included",deliveryTerms:"Delivery and setup",damageTerms:"Damage and returns"}).map(([key,label])=><label key={key} className="text-sm">{label}<textarea rows={2} maxLength={["deliveryTerms","damageTerms"].includes(key)?1500:200} className={field} value={draft.details[key as keyof typeof draft.details]} onChange={e=>set("details",{...draft.details,[key]:e.target.value})}/></label>)}
+      </fieldset>
+    </details>
+    {error&&<p role="alert" className="mt-5 text-sm text-red-700">{error}</p>}
+    <div className="mt-7 flex flex-wrap items-center gap-4"><button disabled={busy||reading} className="min-h-12 rounded-full bg-ink px-7 py-3 text-sm text-cream disabled:opacity-40">{busy?"Saving product…":isNew?"Save product":"Save changes"}</button><span className="text-xs text-ink/50">Saved privately until your range is approved.</span></div>
+  </form>;
 }

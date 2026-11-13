@@ -2,6 +2,7 @@ import { supplierJson } from "@/lib/server/supplier-body";
 import { NextResponse } from "next/server";
 import { createAnonClient } from "@/lib/supabase/anon";
 import { supplierReadiness } from "@/lib/vendor-readiness";
+import {validReplyHours} from "@/lib/message-status";
 import { servicesInput } from "@/lib/supplier-workspace";
 import { requireVendor } from "@/lib/server/vendor";
 export async function GET(req: Request) {
@@ -11,7 +12,7 @@ export async function GET(req: Request) {
     auth.admin
       .from("suppliers")
       .select(
-        "name,area,contact_email,active,logo_url,bio,service_details,onboarding_availability_confirmed_at",
+        "name,area,contact_email,active,logo_url,bio,service_details,message_reply_hours,onboarding_availability_confirmed_at",
       )
       .eq("id", auth.supplierId)
       .single(),
@@ -61,6 +62,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
   const patch: Record<string, unknown> = {};
+  if(body?.messageReplyHours!==undefined){
+    if(!validReplyHours(body.messageReplyHours))return NextResponse.json({error:"Choose a reply target between 1 and 168 hours, or leave it unset."},{status:422});
+    patch.message_reply_hours=body.messageReplyHours;
+  }
   if (body?.services !== undefined) {
     const services = servicesInput(body.services);
     if (!services)

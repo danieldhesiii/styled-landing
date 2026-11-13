@@ -2,7 +2,7 @@
   {
     "slug": "empire-90",
     "name": "Empire 90",
-    "description": "A compact Empire chandelier with a tapered crystal body, rounded lower basket and warm metallic frame.",
+    "description": "A compact Empire chandelier with a round crystal crown, tapered crystal neck and rounded basket, finished with warm gold-tone metal bands.",
     "dropCm": 90,
     "diameterCm": 45,
     "weightKg": 10,
@@ -22,12 +22,16 @@
     },
     "bulbType": "Dimmable incandescent",
     "outputW": 500,
-    "brochureStockCount": 20
+    "brochureStockCount": 20,
+    "appearance": "Round faceted crystal globe above a narrow metal collar; long tapered crystal neck widens to a continuous decorated metal shoulder ring; deep rounded lattice crystal basket with a pointed bottom finial. The bulbs are enclosed within the crystal body. No projecting candle arms.",
+    "primaryReferenceInstruction": "The second chandelier from the left, behind the cropped foreground fixture, is the identity subject. Other sizes and fixtures in the group are background only.",
+    "outsideBulbs": null,
+    "insideBulbs": null
   },
   {
     "slug": "marie-therese-100",
     "name": "Marie Therese 100",
-    "description": "An ornate clear chandelier with sweeping candle-style arms, crystal drops and a layered silhouette.",
+    "description": "An ornate clear crystal chandelier with tiered, sweeping candle-style arms, silver-tone candle sleeves and hanging crystal pendants.",
     "dropCm": 100,
     "diameterCm": 100,
     "weightKg": 20,
@@ -47,12 +51,16 @@
     },
     "bulbType": "Dimmable incandescent",
     "outputW": 750,
-    "brochureStockCount": 18
+    "brochureStockCount": 18,
+    "appearance": "Clear curved glass arms and dishes, silver-tone candle sleeves, faceted hanging drops, tall decorative upper curls and a central lower crystal pendant. The open arm construction must stay visible; do not turn it into an enclosed Empire basket.",
+    "primaryReferenceInstruction": "Use the single clear chandelier against the dark background. Preserve the clear glass arms and silver-tone candle sleeves.",
+    "outsideBulbs": null,
+    "insideBulbs": null
   },
   {
     "slug": "marie-therese-150",
     "name": "Marie Therese 150",
-    "description": "A large statement chandelier with tiered candle-style arms, clear crystal pendants and a broad, decorative silhouette.",
+    "description": "A broad statement chandelier with layered clear glass candle-style arms, crystal drops and a cascading lower pendant.",
     "dropCm": 150,
     "diameterCm": 150,
     "weightKg": 45,
@@ -72,12 +80,16 @@
     },
     "bulbType": "Dimmable incandescent",
     "outputW": 1150,
-    "brochureStockCount": 15
+    "brochureStockCount": 15,
+    "appearance": "Multiple broad tiers of sweeping clear glass arms and candle cups, clear hanging crystal pendants, upper decorative curls and a tapering cascade of central drops. Preserve the broad one-to-one height-to-width proportions and the photographed arm structure.",
+    "primaryReferenceInstruction": "Use the single large clear chandelier centred in the photograph. The suspension chain is separate from the fixture body.",
+    "outsideBulbs": null,
+    "insideBulbs": null
   },
   {
     "slug": "empire-200",
     "name": "Empire 200",
-    "description": "An oversized Empire chandelier with a tall tapered crystal body, rounded basket and decorative metallic bands.",
+    "description": "An oversized Empire chandelier with a large round crystal crown, long flared neck and deep rounded basket in a decorated gold-tone frame.",
     "dropCm": 200,
     "diameterCm": 100,
     "weightKg": 45,
@@ -97,12 +109,16 @@
     },
     "bulbType": "Dimmable incandescent",
     "outputW": 500,
-    "brochureStockCount": 7
+    "brochureStockCount": 7,
+    "appearance": "Large spherical crystal globe above the collar; tall flared trumpet-shaped crystal neck; broad decorated horizontal metal band; deep gridded crystal basket and pointed finial. No projecting candle arms. Preserve the two-to-one height-to-diameter proportions.",
+    "primaryReferenceInstruction": "Use the large complete foreground chandelier on the RIGHT. The smaller-looking matching fixture behind it and the different designs at the edges are background only.",
+    "outsideBulbs": null,
+    "insideBulbs": null
   },
   {
     "slug": "french-crystal-empire-105",
     "name": "French Crystal Empire 105",
-    "description": "A slender crystal Empire chandelier with a decorative crown, narrow upper body and ornate openwork band above a rounded crystal basket.",
+    "description": "A slender French crystal chandelier with a small ornamental crown, long crystal strands and a wide pierced gold-tone band above a rounded hanging crystal basket.",
     "dropCm": 105,
     "diameterCm": 48,
     "weightKg": 10,
@@ -117,12 +133,16 @@
     "mockPricing": null,
     "bulbType": "Dimmable incandescent",
     "outputW": 150,
-    "brochureStockCount": 14
+    "brochureStockCount": 14,
+    "appearance": "Small openwork crown with no spherical crystal globe; slender upper crystal strands flare to a wide ornate pierced metal band; broad hanging crystal prisms, rounded basket and pendant finial. This is the standard French Crystal Empire 105; the vintage variant shown separately in the brochure has different metalwork.",
+    "primaryReferenceInstruction": "Use the single standard French Crystal Empire 105 in the brochure photograph. Do not substitute the separate vintage variant or add projecting candle arms.",
+    "outsideBulbs": null,
+    "insideBulbs": null
   },
   {
     "slug": "necklace-empire-180",
     "name": "Vintage Necklace Empire 180",
-    "description": "A wide statement chandelier with draped crystal necklaces, a rounded crystal bowl and candle-style lights around its outer rim.",
+    "description": "A wide vintage chandelier with a draped crystal canopy, broad rounded bowl, decorative gold-tone rim and external candle-style lights.",
     "dropCm": 180,
     "diameterCm": 180,
     "weightKg": 85,
@@ -137,6 +157,10 @@
     "mockPricing": null,
     "bulbType": "Dimmable incandescent",
     "outputW": 1300,
-    "brochureStockCount": 6
+    "brochureStockCount": 6,
+    "appearance": "Small crown supporting a wide draped crystal canopy, a very broad rounded crystal bowl, ornate warm gold-tone outer rim and a stepped crystal pendant underneath. Exactly 12 exterior candle-style lights around the rim; the other 40 bulbs are inside the body. Preserve the full 1.8 m width and the shallow broad bowl silhouette.",
+    "primaryReferenceInstruction": "Use the single large necklace chandelier against the dark background. Its external arms belong around the rim; the internal bulbs must not become extra external arms.",
+    "outsideBulbs": 12,
+    "insideBulbs": 40
   }
 ]

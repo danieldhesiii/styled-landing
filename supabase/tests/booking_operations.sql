@@ -7,7 +7,7 @@ begin
  insert into auth.users(id,email,is_anonymous) values(customer_id,'operations-customer-'||customer_id||'@example.invalid',false),(vendor_id,'operations-vendor-'||vendor_id||'@example.invalid',false);
  insert into public.suppliers(id,name,area,contact_email,active) values(supplier_id,'Fictional operations test '||supplier_id,'Test area','test@example.invalid',false);
  insert into public.supplier_users(user_id,supplier_id) values(vendor_id,supplier_id);
- insert into public.products(id,supplier_id,name,category,unit_price_pence,unit,qty_rule,stock,capacity,image,active) values(product_id,supplier_id,'Fictional fixture','florals',50000,'package','fixed','in_stock',5,'/img/venues/oak_barn.png',false);
+ insert into public.products(id,supplier_id,name,category,unit_price_pence,unit,qty_rule,stock,capacity,image,active) values(product_id,supplier_id,'Rehearsal Empire 90','lighting',50000,'package','fixed','in_stock',5,'/img/venues/oak_barn.png',false);
  execute 'set local role service_role';
  declarations:=jsonb_build_object('availabilityMode','manual','replyHours',48,'listingPermission',true,'imageRights',true,'publicImagePermission',true,'aiReferencePermission',false,'pricesConfirmed',true,'termsConfirmed',true,'terms','Fictional test terms, not a real contract.','notes','Test only');
  perform public.review_supplier_range(supplier_id,0,vendor_id,'submit',declarations);
@@ -15,7 +15,7 @@ begin
  perform public.review_supplier_range(supplier_id,1,staff_id,'approve','{}');
  if not (select active from public.products where id=product_id) then raise exception 'Approved range did not publish';end if;
  insert into public.orders(id,owner_id,couple_name,email,wedding_date,venue_label,subtotal_pence,commission_pence,deposit_pence,status) values(order_id,customer_id,'Fictional customer','test@example.invalid',current_date+90,'Fictional venue',50000,0,0,'requested');
- insert into public.order_lines(order_id,product_id,supplier_id,product_name,supplier_name,unit_price_pence,quantity,line_total_pence,supplier_status,needed_date,return_date) values(order_id,product_id,supplier_id,'Fictional fixture','Fictional test supplier',50000,1,50000,'pending',current_date+89,current_date+91);
+ insert into public.order_lines(order_id,product_id,supplier_id,product_name,supplier_name,unit_price_pence,quantity,line_total_pence,supplier_status,needed_date,return_date) values(order_id,product_id,supplier_id,'Rehearsal Empire 90','Fictional test supplier',50000,1,50000,'pending',current_date+89,current_date+91);
 
  insert into public.venue_listings(id,slug,name,location,county,active,details) values(venue_id,venue_slug,'Fictional venue fixture','Test location','Test county',true,jsonb_build_object('supplier_policy',jsonb_build_object('mode','venue_only')));
  update public.orders set notes='Venue route: '||venue_slug||' (styled)' where id=order_id;
@@ -33,6 +33,20 @@ begin
  if (select count(*) from public.booking_notifications where booking_notifications.order_id=order_id)<>2 then raise exception 'Initial notifications not queued transactionally';end if;
  begin update public.orders set status='confirmed' where id=order_id;raise exception 'Legacy confirmation bypassed acceptance';exception when others then if sqlerrm='Legacy confirmation bypassed acceptance' then raise;end if;end;
  reply:=jsonb_build_object('response','available','mode','supplier_setup','deliveryPence',7000,'setupPence',9000,'collectionPence',5000,'extraPence',0,'securityPence',15000,'prepDays',1,'returnBufferDays',1,'systemChecked',true,'siteChecked',true,'sharedStockChecked',true,'pricesIncludeVat',true,'terms','Fictional agreed quote terms','note','Test reply');
+ -- Rehearse a decline on the same fixture, then discard that scenario.
+ begin
+  perform public.change_booking_workflow(order_id,0,vendor_id,'reply',jsonb_build_object('supplierId',supplier_id,'reply',reply || '{"response":"declined","note":"Already hired for these dates"}'::jsonb));
+  if (select supplier_status from public.order_lines where id=line_id) is distinct from 'declined' then raise exception 'Decline missing from order'; end if;
+  begin
+   perform public.change_booking_workflow(order_id,1,staff_id,'issue',jsonb_build_object('expiresAt',now()+interval '1 day'));
+  exception when raise_exception then
+   if sqlerrm <> 'All supplier availability replies are required' then raise; end if;
+   if exists(select 1 from public.booking_quotes where booking_quotes.order_id=order_id) then raise exception 'Declined product was quoted'; end if;
+   raise exception using errcode='Z0011',message='Decline rehearsal completed';
+  end;
+  raise exception 'Staff could issue a quote after supplier declined';
+ exception when sqlstate 'Z0011' then null;
+ end;
  perform public.change_booking_workflow(order_id,0,vendor_id,'reply',jsonb_build_object('supplierId',supplier_id,'reply',reply));
  begin perform public.change_booking_workflow(order_id,0,vendor_id,'reply',jsonb_build_object('supplierId',supplier_id,'reply',reply));raise exception 'Stale revision accepted';exception when others then if sqlerrm='Stale revision accepted' then raise;end if;end;
  perform public.change_booking_workflow(order_id,1,staff_id,'issue',jsonb_build_object('expiresAt',now()+interval '7 days'));

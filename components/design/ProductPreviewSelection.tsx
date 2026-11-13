@@ -20,6 +20,8 @@ export default function ProductPreviewSelection({
   disabled?: boolean;
   studioHref?: string;
 }) {
+  if (item.visualiserUse === "reference-pending") return <p className="text-xs text-ink/55">Preview photos are being prepared.</p>;
+  if (item.category === "tents" && item.visualiserUse !== "outdoor") return null;
   const selected = selectedVisualiserIds.includes(item.id);
   const classes = `inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50 ${selected ? "border-sage bg-sage/10 text-ink" : "border-ink/40 hover:bg-sand/30"}`;
   if (!onVisualise) {

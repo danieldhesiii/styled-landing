@@ -21,6 +21,7 @@ export interface OrderViewLine {
 }
 
 export interface OrderView {
+  bookingPhase?: string;
   hasUnpricedLines?: boolean;
   requestOnly?: boolean;
   id: string;
@@ -92,16 +93,23 @@ export default function OrderStatusCard({ order: initialOrder }: { order: OrderV
   const [order, setOrder] = useState(initialOrder);
   const [refreshError, setRefreshError] = useState("");
   useEffect(() => { setOrder(initialOrder); }, [initialOrder]);
-  async function refreshSummary() {
+  async function refreshSummary(bookingPhase: string) {
     try {
       const response = await fetch(`/api/orders/${initialOrder.id}`, { cache: "no-store" });
       const result = await response.json();
       if (!response.ok || !result.order) throw Error("Could not refresh the summary.");
-      setOrder(result.order);
+      setOrder({ ...result.order, bookingPhase });
       setRefreshError("");
     } catch { setRefreshError("Your change was saved. Refresh updates to reload the request summary."); }
   }
-  const banner = BANNER[order.status];
+  const banner = { ...BANNER[order.status] };
+  if (order.status === "requested" && order.bookingPhase === "quoted") {
+    banner.title = "Your quote is ready";
+    banner.body = "Review the hire dates, full price and supplier terms below.";
+  } else if (order.status === "requested" && order.bookingPhase === "accepted") {
+    banner.title = "Quote accepted";
+    banner.body = "Styled is arranging final confirmation. Your booking reference and agreed terms will appear here.";
+  }
   const groups = new Map<string, OrderViewLine[]>();
   for (const l of order.lines)
     groups.set(l.supplier, [...(groups.get(l.supplier) ?? []), l]);
@@ -137,6 +145,7 @@ export default function OrderStatusCard({ order: initialOrder }: { order: OrderV
         )}
       </div>
 
+      <div className="px-6 pb-4"><BookingOperations orderId={order.id} role="customer" phaseHint={order.bookingPhase} onSaved={refreshSummary}/>{refreshError&&<p role="status" className="mt-3 text-xs text-clay">{refreshError}</p>}</div>
       <div className="space-y-5 px-6 py-5">
         {[...groups].map(([supplier, lines]) => {
           const declined = lines.some((l) => l.supplierStatus === "declined");
@@ -187,7 +196,6 @@ export default function OrderStatusCard({ order: initialOrder }: { order: OrderV
         })}
       </div>
 
-      <div className="px-6 pb-4"><BookingOperations orderId={order.id} role="customer" onSaved={()=>void refreshSummary()}/>{refreshError&&<p role="status" className="mt-3 text-xs text-clay">{refreshError}</p>}</div>
       <div className="border-t border-sand bg-cream/50 px-6 py-4 text-sm">
         <div className="flex justify-between">
           <span className="text-ink/60">Estimated item total</span>

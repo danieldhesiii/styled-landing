@@ -369,13 +369,11 @@ export default function SupplierDetailPage() {
         </button>
       </div>
 
-      {/* Portal logins */}
+      {/* Supplier account invitations */}
       <div className="mt-6 rounded-3xl border border-sand bg-white p-6 shadow-sm">
-        <h2 className="font-serif text-xl text-ink">Portal logins</h2>
+        <h2 className="font-serif text-xl text-ink">Supplier account access</h2>
         <p className="mt-1 text-sm text-ink/50">
-          Give this supplier access to the{" "}
-          <span className="font-medium text-ink/70">/portal</span> to confirm
-          their own orders and manage their products.
+          Enter the supplier’s email below and send an invitation. They open the email, choose their own password and sign in to upload products. Existing account holders keep their password.
         </p>
 
         {logins.length > 0 && (
@@ -414,7 +412,7 @@ export default function SupplierDetailPage() {
             disabled={creatingLogin || !confirmAccess}
             className="rounded-full bg-ink px-5 py-2.5 text-sm text-cream hover:bg-ink/90 disabled:bg-ink/30"
           >
-            {creatingLogin ? "Preparing…" : "Send private invitation"}
+            {creatingLogin ? "Sending invitation…" : "Invite supplier"}
           </button>
         </form>
       </div>

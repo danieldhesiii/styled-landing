@@ -120,7 +120,7 @@ export default function SupplierRequests() {
       ) : (
         <div className="mt-7 space-y-5">
           {visible.map((o) => (
-            <div key={o.orderId}><RequestCard order={o} onSaved={load} /><div className="px-5 pb-4">{o.outstandingTasks.length > 0 && <div className="mt-4 rounded-xl bg-sand/40 p-4 text-sm"><p className="font-medium">Still needed before Styled can issue a full quote</p><ul className="mt-2 list-disc pl-5">{o.outstandingTasks.map(task => <li key={task}>{task}</li>)}</ul><p className="mt-2">Open Availability, service costs and returns below to complete your response. Confirming item availability alone does not complete your quote.</p></div>}<BookingOperations orderId={o.orderId} role="supplier" onSaved={()=>void load()}/></div></div>
+            <div key={o.orderId}><RequestCard order={o} onSaved={load} /><div className="px-5 pb-4">{o.outstandingTasks.length > 0 && <div className="mt-4 rounded-xl bg-sand/40 p-4 text-sm"><p className="font-medium">Still needed before Styled can issue a full quote</p><ul className="mt-2 list-disc pl-5">{o.outstandingTasks.map(task => <li key={task}>{task}</li>)}</ul><p className="mt-2">Open Supplier quote and booking details to add your prices and terms.</p></div>}<BookingOperations orderId={o.orderId} role="supplier" onSaved={()=>void load()}/></div></div>
           ))}
         </div>
       )}

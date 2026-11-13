@@ -10,6 +10,7 @@ export type QtyRule = "per_guest" | "per_table" | "fixed" | "per_venue";
 // Shop categories — how a couple browses. Covers the full range of things a
 // wedding needs, not just what appears in the render.
 export type Category =
+  | "tents"
   | "backdrops"
   | "florals"
   | "centrepieces"
@@ -19,11 +20,10 @@ export type Category =
   | "signage"
   | "bar"
   | "attire"
-  | "stationery"
   | "cake_favours";
 
 // A "slot" is a visual position in the styled render. Only render-placeable
-// items have one; shop-only items (attire, stationery, cake) do not.
+// items have one; shop-only items (attire, cake) do not.
 export type Slot =
   | "ceremony_backdrop"
   | "centrepieces"
@@ -45,6 +45,7 @@ export interface DemoCataloguePricing {
 }
 
 export interface CatalogueItem {
+  visualiserUse?: "outdoor" | "reference-pending";
   id: string;
   name: string;
   category: Category;
@@ -60,6 +61,8 @@ export interface CatalogueItem {
   styles: string[]; // style ids this item suits
   icon: string; // emoji fallback when there's no photo
   swatch: string; // hex colour used in the preview / fallback
+  gallery?: {src: string; alt: string}[];
+  packageDetails?: {title: string; text: string}[];
   image?: string;
   /** Set only when provenance is known. Seed imagery remains illustrative. */
   imageKind?: "supplier" | "supplier_reference" | "illustrative";
@@ -99,6 +102,7 @@ export interface StylePreset {
 }
 
 export interface SampleVenue {
+  environment?: import("./visualiser-environment").VisualiserEnvironment;
   supplierPolicy?: import("./venue-suppliers").VenueSupplierPolicy;
   id: string;
   name: string;

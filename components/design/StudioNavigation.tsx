@@ -11,6 +11,7 @@ export function primarySection(tab: StudioTab) {
 const destinations = [
   { id: "wedding", label: "Plan", path: "M4 5h16v16H4z M8 3v4 M16 3v4 M4 11h16" },
   { id: "browse", label: "Browse", path: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z" },
+  { id:"boards", label:"Boards", path:"M3 4h8v7H3z M14 4h7v12h-7z M3 14h8v6H3z" },
   { id: "saved", label: "Saved", path: "M5 3h14v18l-7-5-7 5z" },
   { id: "visualiser", label: "Visualise", path: "M4 4h16v16H4z M4 16l5-5 4 4 3-3 4 4 M8 8h.01" },
   { id: "orders", label: "Bookings", path: "M5 3h14v18l-3-2-4 2-4-2-3 2z M9 7h6 M9 11h6" },
@@ -28,7 +29,7 @@ export default function StudioNavigation({ active, onSelect, mobile = false, ven
   }, [browse]);
   useEffect(() => setBrowse(false), [active]);
   return <nav aria-label={mobile ? "Mobile studio" : "Studio"} className={mobile
-    ? "fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-sand bg-cream/95 px-2 pb-[max(0.25rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden"
+    ? "fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-sand bg-cream/95 px-2 pb-[max(0.25rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden"
     : "hidden min-w-0 items-center justify-center gap-4 md:flex lg:gap-7"}>
     {destinations.map((destination) => {
       const selected = primarySection(active) === destination.id;

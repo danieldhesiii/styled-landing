@@ -35,7 +35,7 @@ export function validateBasket(raw: unknown): { ok: true; lines: ValidLine[] } |
     const quantity = (l as { quantity?: unknown })?.quantity;
     const seenPrice = (l as { seenUnitPricePence?: unknown })?.seenUnitPricePence;
 
-    if (typeof itemId !== "string" || !itemId || itemId.length > 64) {
+    if (typeof itemId !== "string" || !itemId || itemId.length > 128) {
       return { ok: false, status: 400, error: "Invalid item in basket." };
     }
     if (typeof quantity !== "number" || !Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY) {

@@ -20,6 +20,7 @@ type Product = {
   capacity: number | null;
   leadTimeDays: number;
   active: boolean;
+  publication: string;
   note: string | null;
   styles: string[];
   image: string | null;
@@ -74,7 +75,7 @@ export default function SupplierProducts() {
     (p) =>
       (filter === "all" ||
         (filter === "visible" && p.active) ||
-        (filter === "hidden" && !p.active)) &&
+        (filter === p.publication)) &&
       `${p.name} ${vendorCategoryLabel(p.category)}`
         .toLowerCase()
         .includes(search.toLowerCase()),
@@ -83,18 +84,13 @@ export default function SupplierProducts() {
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-serif text-4xl">Products</h1>
+          <h1 className="font-serif text-4xl sm:text-5xl">Your products</h1>
           <p className="mt-3 max-w-xl text-sm text-ink/65">
-            Manage your catalogue, prices and stock. Only active businesses appear to couples.
+            Upload photos, add prices and manage your products.
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <Link
-            href="/portal/import"
-            className="min-h-11 py-3 text-sm underline"
-          >
-            Import stock list
-          </Link>
+          <Link href="/portal/business#range-review" className="min-h-11 py-3 text-sm underline">Submit for review</Link>
           <button
             disabled={!!editing}
             onClick={() => {
@@ -111,13 +107,14 @@ export default function SupplierProducts() {
         <ProductEditor
           key={editing === "new" ? "new" : editing.id}
           isNew={editing === "new"}
+          initialPhoto={editing === "new" ? undefined : editing.image}
           initial={
             editing === "new"
               ? { ...EMPTY_PRODUCT, details: { ...EMPTY_PRODUCT_DETAILS } }
               : draft(editing)
           }
           onCancel={() => setEditing(null)}
-          onSave={async (value) => {
+          onSave={async (value, photo) => {
             const isNew = editing === "new";
             const fingerprint = JSON.stringify(value);
             if (isNew && creation.current.body !== fingerprint)
@@ -132,12 +129,20 @@ export default function SupplierProducts() {
                 : { product: value, updatedAt: editing.updatedAt },
             );
             if (!r.ok) throw Error(r.data?.error || "Could not save product.");
+            let photoError = "";
+            if (photo) {
+              try {
+                const upload = await vendorApi("/api/vendor/assets", "POST", {
+                  kind: "product", productId: isNew ? r.data.id : editing.id, image: photo,
+                });
+                if (!upload.ok) throw Error(upload.data?.error || "Please retry the photo upload.");
+              } catch (e) { photoError = e instanceof Error ? e.message : "Please retry the photo upload."; }
+            }
             setEditing(null);
             creation.current = { body: "", id: "" };
             setNotice(
-              isNew
-                ? "Draft product saved. Add its photo below, then make it visible when ready."
-                : "Product changes saved.",
+              photoError ? `Product saved, but the photo needs another try: ${photoError} Use Add photo or Replace photo below.`
+                : isNew ? "Product saved. Add another, or submit your range for review." : "Product changes saved.",
             );
             setSearch("");
             setFilter("all");
@@ -150,7 +155,7 @@ export default function SupplierProducts() {
           {notice}
         </p>
       )}
-      <div className="mt-6 space-y-3 rounded-xl bg-sand/25 p-4">
+      <details className="mt-6 rounded-xl border border-sand bg-white p-4"><summary className="cursor-pointer text-sm">Search and filter products</summary><div className="mt-4 space-y-3">
         <label className="block text-sm">
           <span className="sr-only">Find a product</span>
           <input
@@ -168,7 +173,7 @@ export default function SupplierProducts() {
           {[
             ["all", "All products"],
             ["visible", "Visible"],
-            ["hidden", "Draft / hidden"],
+            ["Private", "Private"], ["In review", "In review"], ["Changes requested", "Changes requested"],
           ].map(([key, label]) => (
             <button
               key={key}
@@ -189,15 +194,7 @@ export default function SupplierProducts() {
             {date && <button className="min-h-11 underline" onClick={() => setDate("")}>Show today</button>}
           </div>
         </details>
-      </div>
-      {error && (
-        <p role="alert" className="mt-4 rounded-xl bg-blush/30 p-4 text-sm">
-          {error}{" "}
-          <button className="min-h-11 underline" onClick={() => void load()}>
-            Retry
-          </button>
-        </p>
-      )}
+      </div></details>
       {loading ? (
         <p role="status" className="mt-6">
           Loading products…
@@ -219,13 +216,13 @@ export default function SupplierProducts() {
         <ul className="mt-6 divide-y divide-sand">
           {visible.map((p) => (
             <li key={p.id} className="py-6">
-              <div className="grid gap-4 sm:grid-cols-[112px_1fr_auto]">
+              <div className="grid gap-4 grid-cols-[96px_minmax(0,1fr)] sm:grid-cols-[112px_1fr_auto]">
                 <div>
                   {p.image ? (
                     <img
                       src={p.image}
                       alt={p.name}
-                      className="h-28 w-28 rounded-xl object-cover"
+                      className="h-24 w-24 rounded-xl bg-white object-contain sm:h-28 sm:w-28"
                     />
                   ) : (
                     <div className="flex h-28 w-28 items-center justify-center rounded-xl bg-sand/40 text-xs text-ink/60">
@@ -239,7 +236,7 @@ export default function SupplierProducts() {
                     <span
                       className={`rounded-full px-2 py-1 text-xs ${p.active ? "bg-sage/20" : "bg-sand/60"}`}
                     >
-                      {p.active ? "Visible" : "Draft / hidden"}
+                      {p.publication}
                     </span>
                   </div>
                   <p className="mt-2 text-sm text-ink/65">
@@ -258,12 +255,13 @@ export default function SupplierProducts() {
                   <div className="mt-3">
                     <AssetUpload
                       kind="product"
+                      label={p.image ? "Replace photo" : "Add photo"}
                       productId={p.id}
                       onUploaded={() => void load()}
                     />
                   </div>
                 </div>
-                <div className="flex gap-3 sm:flex-col">
+                <div className="col-span-2 flex gap-3 sm:col-span-1 sm:flex-col">
                   <button
                     disabled={!!editing}
                     onClick={() => {
@@ -306,7 +304,7 @@ export default function SupplierProducts() {
                         ? "Hide product"
                         : "Make visible"}
                   </button>
-                  ) : <Link href="/portal/business#range-review" className="inline-flex min-h-11 items-center px-3 text-sm underline">Prepare for review →</Link>}
+                  ) : null}
                 </div>
               </div>
             </li>

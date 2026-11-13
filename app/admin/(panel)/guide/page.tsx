@@ -55,8 +55,9 @@ export default function GuidePage() {
       <ol className="list-decimal space-y-2 pl-5">
         <li>Open <Link href="/admin/vendors" className="underline">Applications</Link> and mark a new submission Reviewing.</li>
         <li>Check the business, area and suitability; contact the applicant if needed.</li>
-        <li>Accept or decline. Declining keeps the record.</li>
-        <li>For accepted applicants, choose Set up as supplier to open the prefilled profile form.</li>
+        <li>Confirm the review checkbox, then choose Approve and invite. This creates a private supplier workspace and emails the applicant a one-time setup invitation.</li>
+        <li>The supplier opens the invitation, chooses their name and password, then uploads products. Their email is their login. Use Manage supplier access to check accounts or resend an invitation.</li>
+        <li>Decline unsuitable applications or reopen them for review. Application alerts go to support@styleduk.com and stay visible in the Applications queue if email fails.</li>
       </ol>
       <p>Application acceptance does not publish products; the submitted range needs approval.</p>
     </Section>

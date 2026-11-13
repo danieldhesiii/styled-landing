@@ -336,3 +336,41 @@ test('order creation rejects guest and unverified sessions before parsing or sav
     assert.match((await result.json()).error,/confirm your email/);
   }
 });
+
+test('general sign-in chooses the supplier workspace for linked accounts and preserves customer destinations',async()=>{
+ const original=global.fetch;
+ try {
+  global.fetch=async()=>({ok:true,status:200});
+  assert.equal(await navigation.accountDestination('/design'),'/portal/products');
+  assert.equal(await navigation.accountDestination('/messages'),'/portal/products');
+  global.fetch=async()=>({ok:false,status:403});
+  assert.equal(await navigation.accountDestination('/design?tab=wedding'),'/design?tab=wedding');
+  global.fetch=async()=>({ok:false,status:503});
+  await assert.rejects(navigation.accountDestination('/design'),/verify your account/);
+  global.fetch=async()=>{throw Error('role lookup should not override explicit workspaces');};
+  assert.equal(await navigation.accountDestination('/admin/suppliers'),'/admin/suppliers');
+  assert.equal(await navigation.accountDestination('/portal/products'),'/portal/products');
+ } finally {global.fetch=original;}
+});
+
+test('customer workspace bookmarks redirect suppliers before rendering and preserve refreshed cookies',async()=>{
+ const {NextRequest,NextResponse:ServerResponse}=require('next/server');
+ async function visit(membership,error=null){
+  const query={select(){return this;},eq(){return this;},async maybeSingle(){return {data:membership,error};}};
+  const middleware=load('lib/supabase/middleware.ts',{
+   'next/server':{NextResponse:ServerResponse},
+   '@supabase/ssr':{createServerClient:(_url,_key,options)=>({auth:{getUser:async()=>{
+    options.cookies.setAll([{name:'session-refreshed',value:'fixture',options:{path:'/',httpOnly:true}}]);
+    return {data:{user:{id:'own-user',is_anonymous:false}}};
+   }}})},
+   '@/lib/supabase/admin':{createAdminClient:()=>({from:()=>query})},
+  });
+  return middleware.updateSession(new NextRequest('https://styled.test/design?tab=wedding'));
+ }
+ const supplier=await visit({supplier_id:'supplier'});
+ assert.equal(supplier.status,307);
+ assert.equal(new URL(supplier.headers.get('location')).pathname,'/portal/products');
+ assert.equal(supplier.cookies.get('session-refreshed').value,'fixture');
+ assert.equal((await visit(null)).status,200);
+ assert.equal((await visit(null,{message:'temporary database failure'})).status,503);
+});

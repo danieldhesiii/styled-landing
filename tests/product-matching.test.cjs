@@ -54,3 +54,9 @@ test('generation selects by style or product name and records references without
  }
 });
 test('naming a chair replaces another chair without removing the tables from the look',async()=>{const oak={...chair,slot:'chairs'},gold={...classic,slot:'chairs'},table={...chair,id:'table',name:'Round Banquet Table',slot:undefined};const server=load('lib/server/look.ts',{'@/lib/server/catalogue':{loadCatalogue:async()=>[oak,gold,table],SCENE_CATEGORIES:{reception:['furniture']}},'./venue-catalogue':{},'@/lib/supabase/admin':{},'@/lib/server/availability':{}});const result=await server.composeOrderableLook({brief:'Use Oak Crossback Chair',styleId:'classic_elegance',chosenIds:[gold.id,table.id],setting:'reception',weddingDate:null,guestCount:1,autoFill:false,substitute:false});assert.deepEqual(result.items.map(i=>i.id),[oak.id,table.id]);});
+test('brochure model names select the intended chandelier without conflating French variants',()=>{
+ for(const [name,expected] of [['Empire Chandelier 90','Empire 90'],['Empire Chandelier 200','Empire 200'],['Marie Therese Chandelier 100','Marie Therese 100'],['Necklace Empire 180','Vintage Necklace Empire 180']]){
+  assert.deepEqual(matching.namedProducts('Use '+name,demos).items.map(i=>i.name),[expected]);
+ }
+ assert.throws(()=>matching.namedProducts('Use Vintage French Crystal Empire 105',demos),/separate variant/);
+});

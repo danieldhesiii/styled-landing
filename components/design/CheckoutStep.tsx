@@ -79,6 +79,7 @@ export default function CheckoutStep({
   const { getItem, refresh } = useCatalogue();
   const { email: accountEmail } = useUser();
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   // Prefill the email for a signed-in couple so they don't retype it.
   useEffect(() => {
@@ -198,6 +199,7 @@ export default function CheckoutStep({
           })),
           coupleName: name.trim(),
           email: email.trim(),
+          phone: phone.trim() || undefined,
           weddingDate: weddingDate || undefined,
           deliveryDate: delivery,
           returnDate: defaults.end,
@@ -339,6 +341,13 @@ export default function CheckoutStep({
               placeholder="you@email.com"
               className="mt-2 w-full rounded-xl border border-sand bg-white px-4 py-2.5 text-sm text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-clay/30"
             />
+          </div>
+          <div>
+            <label htmlFor="checkout-phone" className="text-sm font-medium text-ink">Contact number (optional)</label>
+            <input id="checkout-phone" type="tel" autoComplete="tel" value={phone} maxLength={32}
+              onChange={e => setPhone(e.target.value)} aria-describedby="checkout-phone-help"
+              className="mt-2 w-full rounded-xl border border-sand bg-white px-4 py-2.5 text-sm text-ink" />
+            <p id="checkout-phone-help" className="mt-1 text-xs text-ink/65">Shared with suppliers handling this request, including in their WhatsApp order alerts.</p>
           </div>
           <div>
             <label

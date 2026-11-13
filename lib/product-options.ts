@@ -10,7 +10,7 @@ export const QTY_RULES: { value: string; label: string }[] = [
 ];
 
 // A render "slot" places the product in the styled picture. Shop-only items
-// (attire, stationery, cake) have none.
+// (attire, cake) have none.
 export const SLOTS: { value: string; label: string }[] = [
   { value: "", label: "Not shown in the render" },
   { value: "ceremony_backdrop", label: "Ceremony backdrop" },

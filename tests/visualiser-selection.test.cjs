@@ -55,6 +55,17 @@ test('new and refined prompt inventories retain product IDs, supplier and verifi
   }
 });
 
+test('chandelier-only previews never request an unselected furnished scene', () => {
+  const { buildRenderPrompt } = load('lib/server/render-prompt.ts');
+  const chandelier = { ...chair, id: 'empire', name: 'Empire 90', category: 'lighting', slot: 'lighting', dimensions: '90 cm drop, 45 cm diameter' };
+  for (const setting of ['reception', 'ceremony', 'party', 'drinks', 'proposal']) {
+    const prompt = buildRenderPrompt({ style: null, brief: '', guestCount: 80, setting, items: [chandelier] });
+    assert.match(prompt, /empty room must stay empty apart from selected pieces/);
+    assert.match(prompt, /Preserve existing background objects/);
+    assert.doesNotMatch(prompt, /Show as many dining tables|Seat about|place the ceremony focal point|a stage or DJ booth|fill in tasteful/);
+  }
+});
+
 // A small hook harness exercises the real component handlers with mocked IO.
 function componentHarness(file, props, runEffects = false, catalogueItems = [chair, gold]) {
   const values = [], refs = [], cleanups = [], effectDependencies = [];
