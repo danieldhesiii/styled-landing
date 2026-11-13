@@ -1,3 +1,4 @@
+import {linkedCrescentProduct,crescentTestSupplier} from "./crescent-call-demo";
 import {money} from "@/lib/supplier-workspace";
 import type { CatalogueItem, Category, QtyRule, Slot, StockStatus } from "@/lib/types";
 import type { SceneId } from "@/lib/scenes";
@@ -59,8 +60,9 @@ export async function loadCatalogue(supplierId?: string): Promise<ServerCatalogu
   }
 
   return rows
-    .filter((r) => r.suppliers) // supplier switched off: product is unavailable too
+    .filter((r) => r.suppliers && r.category !== "stationery") // supplier switched off: product is unavailable too
     .map((r) => ({
+      ...(linkedCrescentProduct(r.id) && r.suppliers!.id === crescentTestSupplier ? {imageKind:"supplier_reference" as const} : {}),
       id: r.id,
       name: r.name,
       category: r.category as Category,

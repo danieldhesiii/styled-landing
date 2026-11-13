@@ -34,6 +34,7 @@ import CheckoutStep from "@/components/design/CheckoutStep";
 import { helpTopicForPage } from "@/lib/help";
 import HowItWorks from "@/components/design/HowItWorks";
 import SavedLooks, { type SavedLook } from "@/components/design/SavedLooks";
+import { CustomerInboxLink } from "@/components/messages/CustomerInboxProvider";
 import AccountMenu from "@/components/auth/AccountMenu";
 import MyBookings from "@/components/order/MyBookings";
 import LookProducts from "@/components/design/LookProducts";
@@ -44,6 +45,8 @@ import type { DiscoveryResults } from "@/lib/location";
 import EventCountdown from "@/components/wedding/EventCountdown";
 import EventPlans from "@/components/wedding/EventPlans";
 import { eventWorkspace, eventBrief, FIRST_EVENT_ID, emptyPreviewSelection, parsePreviewSelection, togglePreviewItem } from "@/lib/event-plans";
+import Boards from "@/components/wedding/Boards";
+import {prepareBoard,type BoardInspiration} from "@/lib/board-inspiration";
 import MyWedding from "@/components/wedding/MyWedding";
 import { newEventBrief, planningFingerprint, persistPlanningDraft, createPlanningDraft, recoverPlanningWorkspace } from "@/components/wedding/planning-state";
 import {
@@ -81,12 +84,8 @@ function DesignStudio() {
   } = useCatalogue();
   const params = useSearchParams();
   const { tab: requestedTab, bookings: bookingSection } = studioRoute(params);
-  const studioTab = requestedTab === "boards" ? "saved" : requestedTab;
-  useEffect(() => {
-    if (requestedTab === "boards") {
-      window.history.replaceState(null, "", studioDestination(window.location.href, "saved"));
-    }
-  }, [requestedTab]);
+  const studioTab = requestedTab;
+  const [boardInspiration,setBoardInspiration] = useState<BoardInspiration|null>(null);
   const [partnerVenue, setPartnerVenue] = useState<SampleVenue | null>(null);
   const [partnerError, setPartnerError] = useState("");
   const savedItems = useSavedItems();
@@ -165,6 +164,7 @@ function DesignStudio() {
   const visualiserRef = useRef<HTMLDivElement>(null);
   const [lookProductId,setLookProductId]=useState<string|null>(null);
   const lookProductsRef = useRef<HTMLDivElement>(null);
+  useEffect(()=>setBoardInspiration(null),[activeEventId]);
   function openVisualiser() {
     switchStudioTab("visualiser");
     setTimeout(
@@ -562,7 +562,7 @@ function DesignStudio() {
   function loadSavedLook(look: SavedLook, url: string, itemIds?: string[], report?: LookReport, originalUrl?: string) {
     // Keep this event’s editable plan unchanged when viewing an account-wide save.
     renderRestoreToken.current += 1;
-    setVersions([{ id: look.id, url, itemIds, look: report, originalUrl: originalUrl || look.originalUrl }]);
+    setVersions([{ id: look.id, url, itemIds, look: report, originalUrl: originalUrl || look.originalUrl, styleName: look.styleName }]);
     setRenderId(look.id);
     setActionNotice("Look opened. Your current event and basket are unchanged.");
     openVisualiser();
@@ -654,7 +654,7 @@ function DesignStudio() {
     previewFromLink.current = id;
     if (item) {
       setWorkspaceTouched(true);
-      setPreviewSelection((selection) => ({ ...selection, mode: "manual", itemIds: [...new Set([...selection.itemIds, item.id])] }));
+      setPreviewSelection((selection) => ({ ...selection, mode: "manual", itemIds: [...new Set([...selection.itemIds, item.id])], ...(item.visualiserUse === "outdoor" ? {environment: "outdoor" as const} : {}) }));
       setActionNotice(`${item.name} selected for this event’s preview. Your basket is unchanged.`);
     } else {
       setActionNotice("This product is not available in your current catalogue. Choose another product for the preview.");
@@ -919,7 +919,7 @@ function DesignStudio() {
   function toggleVisualiserProduct(item: CatalogueItem) {
     if (workspaceLock.current || activeEventRef.current !== activeEventId) return;
     setWorkspaceTouched(true);
-    setPreviewSelection((selection) => togglePreviewItem(selection, item.id));
+    setPreviewSelection((selection) => ({...togglePreviewItem(selection, item.id), ...(item.visualiserUse === "outdoor" ? {environment:selection.environment === "tent-interior" ? "tent-interior" as const : "outdoor" as const} : {})}));
   }
   function removePreviewItem(itemId: string) {
     if (workspaceLock.current || activeEventRef.current !== activeEventId) return;
@@ -998,6 +998,7 @@ function DesignStudio() {
               <span className="tabular-nums">{basket.reduce((total, line) => total + line.quantity, 0)}</span>
             </button> : <button type="button" onClick={() => setStep("studio")} className="min-h-11 px-2 text-xs text-ink/65 hover:text-ink">Back to studio</button>}
             <button type="button" onClick={() => setShowHowTo(true)} aria-label="How it works" className="flex h-11 w-11 items-center justify-center rounded-md text-sm text-ink/60 hover:bg-sand/30 hover:text-ink">?</button>
+            <CustomerInboxLink compact />
             <AccountMenu onOpenHelp={() => setShowHowTo(true)} onOpenOrders={() => openBookings()} />
           </div>
         </div>
@@ -1088,6 +1089,65 @@ function DesignStudio() {
                 </button>
               </div>
             )}
+            <div hidden={studioTab !== "boards"}>
+              <Boards
+                boards={boards}
+                onSave={saveWorkspace}
+                busy={workspaceSaving}
+                loaded={workspaceLoaded}
+                photos={workspacePhotos}
+                onPhoto={(id, url) =>
+                  setWorkspacePhotos((p) => ({ ...p, [id]: url }))
+                }
+                savedIds={savedItems.ids}
+                looks={savedLooks}
+                onAdd={addItem}
+                availability={shopAvailability}
+                basket={basket}
+                onQty={setQty}
+                onRemove={removeItem}
+                onChangeDates={() => switchStudioTab("wedding")}
+                onAlternatives={() => switchStudioTab("catalogue")}
+                savedError={savedItems.error || undefined}
+                savingItems={savedItems.busy}
+                onOpenSaved={() => switchStudioTab("saved")}
+                onOpenLooks={() => switchStudioTab("looks")}
+                onSaveItem={(id) => {
+                  if (!savedItems.ids.includes(id)) void savedItems.toggle(id);
+                }}
+                onUseBoard={(board) => {
+                  const inspiration=prepareBoard(board);
+                  setBoardInspiration(inspiration);
+                  setPreviewSelection(s=>({...s,mode:"manual",itemIds:inspiration.itemIds}));
+                  setWorkspaceTouched(true);
+                  setRenderId(null);
+                  openVisualiser();
+                }}
+                onOpenLook={async (id) => {
+                  const eventId = activeEventRef.current;
+                  const look = savedLooks.find((l) => l.id === id);
+
+                  const response = await fetch(`/api/renders/${id}`);
+                  const data = response.ok ? savedRenderSnapshot(id, await response.json()) : null;
+                  if (activeEventRef.current !== eventId) throw Error("Your event changed. Open the look again for this event.");
+                  if (!data)
+                    throw Error("This look is no longer available.");
+                  loadSavedLook(
+                    look || {
+                      id,
+                      styleId: "none",
+                      styleName: "Board look",
+                      originalUrl: data.originalUrl || undefined,
+                      savedAt: Date.now(),
+                    },
+                    data.url,
+                    data.itemIds,
+                    data.look,
+                    data.originalUrl,
+                  );
+                }}
+              />
+            </div>
             {studioTab === "looks" && (
               <SavedLooks
                 onCreate={openVisualiser}
@@ -1212,10 +1272,10 @@ function DesignStudio() {
                 studioTab === "venues" ||
                 studioTab === "wedding" ||
 
-                studioTab === "looks" ||
+                studioTab === "boards" || studioTab === "looks" ||
                 studioTab === "orders"
               }
-              className={`${studioTab === "venues" || studioTab === "wedding" ||  studioTab === "looks" || studioTab === "orders" ? "hidden" : "grid"} gap-5 ${basket.length ? "lg:grid-cols-[minmax(0,1fr)_340px]" : "lg:grid-cols-1"} lg:items-start`}
+              className={`${studioTab === "venues" || studioTab === "wedding" ||  studioTab === "boards" || studioTab === "looks" || studioTab === "orders" ? "hidden" : "grid"} gap-5 ${basket.length ? "lg:grid-cols-[minmax(0,1fr)_340px]" : "lg:grid-cols-1"} lg:items-start`}
             >
               {/* Catalogue first, optional visualiser below. */}
               <div className="min-w-0 space-y-5">
@@ -1334,8 +1394,13 @@ function DesignStudio() {
                       renderUrl={currentRender?.url ?? null}
                       renderId={renderId}
                       versions={versions}
+                      boardInspiration={boardInspiration}
                       itemIds={previewSelection.itemIds}
                       selectionMode={previewSelection.mode}
+                      environment={previewSelection.environment}
+                      tentColour={previewSelection.tentColour}
+                      onEnvironment={(environment) => {setWorkspaceTouched(true);setPreviewSelection(selection=>({...selection,environment}));}}
+                      onTentColour={(tentColour) => {setWorkspaceTouched(true);setPreviewSelection(selection=>({...selection,tentColour}));}}
                       onSelectionMode={changePreviewMode}
                       deliveryDate={deliveryDay(brief)}
                       weddingDate={brief.weddingDate}

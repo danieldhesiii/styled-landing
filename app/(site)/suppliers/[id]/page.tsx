@@ -1,3 +1,5 @@
+import {replyTargetLabel} from "@/lib/message-status";
+import {canRequestItem} from "@/lib/shopping";
 import Link from "next/link";
 import SupplierRules from "@/components/vendor/SupplierRules";
 import { notFound } from "next/navigation";
@@ -50,6 +52,7 @@ export default async function SupplierProfilePage({
   const supplier = await loadPublicSupplier(id);
   if (!supplier) notFound();
 
+  const inboxId = supplier.messageSupplierId || (/^[0-9a-f-]{36}$/i.test(id) ? id : undefined);
   return (
     <div className="py-12">
       <Link href="/suppliers" className="text-sm text-ink/50 hover:text-ink">
@@ -87,6 +90,9 @@ export default async function SupplierProfilePage({
           {supplier.bio}
         </p>
       )}
+      {inboxId && <Link href={`/messages?supplier=${inboxId}`} className="mt-6 inline-flex min-h-12 items-center rounded-full bg-ink px-6 py-3 text-sm text-cream">{supplier.messageSupplierId ? "Message the test supplier" : "Message supplier"}</Link>}
+      {supplier.messageSupplierId && <p className="mt-2 text-sm">For the walkthrough, request the Empire 90 or Marie Therese 100. These go to Styled’s test inbox, not to Simon.</p>}
+      {inboxId&&<p className="mt-3 text-sm text-ink/60">{replyTargetLabel(supplier.messageReplyHours)}</p>}
       <SupplierRules services={supplier.services}/>
       {/* Products */}
       <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -100,7 +106,7 @@ export default async function SupplierProfilePage({
               <img
                 src={p.image}
                 alt={p.name}
-                className={p.demoOnly ? "aspect-[4/3] w-full bg-cream object-contain p-3" : "aspect-[4/3] w-full object-cover"}
+                className={p.demoOnly || p.imageKind === "supplier_reference" ? "aspect-[4/3] w-full bg-cream object-contain p-3" : "aspect-[4/3] w-full object-cover"}
               />
             ) : (
               <div
@@ -120,11 +126,12 @@ export default async function SupplierProfilePage({
                 <span className="text-ink/40">{!p.priceOnRequest && p.unit}</span>
               </p>
               <Link
-                href={`/design?tab=catalogue&product=${encodeURIComponent(p.id)}`}
+                href={`/products/${encodeURIComponent(p.id)}`}
                 className="mt-4 inline-block rounded-full bg-ink px-4 py-2 text-sm text-cream"
               >
                 View product
               </Link>
+              {canRequestItem(p)&&<Link href={`/design?tab=catalogue&supplier=${encodeURIComponent(id === "crescent-moon" ? supplier.name : supplier.id)}&add=${encodeURIComponent(p.id)}`} className="ml-3 mt-4 inline-flex min-h-11 items-center text-sm underline underline-offset-4">Add to basket</Link>}
             </div>
           </article>
         ))}

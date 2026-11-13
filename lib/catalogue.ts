@@ -12,7 +12,7 @@ import type { CatalogueItem } from "./types";
 //
 // Seed catalogue for the first region (Essex / Herts / London fringe). Décor,
 // furniture, lighting, florals, signage and bars carry real AI-generated photos
-// in /public/img/items. The newer categories (attire, stationery, cake & favours)
+// in /public/img/items. The newer categories (attire, cake & favours)
 // ship with icon + swatch fallback cards until supplier photos are added.
 const IMG = "/img/items";
 
@@ -587,60 +587,6 @@ export const CATALOGUE: CatalogueItem[] = [
     rating: 4.7,
     reviewCount: 48,
     leadTimeDays: 90,
-    stock: "made_to_order",
-  },
-
-  // -------------------------------------------------------------- Stationery
-  {
-    id: "st-invites",
-    name: "Invitation Suite (per guest)",
-    category: "stationery",
-    supplier: "Press & Fold Studio",
-    supplierArea: "Hertford, Herts",
-    unitPrice: 4.5,
-    unit: "per guest",
-    qtyRule: "per_guest",
-    styles: ["garden_romance", "classic_elegance", "modern_minimal", "rustic_barn"],
-    icon: "✉️",
-    swatch: "#e7ded0",
-    rating: 4.9,
-    reviewCount: 64,
-    leadTimeDays: 60,
-    stock: "made_to_order",
-    note: "Invitation, RSVP and details card with envelopes.",
-  },
-  {
-    id: "st-placecards",
-    name: "Calligraphy Place Cards",
-    category: "stationery",
-    supplier: "Press & Fold Studio",
-    supplierArea: "Hertford, Herts",
-    unitPrice: 2.0,
-    unit: "per guest",
-    qtyRule: "per_guest",
-    styles: ["garden_romance", "classic_elegance", "modern_minimal"],
-    icon: "🏷️",
-    swatch: "#d8c7ad",
-    rating: 4.8,
-    reviewCount: 37,
-    leadTimeDays: 30,
-    stock: "made_to_order",
-  },
-  {
-    id: "st-tableplan",
-    name: "Table Plan + Menu Cards",
-    category: "stationery",
-    supplier: "Press & Fold Studio",
-    supplierArea: "Hertford, Herts",
-    unitPrice: 165,
-    unit: "set",
-    qtyRule: "fixed",
-    styles: ["garden_romance", "classic_elegance", "modern_minimal", "rustic_barn"],
-    icon: "📜",
-    swatch: "#efe7db",
-    rating: 4.7,
-    reviewCount: 25,
-    leadTimeDays: 30,
     stock: "made_to_order",
   },
 

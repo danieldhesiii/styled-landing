@@ -1,7 +1,9 @@
 import {NextResponse} from 'next/server';
 import {createClient} from '@/lib/supabase/server';
 export const dynamic='force-dynamic';
-const privateHeaders={'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'};
+// Origin-only referrers hide the private query while preserving the browser's
+// same-origin POST header. no-referrer makes Chromium send Origin: null.
+const privateHeaders={'Cache-Control':'no-store','Referrer-Policy':'strict-origin','X-Robots-Tag':'noindex, nofollow, noarchive','X-Content-Type-Options':'nosniff'};
 const valid=(token:unknown,type:unknown):token is string=>typeof token==='string'&&token.length>0&&token.length<500&&/^[a-zA-Z0-9_-]+$/.test(token)&&(type==='invite'||type==='magiclink');
 export async function GET(req:Request){
  const url=new URL(req.url),token=url.searchParams.get('token_hash'),type=url.searchParams.get('type');
@@ -17,7 +19,7 @@ export async function POST(req:Request){
  let destination='/auth/recovery?next=%2Fportal&error=link';
  if(valid(token,type)&&(type==='invite'||type==='magiclink')){
   try{const client=await createClient(),r=await client.auth.verifyOtp({token_hash:token,type});
-   if(!r.error&&r.data.user&&!r.data.user.is_anonymous)destination=type==='invite'?'/auth/reset?next=%2Fportal':'/portal';
+   if(!r.error&&r.data.user&&!r.data.user.is_anonymous)destination=type==='invite'?'/auth/reset?next=%2Fportal%2Fproducts&setup=supplier':'/portal';
   }catch{/* Keep expired or invalid invitation details out of logs. */}
  }
  const response=NextResponse.redirect(new URL(destination,url.origin),303);Object.entries(privateHeaders).forEach(([k,v])=>response.headers.set(k,v));return response;

@@ -15,7 +15,7 @@ export function crescentMoonDemoCatalogue(): CatalogueItem[] {
       unitPrice: product.mockPricing ? product.mockPricing.dailyHireGBP + product.mockPricing.deliverySetupCollectionGBP + product.mockPricing.damageDepositGBP : 0,
       unit: product.mockPricing ? 'one-day estimate, each' : 'price on request',
       qtyRule: 'fixed',
-      styles: ['classic_elegance', 'manor_orangery'],
+      styles: ['classic_elegance'],
       icon: '✦',
       swatch: '#c8b69d',
       image: `/img/items/crescent-moon-demo/${product.image}`,
@@ -28,7 +28,7 @@ export function crescentMoonDemoCatalogue(): CatalogueItem[] {
       dimensions,
       material: 'Crystal chandelier.',
       hireUnits: brochureDetails,
-      deliveryTerms: 'UK-wide delivery. Delivery, installation and collection are arranged for your venue.',
+      deliveryTerms: 'UK-wide delivery by arrangement. Installation may be supplied by Crescent Moon or your venue’s AV/production team. Confirm rigging, access, delivery, collection and installation charges in your quote.',
       damageTerms: product.mockPricing
         ? `Refundable damage deposit: £${product.mockPricing.damageDepositGBP}.`
         : 'Damage deposit to be confirmed in your hire quote.',

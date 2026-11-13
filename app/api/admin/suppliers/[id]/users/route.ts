@@ -45,6 +45,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!env.brevoApiKeyIfSet && !env.resendApiKeyIfSet) return fail(409, "Connect development email first. No account or access was created.");
   const limited = await admin.rpc("hit_rate_limit", {p_key:`supplier-invite:${auth.user.id}`,p_limit:5,p_window_seconds:3600});
   if (limited.error || limited.data !== true) return fail(429, "Please wait before inviting more accounts.");
+  const recipientLimit = await admin.rpc("hit_rate_limit", {p_key:`supplier-invite-recipient:${id}:${email}`,p_limit:1,p_window_seconds:60});
+  if(recipientLimit.error || recipientLimit.data !== true) return fail(429,"An invitation was just requested for this account. Please wait a minute before resending.");
   const supplier = await admin.from("suppliers").select("id,name").eq("id", id).maybeSingle();
   if (supplier.error || !supplier.data) return fail(404, "Supplier not found.");
   let user:any=null;
@@ -70,5 +72,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if(linked.error||checked.error||checked.data?.supplier_id!==id)return fail(409,"Could not link this account safely. Review its supplier access.");
   const link=new URL("/auth/invite",env.siteUrl);link.searchParams.set("token_hash",generated.data.properties.hashed_token);link.searchParams.set("type",type);
   const delivered=await sendEmail({to:[email],subject:"Your Styled supplier workspace invitation",text:`You have been invited to manage your supplier workspace on Styled. This gives access only to the supplier profile linked by the Styled team. Open the private invitation below. New account holders choose their own password.\n\n${link.href}\n\nIf you were not expecting this, contact support@styleduk.com.`,html:`<p>You have been invited to your Styled supplier workspace.</p><p><a href="${link.href.replaceAll('&','&amp;')}">Open your private invitation</a></p><p>New account holders choose their own password. If this was unexpected, contact support@styleduk.com.</p>`});
+  if(delivered) await admin.from("vendor_applications").update({invitation_sent_at:new Date().toISOString()}).eq("supplier_id",id).eq("email",email);
   return NextResponse.json({ok:true,email,invitationSent:delivered,message:delivered?"Invitation sent. The recipient signs in privately and new account holders choose their own password.":"Access was linked, but the invitation was not confirmed as sent. Check the provider before retrying. No password was created or shared."},{headers:{"Cache-Control":"no-store"}});
 }

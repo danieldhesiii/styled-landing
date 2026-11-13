@@ -6,14 +6,16 @@ export const metadata = {
     "Ask Styled a question, get help with a request, or find answers about planning and business workspaces.",
   alternates: { canonical: "/support" },
 };
-export default function SupportPage() {
+export default async function SupportPage({searchParams}:{searchParams:Promise<{conversation?:string}>}) {
+  const {conversation}=await searchParams;
+  const initialReference=typeof conversation==="string"&&/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(conversation)?"Supplier conversation "+conversation:"";
   return (
     <section className="mx-auto max-w-2xl py-10 sm:py-14">
       <h1 className="font-serif text-4xl">Help & support</h1>
       <p className="mb-6 mt-3 text-sm text-ink/70">
         Get help with your plans, requests or business workspace.
       </p>
-      <SupportContent />
+      <SupportContent initialReference={initialReference} />
       <p className="mt-6 text-sm leading-relaxed text-ink/80">
         For complaints or access help, include your reference and what you need.
         Can’t sign in? Use email above.

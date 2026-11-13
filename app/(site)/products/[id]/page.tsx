@@ -1,11 +1,10 @@
-import { demoPreviewAllowed } from "@/lib/server/development-request-catalogue";
+import { supplierPreviewCatalogue, demoPreviewAllowed } from "@/lib/server/development-request-catalogue";
 import { cache } from "react";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import ProductDetails from "@/components/design/ProductDetails";
 import { loadCatalogue } from "@/lib/server/catalogue";
-import { crescentMoonDemoCatalogue } from "@/lib/crescent-moon-demo-catalogue";
 import { catalogueReturnHref, studioProductHref } from "./navigation";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +14,7 @@ export const dynamic = "force-dynamic";
 const productById = cache(async (id: string) => {
   const host = (await headers()).get("host")?.split(":")[0].toLowerCase();
   const previewsAllowed = demoPreviewAllowed(host ? new Request("https://" + host) : undefined);
-  const preview = previewsAllowed ? crescentMoonDemoCatalogue().find((item) => item.id === id) : undefined;
+  const preview = previewsAllowed ? supplierPreviewCatalogue(host ? new Request("https://" + host) : undefined).find((item) => item.id === id) : undefined;
   if (preview) return preview;
   return (await loadCatalogue()).find((item) => item.id === id);
 });

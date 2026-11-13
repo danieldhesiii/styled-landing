@@ -121,7 +121,7 @@ export default function RecoveryForm({
       </Link>
       <p className="mt-4 text-sm text-ink/70">
         Still stuck?{" "}
-        <Link href="/service-info#support" className="underline">
+        <Link href={destination === "/portal" || destination.startsWith("/portal/") ? "mailto:support@styleduk.com?subject=Supplier%20portal%20access" : "/service-info#support"} className="underline">
           Contact support
         </Link>
         . Never send your password or email sign-in link.

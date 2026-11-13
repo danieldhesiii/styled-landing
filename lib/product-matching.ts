@@ -6,7 +6,7 @@ export function normaliseProductText(text:string):string {
 }
 function aliases(item:CatalogueItem):string[] {
   const name=normaliseProductText(item.name);
-  return [...new Set([name,name.replace(/^vintage /,'')])].filter(n=>n.split(' ').length>=2||n.length>=4);
+  return [...new Set([name,name.replace(/^vintage /,''),name.replace(/ (\d+)$/, ' chandelier $1'), ...(item.category==='tents'?[name.replace(/^(\d+) (\d+) m .*/,'$1 x $2 m'),name.replace(/^(\d+) (\d+) m .*/,'$1 by $2 m'),name.replace(/^(\d+) (\d+) m .*/,'$1 $2 m')]:[])])].filter(n=>n.split(' ').length>=2||n.length>=4);
 }
 function negated(text:string,start:number):boolean {
   const prefix=text.slice(Math.max(0,start-55),start);
@@ -16,6 +16,13 @@ function negated(text:string,start:number):boolean {
 }
 export function namedProducts(brief:string,catalogue:CatalogueItem[]):{items:CatalogueItem[];excludedIds:string[]} {
   if(!brief.trim())return {items:[],excludedIds:[]};
+  const variantText = normaliseProductText(brief);
+  const variant = /\bvintage french crystal empire(?: chandelier)? 105\b/.exec(variantText);
+  if (variant && !negated(variantText, variant.index)
+    && catalogue.some(item=>item.id==='demo-crescent-moon-french-crystal-empire-105')
+    && !catalogue.some(item=>normaliseProductText(item.name)==='vintage french crystal empire 105')) {
+    throw new ProductMatchError('Vintage French Crystal Empire 105 is a separate variant. Choose the listed French Crystal Empire 105 or ask the supplier to confirm the vintage model.');
+  }
   const text=brief.split(/[.;,!?]/).map(normaliseProductText).join(' . '),items:CatalogueItem[]=[],excludedIds:string[]=[];
   for(const item of catalogue){
     let include=false,exclude=false;
@@ -32,12 +39,14 @@ export function namedProducts(brief:string,catalogue:CatalogueItem[]):{items:Cat
   // Never silently replace an unknown model number with another product.
   const families=new Map<string,CatalogueItem[]>();
   for(const item of catalogue){
+    // Tent dimensions precede the family name; the outdoor size guard handles unknown sizes.
+    if(item.category==='tents')continue;
     const name=normaliseProductText(item.name),family=name.replace(/\b\d+\b/g,'').replace(/^vintage /,'').trim();
     if(family.split(' ').length<2&&!/\d/.test(name))continue;
     families.set(family,[...(families.get(family)||[]),item]);
   }
   for(const [family,options] of families){
-    const pattern=new RegExp(`(?:^| )${family}(?: (\\d+))?(?= |$)`,'g');let match:RegExpExecArray|null;
+    const pattern=new RegExp(`(?:^| )${family}(?: chandelier)?(?: (\\d+))?(?= |$)`,'g');let match:RegExpExecArray|null;
     while((match=pattern.exec(text))!==null){
       if(negated(text,match.index))continue;
       const number=match[1];

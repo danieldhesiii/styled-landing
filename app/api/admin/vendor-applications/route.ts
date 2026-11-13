@@ -12,7 +12,7 @@ export async function GET(req: Request) {
 
   let query = admin
     .from("vendor_applications")
-    .select("id, business_name, contact_name, email, phone, category, area, website, message, status, created_at")
+    .select("id, business_name, contact_name, email, phone, category, area, website, message, status, created_at, supplier_id, reviewed_at, invitation_sent_at, application_notifications(status,attempts,last_error)")
     .order("created_at", { ascending: false })
     .limit(500);
   if (status && ["new", "reviewing", "accepted", "declined"].includes(status)) {

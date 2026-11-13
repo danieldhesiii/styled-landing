@@ -157,6 +157,7 @@ export default function AccountMenu({
                 My bookings
               </a>
             )}
+            <a href="/messages" className="block min-h-11 px-4 py-2 text-sm hover:bg-cream">Inbox</a>
             {onOpenHelp && (
               <button
                 type="button"

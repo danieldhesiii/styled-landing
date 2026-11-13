@@ -1,7 +1,7 @@
 export type TrackerStage = "waiting" | "partial" | "attention" | "quote_pending" | "quote_ready" | "closed";
 export const TRACKER_STAGES: Record<TrackerStage,string> = {waiting:"Waiting for supplier",partial:"Partial reply",attention:"Alternative needed",quote_pending:"Awaiting full quote",quote_ready:"Quote to review",closed:"Closed example"};
 export type TrackerLine={id:string;name:string;quantity:number;status:string;start:string|null;end:string|null;note:string|null;priceOnRequest?:boolean;requestOnly?:boolean};
-export type TrackerRequest={id:string;orderId:string;supplierId?:string|null;reference:string;customer:string;venue:string;createdAt:string;supplier:string;stage:TrackerStage;lastReplyAt:string|null;lines:TrackerLine[];owner:string;followUp:string;events:{at:string;text:string}[]};
+export type TrackerRequest={phoneStatus?:string;replyDueAt?:string|null;deliveryProblem?:boolean;id:string;orderId:string;supplierId?:string|null;reference:string;customer:string;venue:string;createdAt:string;supplier:string;stage:TrackerStage;lastReplyAt:string|null;lines:TrackerLine[];owner:string;followUp:string;events:{at:string;text:string}[]};
 export type TrackerOrder={id:string;reference:string;couple_name:string;venue_label:string|null;created_at:string;wedding_date:string|null;order_lines:{id:string;supplier_id:string|null;supplier_name:string;product_name:string;quantity:number;supplier_status:string;supplier_decided_at:string|null;supplier_note:string|null;needed_date:string|null;return_date:string|null;request_snapshot?:{priceOnRequest?:boolean};line_total_pence?:number|null}[]};
 export function trackerStage(lines:TrackerLine[]):TrackerStage{
  if(lines.some(l=>l.status==="declined"))return "attention";
@@ -20,9 +20,21 @@ export function trackerRequests(orders:TrackerOrder[]):TrackerRequest[]{
   });
  });
 }
+export type PhoneNotice={delivery:string;part_count:number|null;reply_due_at:string|null;created_at:string;order_phone_parts:{state:string}[]};
+export function deliverySummary(n:PhoneNotice,now:number){
+ const states=n.order_phone_parts.map(p=>p.state),age=now-Date.parse(n.created_at);
+ const allDelivered=!!n.part_count&&states.length===n.part_count&&states.every(s=>s==="delivered");
+ if(allDelivered)return {phoneStatus:"Delivered to phone",deliveryProblem:false};
+ if(states.includes("failed")||n.delivery==="failed")return {phoneStatus:"Delivery failed",deliveryProblem:true};
+ if(n.delivery==="portal_only"||n.delivery==="skipped")return {phoneStatus:"Portal only",deliveryProblem:false};
+ if(n.delivery==="unknown"||age>=3600000)return {phoneStatus:"Delivery unverified: check before resending",deliveryProblem:true};
+ return {phoneStatus:n.delivery==="sent"?"Accepted by provider":"Delivery pending",deliveryProblem:false};
+}
 export function needsFollowUp(r:TrackerRequest,now:number,hours:number):boolean{
  if(["closed","quote_ready"].includes(r.stage))return false;
+ if(["waiting","partial"].includes(r.stage) && (r.deliveryProblem || (r.replyDueAt && Date.parse(r.replyDueAt)<=now)))return true;
  if(r.followUp)return r.followUp<=new Date(now).toISOString().slice(0,10);
+ if(["waiting","partial"].includes(r.stage)&&r.replyDueAt)return false;
  const since=Date.parse(r.lastReplyAt||r.createdAt);
  return Number.isFinite(since)&&now-since>=hours*3600000;
 }

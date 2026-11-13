@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -36,6 +37,23 @@ export async function updateSession(request: NextRequest) {
   const needsAuth = PROTECTED.some(
     (p) => pathname === p || pathname.startsWith(p + "/"),
   );
+
+  if (needsAuth && user && !user.is_anonymous) {
+    try {
+      const {data:membership,error} = await createAdminClient().from("supplier_users")
+        .select("supplier_id").eq("user_id",user.id).maybeSingle();
+      if(error) throw error;
+      if(membership) {
+        const target=request.nextUrl.clone();
+        target.pathname="/portal/products";target.search="";
+        const redirect=NextResponse.redirect(target);
+        response.cookies.getAll().forEach(cookie=>redirect.cookies.set(cookie));
+        return redirect;
+      }
+    } catch {
+      return new NextResponse("We could not check your account access. Please refresh to try again.",{status:503});
+    }
+  }
 
   if (needsAuth && (!user || user.is_anonymous)) {
     const loginUrl = request.nextUrl.clone();

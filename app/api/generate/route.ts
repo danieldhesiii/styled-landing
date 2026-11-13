@@ -1,3 +1,4 @@
+import {parseVisualiserEnvironment,isAlexTent} from "@/lib/visualiser-environment";
 import { demoPreviewAllowed } from "@/lib/server/development-request-catalogue";
 import {choosePreviewProduct, namedProducts, ProductMatchError} from "@/lib/product-matching";
 import {loadProductReferences} from "@/lib/server/product-references";
@@ -61,6 +62,8 @@ export const maxDuration = 300;
 // catalogue; spend limits are enforced here.
 
 interface GenerateRequest {
+  environment?: unknown;
+  tentColour?: unknown;
   demoReferenceId?: unknown;
   chandelierScale?: unknown;
   supplierId?: unknown;
@@ -183,6 +186,8 @@ export async function POST(req: Request) {
     ? body.setting
     : DEFAULT_SCENE;
 
+  let environment;try{environment=parseVisualiserEnvironment(body.environment);}catch(e){return fail(400,(e as Error).message);}
+  if(environment!=="indoor"||itemIds.some(isAlexTent)){const {startOutdoorRender}=await import("@/lib/server/outdoor-render");return startOutdoorRender({req,user,supabase,body,itemIds,selectionMode,brief,styleId:descriptionLed?null:styleId,setting,guestCount,weddingDate,deliveryDate,photoIds,inspirationPhotoIds,supplierId});}
   const previewCatalogue = crescentMoonDemoCatalogue();
   const previewIds = itemIds.filter(id => previewCatalogue.some(item => item.id === id));
   const allowPreview = demoPreviewAllowed(req) && !supplierId && !sampleVenueId.startsWith("listing:");
@@ -327,6 +332,7 @@ export async function POST(req: Request) {
         namedProductIds = updated.namedIds || namedProductIds;
       }
     } catch (error) { return fail(422, error instanceof ProductMatchError ? error.message : "Could not check the original look’s supplier and venue rules. Start a new look."); }
+    if((parent.lookReport as LookReport|null)?.environment && (parent.lookReport as LookReport).environment!=="indoor")return fail(422,"Reopen this outdoor preview with its outdoor setting before refining it.");
     base = parent.base;
     const inheritedDemoId = (parent.lookReport as LookReport | null)?.demoReference?.id;
     const namedPreview=namedProducts(brief,crescentMoonDemoCatalogue());

@@ -32,7 +32,7 @@ const products = load('lib/crescent-moon-demo-catalogue.ts').crescentMoonDemoCat
 const { quotePence, buildQuote, formatGBP } = load('lib/quote.ts');
 const { purchaseAvailability, canRequestItem } = load('lib/shopping.ts');
 const { oneDayDemoTotal, cataloguePriceForSort } = load('lib/demo-pricing.ts');
-const known = products.find((p) => !p.priceOnRequest);
+const known = products.find(p => p.id.endsWith("empire-200"));
 const unknown = products.find((p) => p.priceOnRequest);
 const render = (relative, props) => renderToStaticMarkup(React.createElement(load(relative).default, props));
 const noop = () => {};
@@ -43,6 +43,7 @@ test('server request quote resolves only allowlisted development IDs, preserves 
  const before=process.env.NEXT_PUBLIC_SUPABASE_URL;process.env.NEXT_PUBLIC_SUPABASE_URL='https://qkyeitvwscrxbiwamxan.supabase.co';
  try{
   const req=new Request('https://styledukprodprogress.vercel.app/api/quote');
+  assert.equal((await priceBasket([{itemId:"demo-crescent-moon-empire-90",quantity:1}],req)).ok,false,"Published demo fixtures must never fall back to an unowned snapshot");
   const result=await priceBasket([{itemId:known.id,quantity:1,seenUnitPricePence:oneDayDemoTotal(known)*100},{itemId:unknown.id,quantity:2}],req);
   assert.equal(result.ok,true);const q=publicQuote(result.quote);
   assert.equal(q.subtotalPence,oneDayDemoTotal(known)*100);assert.equal(q.lines[1].lineTotalPence,null);assert.equal(q.lines[1].unitPricePence,null);assert.equal(q.hasUnpricedLines,true);assert.equal(q.depositPence,null);
@@ -55,4 +56,11 @@ test('basket and checkout show unpriced requests without free-price totals or cu
  catalogue={items:products,loading:false,error:null,getItem:id=>products.find(i=>i.id===id),refresh:noop};
  const props={basket:[{itemId:unknown.id,quantity:1}],guestCount:80,budget:1000,weddingDate:'2027-10-20',onItemDates:noop,onQty:noop,onRemove:noop,onCheckout:noop,onDates:noop,onWeddingDate:noop,onBack:noop,onOrdered:noop,venueLabel:'Test room',styleId:'classic_elegance'};
  for(const file of ['components/design/BasketPanel.tsx','components/design/CheckoutStep.tsx']){const html=render(file,props);assert.match(html,/Price on request|Awaiting quote/);assert.doesNotMatch(html,/£0(?:[<\s]|\.00)|Development request only|to spare/);}
+});
+
+test('supplier-generated product IDs remain valid through basket validation',()=>{
+ const {validateBasket}=load('lib/server/quote.ts');
+ const id='supplier-12345678-1234-4234-8234-123456789012-87654321-4321-4321-8321-210987654321';
+ assert.equal(validateBasket([{itemId:id,quantity:1}]).ok,true);
+ assert.equal(validateBasket([{itemId:'x'.repeat(129),quantity:1}]).ok,false);
 });

@@ -1,3 +1,4 @@
+import {dispatchOrderWhatsApp} from "@/lib/server/order-whatsapp";
 import {readJsonObject, JsonBodyError} from "@/lib/server/request-json";
 import {dispatchBookingNotifications} from "@/lib/server/booking-notifications";
 import {venueCatalogue} from "@/lib/server/venue-catalogue";
@@ -360,6 +361,7 @@ export async function POST(req: Request) {
 
   // Queue rows are created transactionally with the order lines. Delivery is
   // separately tracked and never turns a request into a booking.
+  await dispatchOrderWhatsApp(admin, orderId as string).catch(() => console.error("[orders] WhatsApp dispatch deferred"));
   if (!hasRequestLines) await dispatchBookingNotifications(admin,orderId as string);
 
   const order = await loadOrderView(supabase, orderId as string);
@@ -384,10 +386,15 @@ export async function GET() {
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false })
     .limit(20);
+  const ids = (rows ?? []).map(row => row.id);
+  const stages = ids.length ? await createAdminClient().from("booking_workflows")
+    .select("order_id,phase").in("order_id", ids) : { data: [], error: null };
+  if (stages.error || !rows) return fail(503, "Could not load your booking progress.");
+  const phaseByOrder = new Map((stages.data ?? []).map(row => [row.order_id, row.phase]));
   const orders = [];
   for (const r of rows ?? []) {
     const view = await loadOrderView(supabase, r.id as string);
-    if (view) orders.push(view);
+    if (view) orders.push({ ...view, bookingPhase: phaseByOrder.get(r.id) ?? "review" });
   }
   return NextResponse.json({ ok: true, orders });
 }

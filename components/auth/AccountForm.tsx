@@ -3,7 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { authCallbackPath, safeLocalRedirect } from "@/lib/auth/navigation";
+import { accountDestination, authCallbackPath, safeLocalRedirect } from "@/lib/auth/navigation";
 import { authError } from "@/lib/auth/messages";
 
 type Mode = "signup" | "login";
@@ -34,10 +34,11 @@ export default function AccountForm({
   const recovery = `/auth/recovery?${new URLSearchParams({ next: destination })}`;
   const isSignup = mode === "signup";
 
-  function complete() {
+  async function complete() {
+    const target = await accountDestination(destination);
     onAuthed?.();
     // A new document also resets account-scoped client state and restores it afresh.
-    window.location.assign(destination);
+    window.location.assign(target);
   }
 
   async function submit(e: React.FormEvent) {
@@ -79,7 +80,7 @@ export default function AccountForm({
               `/auth/reset?${new URLSearchParams({ next: destination })}`,
             );
         } else if (user && !user.is_anonymous && user.email_confirmed_at)
-          complete();
+          await complete();
         else {
           setNotice(
             "Check your email for a confirmation link, then sign in. If this address already has an account, use Log in or Forgot password.",
@@ -124,7 +125,7 @@ export default function AccountForm({
             return;
           }
         }
-        complete();
+        await complete();
       }
     } catch (err) {
       setError(authError(err));

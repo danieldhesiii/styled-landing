@@ -29,7 +29,7 @@ export default function VendorApplication({ embedded = false }: { embedded?: boo
       });
       const json = await res.json().catch(() => null);
       if (res.ok) {
-        setDone(json?.message ?? "Thanks! Your application is in. We'll be in touch soon.");
+        setDone(json?.message ?? "Your application is with the Styled team. If approved, we will email you a private account invitation.");
         form.reset();
       } else {
         setError(json?.error ?? "Couldn't send your application. Please try again.");
@@ -44,7 +44,7 @@ export default function VendorApplication({ embedded = false }: { embedded?: boo
   if (done) {
     return (
       <div className="mx-auto max-w-2xl py-20 text-center">
-        <p className="text-4xl">🎉</p>
+        <p className="text-sm uppercase tracking-widest text-clay">Styled for suppliers</p>
         <Heading className="mt-4 font-serif text-4xl text-ink">Application received</Heading>
         <p className="mt-3 text-ink/60">{done}</p>
         <a href="/" className="mt-8 inline-block rounded-full bg-ink px-6 py-3 text-sm text-cream hover:bg-ink/90">
@@ -58,7 +58,7 @@ export default function VendorApplication({ embedded = false }: { embedded?: boo
     <div className="mx-auto max-w-2xl py-12">
       <Heading className="font-serif text-4xl text-ink sm:text-5xl">{embedded ? "Apply to join" : "List your business on Styled"}</Heading>
       <p className="mt-3 text-ink/60">
-        Share your business details and range for Styled to review.
+        Share your business details. Applying does not create an account.
       </p>
 
       <form onSubmit={submit} className="mt-10 grid gap-5">
@@ -80,7 +80,7 @@ export default function VendorApplication({ embedded = false }: { embedded?: boo
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
             <label htmlFor="contactName" className={LABEL}>Your name</label>
-            <input id="contactName" name="contactName" maxLength={120} className={FIELD} />
+            <input id="contactName" name="contactName" required maxLength={120} className={FIELD} />
           </div>
           <div>
             <label htmlFor="email" className={LABEL}>Email</label>
@@ -95,7 +95,7 @@ export default function VendorApplication({ embedded = false }: { embedded?: boo
           </div>
           <div>
             <label htmlFor="category" className={LABEL}>What do you offer?</label>
-            <select id="category" name="category" defaultValue="" className={FIELD}>
+            <select id="category" name="category" required defaultValue="" className={FIELD}>
               <option value="" disabled>Choose a category…</option>
               {VENDOR_CATEGORIES.map((c) => (
                 <option key={c.value} value={c.value}>{c.label}</option>
@@ -106,8 +106,8 @@ export default function VendorApplication({ embedded = false }: { embedded?: boo
 
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
-            <label htmlFor="area" className={LABEL}>Area you cover <span className="text-ink/40">(optional)</span></label>
-            <input id="area" name="area" maxLength={120} placeholder="e.g. Nationwide UK" className={FIELD} />
+            <label htmlFor="area" className={LABEL}>Area you cover</label>
+            <input id="area" name="area" required maxLength={120} placeholder="e.g. Nationwide UK" className={FIELD} />
           </div>
           <div>
             <label htmlFor="website" className={LABEL}>Website or Instagram <span className="text-ink/40">(optional)</span></label>
@@ -119,6 +119,8 @@ export default function VendorApplication({ embedded = false }: { embedded?: boo
           <label htmlFor="message" className={LABEL}>Anything else? <span className="text-ink/40">(optional)</span></label>
           <textarea id="message" name="message" rows={4} maxLength={2000} className={FIELD} />
         </div>
+
+        <p className="text-xs leading-relaxed text-ink/60">We use these details to review your application and contact you about joining. Read our <a href="/privacy" className="underline">privacy policy</a>.</p>
 
         {error && (
           <p role="alert" className="rounded-xl bg-blush/30 px-4 py-3 text-sm text-ink/80">{error}</p>

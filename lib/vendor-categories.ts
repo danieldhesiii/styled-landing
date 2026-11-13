@@ -2,6 +2,7 @@
 // application form (the dropdown) and the server route (validation), so the two
 // never drift. These mirror the `Category` union in lib/types.ts.
 export const VENDOR_CATEGORIES: { value: string; label: string }[] = [
+  { value: "tents", label: "Tents & marquees" },
   { value: "backdrops", label: "Backdrops & arches" },
   { value: "florals", label: "Florals" },
   { value: "centrepieces", label: "Centrepieces" },
@@ -11,7 +12,6 @@ export const VENDOR_CATEGORIES: { value: string; label: string }[] = [
   { value: "signage", label: "Signage" },
   { value: "bar", label: "Bar & drinks" },
   { value: "attire", label: "Attire" },
-  { value: "stationery", label: "Stationery" },
   { value: "cake_favours", label: "Cake & favours" },
 ];
 

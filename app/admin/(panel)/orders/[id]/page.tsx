@@ -181,7 +181,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         <div>
           <p className="font-mono text-sm text-ink/45">{order.reference}</p>
           <h1 className="font-serif text-4xl text-ink">{order.couple_name}</h1>
-          <p className="mt-2 text-xs text-ink/60">Next: review the quote and booking arrangements.</p>
           <p className="mt-1 text-sm text-ink/50">
             Placed {ago(order.created_at)} · {longDay(order.wedding_date)}
             {away !== null && away >= 0 ? ` (in ${away} days)` : ""}
@@ -190,7 +189,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         <StatusPill status={order.status} />
       </div>
 
-      <BookingOperations orderId={id} role="staff" onSaved={()=>void load()}/>
+      <BookingOperations orderId={id} role="staff" initiallyOpen onSaved={()=>void load()}/>
 
       {notice && (
         <div role="alert" className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">

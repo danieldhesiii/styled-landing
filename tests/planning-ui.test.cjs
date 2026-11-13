@@ -390,7 +390,7 @@ test('navigation has readable labels and mobile browse keeps its two real destin
   const selected = [], props = { active: 'saved', onSelect: tab => selected.push(tab), mobile: true };
   let tree = h.render(Component, props);
   assert.match(tree.props.className, /fixed.*bottom-0/);
-  assert.equal(nodes(tree).filter(node => node.type === 'button').length, 5);
+  assert.equal(nodes(tree).filter(node => node.type === 'button').length, 6);
   assert.ok(nodes(tree).filter(node => node.type === 'button').every(node => node.props.className.includes('text-[11px]')));
   nodes(tree).find(node => node.type === 'button' && node.props['aria-haspopup'] === true).props.onClick();
   tree = h.render(Component, props);

@@ -14,7 +14,7 @@ export const MAX_IMPORT_CHARS = 500_000;
 // given for an existing product is left exactly as it is.
 export const IMPORT_COLUMNS: { key: string; help: string }[] = [
   { key: "name", help: "Product name. Matches an existing product of yours by name. Needed unless you give an id." },
-  { key: "category", help: "Backdrops & arches, Florals, Centrepieces, Furniture & seating, Linen & tableware, Lighting, Signage, Bar & drinks, Attire, Stationery, Cake & favours. Required for a new product." },
+  { key: "category", help: "Backdrops & arches, Florals, Centrepieces, Furniture & seating, Linen & tableware, Lighting, Signage, Bar & drinks, Attire, Cake & favours. Required for a new product." },
   { key: "price", help: "Price in pounds, e.g. 12.50. Required for a new product." },
   { key: "unit", help: "What the price is for, e.g. each, per guest, per table." },
   { key: "quantity_rule", help: "How a couple's quantity is worked out: fixed, per guest, per table, or per venue." },

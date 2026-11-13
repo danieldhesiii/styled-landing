@@ -1,3 +1,4 @@
+import {parseVisualiserEnvironment,parseTentColour} from "./visualiser-environment";
 import type {
   WeddingBrief,
   WeddingBoard,
@@ -78,7 +79,7 @@ export function parsePreviewSelection(raw: unknown): PreviewSelection {
   if (!Array.isArray(value.itemIds) || value.itemIds.length > 100 || value.itemIds.some((id) => typeof id !== "string" || !/^[a-zA-Z0-9_-]{1,120}$/.test(id))) {
     throw Error("Invalid preview products.");
   }
-  return { mode: value.mode, itemIds: [...new Set(value.itemIds)] as string[] };
+  return { mode: value.mode, itemIds: [...new Set(value.itemIds)] as string[], ...(value.environment!==undefined?{environment:parseVisualiserEnvironment(value.environment)}:{}), ...(value.tentColour!==undefined?{tentColour:parseTentColour(value.tentColour)}:{}) };
 }
 
 export function togglePreviewItem(selection: PreviewSelection, itemId: string): PreviewSelection {

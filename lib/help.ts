@@ -3,10 +3,12 @@ export const HELP_TOPICS = [
   "wedding",
   "catalogue",
   "venues",
+  "boards",
   "saved",
   "visualiser",
   "basket",
   "orders",
+  "messages",
   "suppliers",
   "business",
   "supplier_partners",
@@ -37,7 +39,8 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
         {
             "title": "Request confirmation",
             "body": "Review your basket and send a request. Track the response in My bookings."
-        }
+        },
+        { "title": "Talk to suppliers", "body": "Use Message supplier on a product or supplier page. Open the envelope in the top bar to find your Inbox and replies." }
     ],
     "note": "Venue enquiries and product requests are separate. No request takes payment or reserves availability."
 },
@@ -106,6 +109,31 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
     ],
     note: "Already booked a venue elsewhere? Add it and its photographs in Wedding plan. Venue operators use the separate venue workspace, reached through Venue owners in the website menu.",
   },
+  boards: {
+    label: "Boards",
+    title: "Bring your inspiration together",
+    intro:
+      "Create private collections for a ceremony, reception, colour palette or any idea. Boards are shared across your events.",
+    steps: [
+      {
+        title: "Create and choose a board",
+        body: "Enter a name under New board and choose Create board. Select a board by its name to view or add ideas. Board changes save to your account when they succeed.",
+      },
+      {
+        title: "Add products, images and notes",
+        body: "Use Add to board for catalogue pieces, notes, uploaded photos or a saved AI look. Saving a heart creates a favourite; adding to a board organises that idea. Neither action puts it into Basket.",
+      },
+      {
+        title: "Bring ideas from other services",
+        body: "Google Photos opens separately: download a photo, then upload it here. Pinterest links let you view inspiration beside your board. If Connect Pinterest is available, choose a board and up to three images, confirm permission and add them here. Otherwise upload selected photos you have permission to use. A link alone does not import images.",
+      },
+      {
+        title: "Use ideas in a preview",
+        body: "Use board in visualiser prepares its uploaded photos, catalogue items and notes for the current event. It does not replace your venue, change your basket or start generation. Pinterest links and saved looks are references, not automatically imported image files.",
+      },
+    ],
+    note: "Only real catalogue products can be added to Basket. Inspiration photos and AI looks cannot be ordered as images. Removing a board idea does not remove a separately saved favourite or basket item.",
+  },
   saved: {
     label: "Saved",
     title: "Keep your favourite products and previews",
@@ -171,6 +199,18 @@ export const HELP_GUIDES: Record<HelpTopic, Guide> = {
       },
     ],
     note: "Submitting is a request for manual review. It does not reserve stock or take payment. Final prices, deposits, payment dates and delivery or collection costs are agreed separately before booking.",
+  },
+  messages: {
+    label: "Messages",
+    title: "Your supplier inbox",
+    intro: "Keep your conversations together, across all your events.",
+    steps: [
+      { title: "Open Inbox", body: "Choose the envelope in the top bar, or Inbox in your account menu. The badge counts unread conversations." },
+      { title: "Read and reply", body: "Choose a supplier conversation, write your message and press Send. Sent means it is saved; Seen means the supplier opened it." },
+      { title: "Watch for replies", body: "While you use Styled, a small notification appears when a supplier replies. Choose Read message to open that conversation. Unread replies stay in Inbox when you return." },
+      { title: "Need help?", body: "The conversation shows whose reply is awaited and the supplier’s reply target, if set. Use Contact Styled if you need help." },
+    ],
+    note: "Notifications work while Styled is open and connected. They are not phone push or email alerts. A message does not change a quote or confirm a booking.",
   },
   orders: {
     label: "My bookings",
@@ -320,7 +360,7 @@ export function helpTopicForPage(
     if (studioSection === "looks" || studioSection === "saved") return "saved";
     if (studioSection === "orders") return "orders";
     if (studioSection === "wedding") return "wedding";
-    if (studioSection === "boards") return "saved";
+    if (studioSection === "boards") return "boards";
     if (studioSection === "checkout") return "basket";
     if (studioSection === "venues") return "venues";
     if (studioSection === "visualiser") return "visualiser";
@@ -343,6 +383,7 @@ export function helpTopicForPage(
     return "supplier_partners";
   if (pathname === "/suppliers" || pathname.startsWith("/suppliers/"))
     return "suppliers";
+  if (pathname === "/messages") return "messages";
   if (pathname === "/order" || pathname.startsWith("/order/")) return "orders";
   return "overview";
 }

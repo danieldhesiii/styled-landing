@@ -72,6 +72,7 @@ export const SAMPLE_VENUES: SampleVenue[] = [
     image: "/img/venues/county_hall.jpg",
     tour: false,
   },
+  {id:"outdoor_garden",name:"Garden lawn example",area:"Illustrative outdoor space",kind:"Outdoor example",environment:"outdoor",gradient:"linear-gradient(135deg,#84956e,#d4d9c3)",image:"/img/venues/outdoor_garden.jpg",tour:false},
 ];
 
 export function getVenue(id: string): SampleVenue {

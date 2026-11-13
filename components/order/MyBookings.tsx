@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import MyOrders from "./MyOrders";
 import MyVenueRequests from "@/components/venues/MyVenueRequests";
 
@@ -19,6 +20,7 @@ export default function MyBookings({
       <p className="mt-3 max-w-2xl text-sm text-ink/60">
         Requests need confirmation before they become bookings.
       </p>
+      <Link href="/messages" className="mt-4 inline-flex min-h-11 items-center text-sm underline">Messages with suppliers</Link>
       <nav
         aria-label="Booking types"
         className="my-7 flex gap-6 border-b border-sand text-sm"

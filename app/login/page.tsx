@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AccountForm from "@/components/auth/AccountForm";
 import { createClient } from "@/lib/supabase/client";
-import { accountMode, safeLocalRedirect } from "@/lib/auth/navigation";
+import { accountDestination, accountMode, safeLocalRedirect } from "@/lib/auth/navigation";
 
 function LoginForm() {
   const params = useSearchParams();
@@ -15,9 +15,11 @@ function LoginForm() {
     let live = true;
     createClient()
       .auth.getUser()
-      .then(({ data }) => {
-        if (live && data.user && !data.user.is_anonymous)
-          window.location.replace(next);
+      .then(async ({ data }) => {
+        if (live && data.user && !data.user.is_anonymous) {
+          const target = await accountDestination(next);
+          if (live) window.location.replace(target);
+        }
       })
       .catch(() => {});
     return () => {

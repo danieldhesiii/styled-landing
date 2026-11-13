@@ -5,11 +5,13 @@ export default function AssetUpload({
   productId,
   onUploaded,
   endpoint,
+  label,
 }: {
   kind: "logo" | "product";
   productId?: string;
   onUploaded?: () => void;
   endpoint?: string;
+  label?: string;
 }) {
   const [busy, setBusy] = useState(false),
     [status, setStatus] = useState("");
@@ -20,7 +22,7 @@ export default function AssetUpload({
           ? "Uploading…"
           : kind === "logo"
             ? "Upload business logo"
-            : "Upload product photo"}
+            : label || "Upload product photo"}
         <input
           type="file"
           accept="image/jpeg,image/png,image/webp"

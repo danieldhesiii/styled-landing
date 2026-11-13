@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import Link from "next/link";
 import {SupportButton} from "@/components/support/SupportProvider";
 import { HELP_GUIDES, helpTopicsFor, type HelpTopic } from "@/lib/help";
 
@@ -167,6 +168,7 @@ export default function HowItWorks({
         <details className="mt-6 border-t border-sand pt-2 text-sm text-ink/70"><summary className="min-h-11 cursor-pointer py-3">More details</summary><p className="pb-3 leading-relaxed">{guide.note}</p></details>
       </div>
       <footer className="shrink-0 border-t border-sand px-5 py-4 sm:px-7">
+        {topic === "messages" && <Link href="/messages" onClick={close} className="mb-3 flex min-h-11 items-center text-sm underline underline-offset-4">Open my inbox →</Link>}
         <SupportButton label="Need help? Contact Styled" className="mb-3 inline-flex min-h-11 items-center text-sm text-ink/70 underline underline-offset-4" />
         <button
           type="button"

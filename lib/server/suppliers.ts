@@ -1,3 +1,4 @@
+import {crescentTestEnabled,crescentTestSupplier} from "./crescent-call-demo";
 import { headers } from "next/headers";
 import { developmentRequestCatalogue } from "./development-request-catalogue";
 import type {SupplierServices} from "@/lib/supplier-workspace";
@@ -22,7 +23,9 @@ export interface PublicSupplier {
 
 export interface PublicSupplierProfile extends PublicSupplier {
   products: ServerCatalogueItem[];
+  messageSupplierId?: string;
   bio: string | null;
+  messageReplyHours?: number | null;
   services:Partial<SupplierServices>;
 }
 
@@ -39,11 +42,11 @@ export async function loadPublicSuppliers(includePreview = false): Promise<Publi
   const batchSize = 250;
   for (let start = 0; ; start += batchSize) {
     const { data, error } = await client.from("suppliers")
-      .select("id,name,area,logo_url,products(count)")
+      .select("id,name,area,logo_url,products(category)")
       .order("name").order("id").range(start, start + batchSize - 1);
     if (error) throw new Error("Could not load the supplier directory.");
     for (const supplier of data ?? []) {
-      const productCount = supplier.products[0]?.count ?? 0;
+      const productCount = supplier.products.filter(p => p.category !== "stationery").length;
       if (productCount > 0) suppliers.push({
         id: supplier.id, name: supplier.name, area: supplier.area,
         logoUrl: supplier.logo_url ?? undefined, productCount,
@@ -53,7 +56,12 @@ export async function loadPublicSuppliers(includePreview = false): Promise<Publi
   }
   if (includePreview) {
     const pieces = await previewChandeliers();
-    if (pieces.length) suppliers.push({ id: "crescent-moon", name: pieces[0].supplier, area: pieces[0].supplierArea, productCount: pieces.length });
+    const chandeliers = pieces.filter(p => p.supplier === "Crescent Moon");
+    const tents = pieces.filter(p => p.supplier === "Earth Village Events");
+    if (tents.length) suppliers.push({id:"earth-village-events", name:tents[0].supplier, area:tents[0].supplierArea, productCount:tents.length});
+    const linkedIndex = crescentTestEnabled() ? suppliers.findIndex(s => s.id === crescentTestSupplier) : -1;
+    const linkedCount = chandeliers.length && linkedIndex >= 0 ? suppliers.splice(linkedIndex,1)[0].productCount : 0;
+    if (chandeliers.length) suppliers.push({ id: "crescent-moon", name: chandeliers[0].supplier, area: chandeliers[0].supplierArea, productCount: chandeliers.length + linkedCount });
   }
   return suppliers.sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -62,22 +70,32 @@ export async function loadPublicSuppliers(includePreview = false): Promise<Publi
 export async function loadPublicSupplier(
   id: string,
 ): Promise<PublicSupplierProfile | null> {
-  if (id === "crescent-moon") {
-    const products = await previewChandeliers();
+  if (id === "earth-village-events") {
+    const products = (await previewChandeliers()).filter(p => p.supplier === "Earth Village Events");
     if (!products.length) return null;
-    return { id, name: products[0].supplier, area: products[0].supplierArea, productCount: products.length, products, bio: "Crystal chandelier hire for weddings, with delivery, installation and collection arranged for your venue.", services: {} };
+    return {id, name:products[0].supplier, area:products[0].supplierArea, productCount:products.length, products,
+      bio:"Bristol-based stretch tent hire, run by Alex Noferi and Jennifer Lines-Noferi. Stretch tent installations since 2012, with professional rigging and take-down.",
+      services:{}};
+  }
+  if (id === "crescent-moon") {
+    const products = (await previewChandeliers()).filter(p => p.supplier === "Crescent Moon");
+    if (!products.length) return null;
+    const linked = crescentTestEnabled() ? await loadCatalogue(crescentTestSupplier) : [];
+    products.unshift(...linked);
+    return { id, messageSupplierId: linked.length ? crescentTestSupplier : undefined, messageReplyHours:linked.length ? 48 : undefined, name: "Crescent Moon", area: products[0].supplierArea, productCount: products.length, products, bio: "Crystal chandelier hire for weddings, with delivery, installation and collection arranged for your venue.", services: {} };
   }
   if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)) return null;
   const mine = await loadCatalogue(id);
   if (mine.length === 0) return null;
   const { data: profile, error } = await createAnonClient()
     .from("suppliers")
-    .select("bio,service_details")
+    .select("bio,service_details,message_reply_hours")
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error("Could not load supplier profile.");
   return {
     bio: profile?.bio ?? null,
+    messageReplyHours: profile?.message_reply_hours ?? null,
     services:profile?.service_details??{},
     id,
     name: mine[0].supplier,

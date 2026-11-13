@@ -20,6 +20,7 @@ function load(relative, hookState) {
     if (id === '@/components/catalogue/CatalogueProvider') return { useCatalogue: () => catalogue };
     if (id.startsWith('@/') || id.startsWith('.')) {
       const base = id.startsWith('@/') ? path.resolve(id.slice(2)) : path.resolve(path.dirname(file), id);
+      if(base.endsWith('.json'))return JSON.parse(fs.readFileSync(base,'utf8'));
       return load(fs.existsSync(base + '.tsx') ? base + '.tsx' : base + '.ts', hookState);
     }
     return require(id);
@@ -46,7 +47,7 @@ test('public return links retain catalogue filters but reject outside destinatio
     assert.equal(nav.catalogueReturnHref(invalid, 'lighting'), '/design?tab=catalogue&category=lighting');
   }
 });
-test('Add to studio keeps filters and explicitly selects the real product; previews cannot enter basket', () => {
+test('Add to basket keeps filters and explicitly selects the real product; previews cannot enter basket', () => {
   const href = nav.studioProductHref('/design?tab=catalogue&supplier=oak&q=chair', item.id);
   const query = new URL(href, 'https://local.test').searchParams;
   assert.equal(query.get('product'), item.id);
@@ -60,11 +61,11 @@ test('public details are a full page with supplier link, missing-photo state and
   assert.match(html, /<h1[^>]*>Oak chair/);
   assert.match(html, /href="\/suppliers\/oak"/);
   assert.match(html, /Photo not supplied/);
-  assert.match(html, /Add to studio/);
+  assert.match(html, /Add to basket/);
   assert.match(html, /No payment is taken/);
   assert.doesNotMatch(html, /<dialog|BoardPicker|Add to board/);
 });
-test('catalogue uses a grid, one main product action, optional visualiser action and no date editing', () => {
+test('catalogue offers basket, details and optional visualiser actions without date editing', () => {
   params = new URLSearchParams();
   const html = render('components/design/ProductBrowser.tsx', { ...browserProps, onVisualise: noop });
   assert.match(html, /grid-cols-1/);
@@ -72,7 +73,8 @@ test('catalogue uses a grid, one main product action, optional visualiser action
   assert.match(html, /Select for preview/);
   assert.match(html, /Edit in Wedding plan/);
   assert.match(html, /Dates not checked/);
-  assert.doesNotMatch(html, /type="date"|Add to basket|Add to board|overflow-x-auto/);
+  assert.match(html, /Add to basket/);
+  assert.doesNotMatch(html, /type="date"|Add to board|overflow-x-auto/);
 });
 test('studio product deep link opens full detail and quantity without an overlay', () => {
   params = new URLSearchParams({ product: item.id });
@@ -178,4 +180,10 @@ test('gallery image information appears once and cards do not repeat image notic
     assert.doesNotMatch(details, /No verified reviews|Not supplied\. Ask the supplier/);
     assert.equal((details.match(/Ask supplier for missing specifications/g) || []).length, 1);
   } finally { catalogue = { ...catalogue, items: [item] }; }
+});
+
+
+test('price-on-request catalogue cards still offer the basket action',()=>{
+ const previous=catalogue;
+ try{const requestItem=load('lib/crescent-moon-demo-catalogue.ts').crescentMoonDemoCatalogue().find(i=>i.priceOnRequest);assert.ok(requestItem);catalogue={items:[requestItem],loading:false,error:null};params=new URLSearchParams();const html=render('components/design/ProductBrowser.tsx',browserProps);assert.match(html,/Price on request/);assert.match(html,/Add to basket/);}finally{catalogue=previous;}
 });

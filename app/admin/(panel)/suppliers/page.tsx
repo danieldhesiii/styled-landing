@@ -63,6 +63,7 @@ export default function SuppliersPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-serif text-4xl text-ink">Suppliers</h1>
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink/60">To give a supplier access, add their business, open it and use Supplier account access to invite their email.</p>
           <p className="mt-1 text-sm text-ink/50">
             {suppliers === null
               ? "Loading…"

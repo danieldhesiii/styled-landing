@@ -37,7 +37,6 @@ export default function ServiceInfoPage() {
       <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
         <Link href="/auth/recovery" className="inline-flex min-h-11 items-center underline">Recover account access</Link>
         <Link href="/login?mode=login" className="inline-flex min-h-11 items-center underline">Log in</Link>
-        <Link href="/business" className="inline-flex min-h-11 items-center underline">Supplier & venue access</Link>
       </div>
     </section>
   </InformationPage>;

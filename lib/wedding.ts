@@ -24,6 +24,8 @@ export interface WeddingBoard {
 }
 export type PreviewSelectionMode = "manual" | "auto";
 export interface PreviewSelection {
+  environment?: import("./visualiser-environment").VisualiserEnvironment;
+  tentColour?: import("./visualiser-environment").TentColour;
   itemIds: string[];
   mode: PreviewSelectionMode;
 }

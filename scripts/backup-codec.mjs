@@ -50,7 +50,7 @@ export function toolEnvironment(source = process.env) {
   return Object.fromEntries(['PATH', 'SystemRoot', 'WINDIR', 'TMPDIR', 'TEMP', 'TMP', 'LANG', 'LC_ALL'].filter(k => source[k] !== undefined).map(k => [k, source[k]]));
 }
 export function pgEnvironment(u, source = process.env) {
-  return {...toolEnvironment(source), PGHOST: u.hostname.replace(/^\[|\]$/g, ''), PGPORT: u.port || '5432', PGDATABASE: decodeURIComponent(u.pathname.slice(1)), PGUSER: decodeURIComponent(u.username), PGPASSWORD: decodeURIComponent(u.password), PGPASSFILE: '/dev/null', PGCONNECT_TIMEOUT: '10', PGSSLMODE: localHosts.includes(u.hostname) ? 'disable' : 'verify-full', PGSSLROOTCERT: source.PGSSLROOTCERT || 'system'};
+  return {...toolEnvironment(source), PGHOST: u.hostname.replace(/^\[|\]$/g, ''), PGPORT: u.port || '5432', PGDATABASE: decodeURIComponent(u.pathname.slice(1)), PGUSER: decodeURIComponent(u.username), PGPASSWORD: decodeURIComponent(u.password), PGPASSFILE: '/dev/null', PGCONNECT_TIMEOUT: '10', ...(localHosts.includes(u.hostname) ? {PGSSLMODE: 'disable'} : {PGSSLMODE: 'verify-full', PGSSLROOTCERT: source.PGSSLROOTCERT || 'system'})};
 }
 function inside(root, path) {
   const part = relative(root, path);

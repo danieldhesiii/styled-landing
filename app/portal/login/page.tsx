@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { authError } from "@/lib/auth/messages";
@@ -11,13 +11,24 @@ export default function PortalLoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    fetch("/auth/supplier-access", { cache: "no-store" })
+      .then(response => {
+        if (mounted && supplierAccessStatus(response.status) === "allowed") {
+          window.location.replace("/portal/products");
+        }
+      })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, []);
   async function checkAccess() {
     const response = await fetch("/auth/supplier-access", {
       cache: "no-store",
     });
     const status = supplierAccessStatus(response.status);
     if (status === "allowed") {
-      window.location.assign("/portal");
+      window.location.assign("/portal/products");
       return;
     }
     if (status === "signed-out") {
@@ -76,12 +87,12 @@ export default function PortalLoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center px-5 py-12">
       <div className="w-full max-w-sm rounded-3xl border border-sand bg-white p-8 shadow-sm">
-        <Link href="/" className="font-serif text-2xl">
+        <Link href="/portal/login" className="font-serif text-2xl">
           Styled. <span className="font-sans text-sm">Supplier</span>
         </Link>
         <h1 className="mt-6 font-serif text-3xl">Supplier log in</h1>
         <p className="mt-2 text-sm text-ink/70">
-          Accounts are linked to suppliers by the Styled team.
+          Sign in to upload products and manage your supplier inbox.
         </p>
         <form onSubmit={submit} className="mt-6 space-y-3">
           <label htmlFor="supplier-email" className="block text-sm">
@@ -134,16 +145,14 @@ export default function PortalLoginPage() {
           href="/auth/recovery?next=%2Fportal"
           className="mt-5 block text-sm underline"
         >
-          Forgot password or need a confirmation email?
+          Forgot your password?
         </Link>
+        <Link href="/suppliers/join" className="mt-4 block text-sm underline">New to Styled? Apply to become a supplier</Link>
         <Link
-          href="/service-info#support"
+          href="mailto:support@styleduk.com?subject=Supplier%20portal%20access"
           className="mt-3 block text-sm underline"
         >
           Get help with supplier access
-        </Link>
-        <Link href="/design" className="mt-3 block text-sm underline">
-          Continue to your customer account
         </Link>
       </div>
     </main>

@@ -6,3 +6,14 @@ test('each selected model gets its own complete labelled JPEG set, with no unrel
 test('unrecognised or traversing model IDs cannot read a reference set',async()=>{for(const id of ['../secret','empire-90','demo-crescent-moon-unknown'])await assert.rejects(loader().loadCrescentMoonReferences(id),/Unknown/);});
 test('product identity instructions keep each model distinct and override styling',()=>{const {chandelierIdentityInstruction}=loader();const signatures=new Set();for(const product of products){const prompt=chandelierIdentityInstruction(`demo-crescent-moon-${product.slug}`,2);assert.ok(prompt.includes(product.description));assert.ok(prompt.includes(`${product.dropCm} cm fixture drop, ${product.diameterCm} cm diameter`));assert.match(prompt,/Image 2 is its PRIMARY/);assert.match(prompt,/Do not recolour/);assert.match(prompt,/Replace any different decorative chandelier/);signatures.add(prompt);}assert.equal(signatures.size,6);});
 test('primary venue stays first and product views outrank supplementary venue and inspiration photos',()=>{const {orderChandelierInputs}=loader();const venue=[Buffer.from('primary'),Buffer.from('angle2'),Buffer.from('angle3')],products=[Buffer.from('identity'),Buffer.from('detail')],inspiration=[Buffer.from('mood')];assert.deepEqual(orderChandelierInputs(venue,products,inspiration).map(b=>b.toString()),['primary','identity','detail','angle2','angle3','mood']);assert.throws(()=>orderChandelierInputs([],products),/venue image/);});
+test('identity prompts name the physical construction and distinguish exterior necklace bulbs',()=>{
+ const {chandelierIdentityInstruction}=loader();
+ for(const product of products){
+  const prompt=chandelierIdentityInstruction('demo-crescent-moon-'+product.slug,2);
+  assert.ok(prompt.includes(product.appearance));
+  assert.ok(prompt.includes(product.primaryReferenceInstruction));
+ }
+ const necklace=products.find(p=>p.slug==='necklace-empire-180');
+ assert.equal(necklace.outsideBulbs+necklace.insideBulbs,necklace.bulbs);
+ assert.match(chandelierIdentityInstruction('demo-crescent-moon-necklace-empire-180',2),/12 exterior.*40 bulbs/);
+});

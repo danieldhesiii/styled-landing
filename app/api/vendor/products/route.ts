@@ -29,6 +29,7 @@ export async function GET(req: Request) {
       "id, name, category, unit, unit_price_pence, qty_rule, capacity, lead_time_days, active, note, styles, image, details, updated_at",
     )
     .eq("supplier_id", supplierId)
+    .neq("category", "stationery")
     .order("category")
     .order("sort_order");
   if (error) {
@@ -39,6 +40,9 @@ export async function GET(req: Request) {
     );
   }
 
+  const review = await admin.from("supplier_reviews").select("state,snapshot").eq("supplier_id",supplierId).maybeSingle();
+  if(review.error) return NextResponse.json({error:"Could not load publication status."},{status:503});
+  const submitted = new Set<string>((review.data?.snapshot?.products || []).map((p:{id:string})=>p.id));
   // Owner-only signed previews for unpublished/private review uploads.
   const previews=new Map<string,string>();
   const privateRows=(data||[]).filter(p=>p.image?.startsWith("/api/supplier-images/"));
@@ -72,6 +76,7 @@ export async function GET(req: Request) {
       details: p.details,
       updatedAt: p.updated_at,
       active: p.active,
+      publication: p.active ? "Live" : submitted.has(p.id) && review.data?.state === "submitted" ? "In review" : submitted.has(p.id) && review.data?.state === "changes" ? "Changes requested" : "Private",
       day: avail.has(p.id)
         ? {
             // null = no stock limit (made to order); 0 effective = blocked that day

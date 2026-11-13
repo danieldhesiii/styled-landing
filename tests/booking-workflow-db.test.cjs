@@ -26,6 +26,7 @@ alter default privileges in schema public grant all on sequences to service_role
 `);
 const root=path.resolve(__dirname,'..');
 for(const file of fs.readdirSync(root+'/supabase/migrations').filter(f=>/^\d+_.+\.sql$/.test(f)).sort()) {try{await db.exec(fs.readFileSync(root+'/supabase/migrations/'+file,'utf8'));}catch(e){throw Error(file+': '+e.message);}}
+await db.exec(fs.readFileSync(root+'/supabase/tests/last_chandelier_and_receipts.sql','utf8'));
 await db.exec(fs.readFileSync(root+'/supabase/tests/resend_delivery.sql','utf8'));
 await db.exec(fs.readFileSync(root+'/supabase/tests/supplier_product_day_limits.sql','utf8'));
 

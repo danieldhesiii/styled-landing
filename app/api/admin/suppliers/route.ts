@@ -73,6 +73,7 @@ export async function POST(req: Request) {
     return fail(422, "New suppliers start as drafts. Submit and approve their range before publication.");
   const active = false;
   const applicationId = str(body.applicationId);
+  if (applicationId) return fail(422, "Approve this application from Applications to create its linked workspace safely.");
 
   if (name.length < 2 || name.length > 120) return fail(422, "Please enter the supplier's name.");
   if (area.length < 2 || area.length > 120) return fail(422, "Please enter the area they cover.");

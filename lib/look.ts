@@ -37,7 +37,7 @@ export interface LookItem {
   image?: string;
   // How we know it's orderable: checked against the date, or only against the
   // supplier's overall stock because no date was given.
-  basis: "date" | "stock";
+  basis: "date" | "stock" | "request";
   source: "chosen" | "substitute" | "auto";
 }
 
@@ -52,6 +52,12 @@ export interface LookExclusion {
 }
 
 export interface LookReport {
+  environment?: import("./visualiser-environment").VisualiserEnvironment;
+  tentColour?: import("./visualiser-environment").TentColour;
+  sourceScene?: string;
+  sourcePhotoIds?: string[];
+  structureId?: string;
+  referenceAudit?: {productId:string;imageCount:number;source:string}[];
   chandelierScale?: import("./chandelier-scale").ChandelierScale;
   demoReference?: { id: string; name: string; image?: string };
   venueSlug?: string|null;

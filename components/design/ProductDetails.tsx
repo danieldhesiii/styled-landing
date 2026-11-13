@@ -1,4 +1,5 @@
 "use client";
+import {canRequestItem} from "@/lib/shopping";
 import useOutsideClick from "@/components/ui/useOutsideClick";
 import { supplierProfileId } from "@/lib/supplier-profile";
 import Link from "next/link";
@@ -83,6 +84,11 @@ export default function ProductDetails({
               <p className="text-sm">Photo not supplied</p>
             </div>
           )}
+          {item.gallery && <div className="mt-3 grid grid-cols-2 gap-3">
+            {item.gallery.map(photo => <a key={photo.src} href={photo.src} target="_blank" rel="noreferrer" aria-label={photo.alt + ", open full photo"}>
+              <img src={photo.src} alt={photo.alt} loading="lazy" className="aspect-[4/3] w-full rounded-lg object-contain bg-cream" />
+            </a>)}
+          </div>}
           <details className="mt-2 text-sm text-ink/60">
             <summary className="inline-flex min-h-11 cursor-pointer items-center underline underline-offset-4">Image information</summary>
             <p>{imageDisclosure(item)}</p>
@@ -94,7 +100,14 @@ export default function ProductDetails({
           <p className="mt-3 text-sm">
             {supplierProfileId(item) ? <Link href={`/suppliers/${supplierProfileId(item)}`} className="inline-flex min-h-11 items-center text-clay underline underline-offset-4">{item.supplier}</Link> : item.supplier}
           </p>
+          {item.supplierId && /^[0-9a-f-]{36}$/i.test(item.supplierId) && <Link href={`/messages?supplier=${item.supplierId}`} className="inline-flex min-h-11 items-center text-sm underline underline-offset-4">Message supplier</Link>}
           <p className="text-sm text-ink/60">{item.supplierArea || "Service area not supplied"}</p>
+          {item.packageDetails && <div className="mt-5 divide-y divide-sand">
+            {item.packageDetails.map(section => <details key={section.title} className="py-3">
+              <summary className="cursor-pointer py-1 text-sm font-medium">{section.title}</summary>
+              <p className="pt-2 text-sm leading-relaxed text-ink/70">{section.text}</p>
+            </details>)}
+          </div>}
           <p className="mt-4 text-xl">
             {item.priceOnRequest ? "Price on request" : item.demoOnly ? `One-day estimate ${formatGBP(oneDayDemoTotal(item) ?? 0)}` : <>{formatGBP(item.unitPrice)} <span className="text-sm">{item.unit}</span></>}
           </p>
@@ -106,7 +119,7 @@ export default function ProductDetails({
             <Link href="/design?tab=wedding" className="mt-1 inline-flex min-h-11 items-center underline underline-offset-4">Open Wedding plan</Link>
           </div>
           {purchase.onAdd ? <ProductPurchase {...purchase} onAdd={purchase.onAdd} /> : studioHref && (
-            <Link href={studioAddHref!} className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-ink px-5 py-3 text-center text-sm text-cream hover:bg-ink/90">Add to studio</Link>
+            <Link href={studioAddHref!} className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-ink px-5 py-3 text-center text-sm text-cream hover:bg-ink/90">{canRequestItem(item)?"Add to basket":"View in studio"}</Link>
           )}
           {!purchase.onAdd && item.demoOnly && <ProductCharges item={item} />}
           <div className="mt-3 border-t border-sand pt-3">

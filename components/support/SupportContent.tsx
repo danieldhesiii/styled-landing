@@ -9,12 +9,12 @@ import {
   type SupportTopic,
 } from "@/lib/support";
 import SupportRequests from "./SupportRequests";
-export default function SupportContent() {
+export default function SupportContent({initialReference=""}:{initialReference?:string}) {
   const id = useId(),
     notice = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState("contact"),
-    [topic, setTopic] = useState<SupportTopic>("planning"),
-    [reference, setReference] = useState(""),
+    [topic, setTopic] = useState<SupportTopic>(initialReference?"request":"planning"),
+    [reference, setReference] = useState(initialReference),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
