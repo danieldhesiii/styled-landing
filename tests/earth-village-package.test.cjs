@@ -43,13 +43,19 @@ test('tent package request preserves the supplier package price and collects no 
   assert.equal(products.find(p=>p.id==='earth-village-stretch-tent-20x15').gallery.length, 4);
 });
 
-test('new supplier previews stay off the live domain even when the old public demo is enabled', () => {
+test('Alex’s four packages appear on the approved live aliases and development site', () => {
   const old = {...process.env};
   try {
     process.env.NODE_ENV='production';
     process.env.STYLED_PUBLIC_DEMO_ENABLED='true';
     process.env.NEXT_PUBLIC_SUPABASE_URL='https://yfwqcidkfjzpwbylgnug.supabase.co';
-    assert.equal(supplierPreviewCatalogue(new Request('https://styleduk.com/api/catalogue')).some(p=>p.supplier==='Earth Village Events'),false);
+    for (const host of ['styleduk.com','www.styleduk.com']) {
+      const items = supplierPreviewCatalogue(new Request('https://' + host + '/api/catalogue'));
+      assert.deepEqual(items.filter(p => p.supplier === 'Earth Village Events').map(p => p.id), products.map(p => p.id));
+    }
+    assert.deepEqual(supplierPreviewCatalogue(new Request('https://unrelated.invalid/api/catalogue')), []);
+    process.env.STYLED_PUBLIC_DEMO_ENABLED='false';
+    assert.deepEqual(supplierPreviewCatalogue(new Request('https://styleduk.com/api/catalogue')), []);
     assert.equal(supplierPreviewCatalogue(new Request('https://styledukprodprogress.vercel.app/api/catalogue')).filter(p=>p.supplier==='Earth Village Events').length,4);
   } finally {
     for (const key of ['NODE_ENV','STYLED_PUBLIC_DEMO_ENABLED','NEXT_PUBLIC_SUPABASE_URL']) {

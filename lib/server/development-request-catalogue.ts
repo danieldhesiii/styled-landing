@@ -23,11 +23,8 @@ export function developmentRequestsAllowed(req?: Request): boolean {
 }
 
 export function supplierPreviewCatalogue(req?: Request) {
-  const items = demoPreviewAllowed(req) ? crescentMoonDemoCatalogue() : [];
-  const host = req ? new URL(req.url).hostname : "";
-  if (process.env.NODE_ENV === "development" || ["styledukprodprogress.vercel.app", "localhost", "127.0.0.1"].includes(host)) {
-    items.push(...earthVillageCatalogue());
-  }
+  if (!demoPreviewAllowed(req)) return [];
+  const items = [...crescentMoonDemoCatalogue(), ...earthVillageCatalogue()];
   return items.filter(item => !linkedCrescentProduct(item.id));
 }
 
