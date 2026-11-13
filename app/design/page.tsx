@@ -998,7 +998,7 @@ function DesignStudio() {
               <span className="tabular-nums">{basket.reduce((total, line) => total + line.quantity, 0)}</span>
             </button> : <button type="button" onClick={() => setStep("studio")} className="min-h-11 px-2 text-xs text-ink/65 hover:text-ink">Back to studio</button>}
             <button type="button" onClick={() => setShowHowTo(true)} aria-label="How it works" className="flex h-11 w-11 items-center justify-center rounded-md text-sm text-ink/60 hover:bg-sand/30 hover:text-ink">?</button>
-            <CustomerInboxLink compact />
+            <CustomerInboxLink />
             <AccountMenu onOpenHelp={() => setShowHowTo(true)} onOpenOrders={() => openBookings()} />
           </div>
         </div>
